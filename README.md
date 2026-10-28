@@ -122,3 +122,7 @@ tests/botmatch.mjs       headless bot-vs-bot match with stats: node tests/botmat
 ```
 
 Physics runs at a fixed 120 ticks per second like the original; rendering interpolates between ticks.
+
+## Credits
+
+Made by Edvards Macs. Beta testers: Johannes Trædal and Adrian Naustvåg.

@@ -86,6 +86,7 @@
       <button type="button" data-page="arenas"><span>Arenas</span><small>Pick a map</small></button>
       <button type="button" data-page="settings"><span>Settings</span><small>Graphics, camera, sound</small></button>
       <button type="button" data-page="controls"><span>Controls</span><small>Change any key</small></button>
+      <button type="button" data-page="credits"><span>Credits</span><small>Who made the game</small></button>
     </nav>
 
     <aside class="home-tiles" id="homeTiles">
@@ -210,6 +211,21 @@
     <section class="home-page" data-page="settings" hidden>
       <div class="page-head"><h2>Settings</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
       <div id="homeSettingsSlot"></div>
+    </section>
+
+    <section class="home-page" data-page="credits" hidden>
+      <div class="page-head"><h2>Credits</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="credits">
+        <div class="credit-block">
+          <span class="field-label">Made by</span>
+          <b>Edvards Macs</b>
+        </div>
+        <div class="credit-block">
+          <span class="field-label">Beta testers</span>
+          <b>Johannes Trædal</b>
+          <b>Adrian Naustvåg</b>
+        </div>
+      </div>
     </section>
 
     <section class="home-page wide" data-page="controls" hidden>

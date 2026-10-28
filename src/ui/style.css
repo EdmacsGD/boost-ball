@@ -1122,3 +1122,16 @@ body.online-match #restartBtn { display: none; }
 .login-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .login-alt { font: 700 14px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 12px; color: var(--ink); background: rgba(42, 134, 255, 0.2); border: 1px solid rgba(42, 134, 255, 0.6); cursor: pointer; }
 .login-row button:disabled { opacity: 0.5; cursor: default; }
+
+/* Credits */
+.credits { display: grid; gap: 22px; padding: 6px 0 4px; }
+.credit-block { display: grid; gap: 6px; }
+.credit-block b { font: 800 26px/1.15 var(--display); font-style: italic; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); }
+.credit-block:first-child b { font-size: 34px; color: var(--gold); }
+@media (max-height: 700px) and (min-width: 761px) {
+  .home-nav { gap: 4px; }
+  .home-nav button { padding-top: 4px; padding-bottom: 4px; }
+  .home-nav button span { font-size: 16px; }
+  .home-nav .nav-play { padding-top: 9px; padding-bottom: 9px; }
+  .home-nav .nav-play span { font-size: 28px; }
+}
