@@ -1,0 +1,16 @@
+// Player icons as small SVGs (24x24, filled with currentColor). Original simple shapes.
+const PATHS = {
+  ball: '<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6.5l3.8 2.8-1.5 4.5H9.7L8.2 9.3z"/><path d="M12 2v4.5M19.6 8.6l-3.8.7M17.5 19l-3.2-5.2M6.5 19l3.2-5.2M4.4 8.6l3.8.7" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+  star: '<path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/>',
+  bolt: '<path d="M13.5 2L4.5 13.5h6l-1.5 8.5 9-11.5h-6z"/>',
+  flame: '<path d="M12 22c-4 0-7-2.8-7-6.6 0-3.5 2.6-5.6 3.7-8.7.4 2 1.4 3 2.5 3.6C11 7 12.4 4.2 15 2c-.3 3.4 1.2 5.2 2.6 7 1 1.3 1.4 2.7 1.4 4.4C19 18.8 16 22 12 22zm0-2.2c1.8 0 3-1.2 3-2.9 0-1.9-1.6-2.8-2.3-4.6-.9 1.6-3.7 2.6-3.7 4.8 0 1.6 1.2 2.7 3 2.7z"/>',
+  rocket: '<path d="M14.5 2.5c3 0 5.5 1 7 2.5 0 4-1.6 7.5-5 10.2l.3 3.3-3.3 3-1-3.8-3.7-3.7-3.8-1 3-3.3 3.3.3C14 6.6 14.5 4.6 14.5 2.5zM16 6.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM5.5 15.5c1.5 0 3 1.5 3 3 0 1.7-2.4 2.7-5.5 3 .3-3.1 1.3-6 2.5-6z"/>',
+  shield: '<path d="M12 2l8 3v6.2c0 5.2-3.4 9.1-8 10.8-4.6-1.7-8-5.6-8-10.8V5zm0 3.2L7 7v4.3c0 3.4 2 6.2 5 7.6z"/>',
+  wings: '<path d="M12 9.5c-1.5-3-5-5.5-10-6 1 2 1.8 3.4 2.7 4.3L2.5 8c1.3 1.6 2.6 2.6 4 3.2L5 12c1.8 1.4 3.8 2 5.8 2l1.2 2.5 1.2-2.5c2 0 4-.6 5.8-2l-1.5-.8c1.4-.6 2.7-1.6 4-3.2l-2.2-.2c.9-.9 1.7-2.3 2.7-4.3-5 .5-8.5 3-10 6z"/>',
+  crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5zm2.3 12.5h13.4V21H5.3z"/>',
+};
+
+export function iconSvg(id) {
+  const body = PATHS[id] || PATHS.ball;
+  return `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true">${body}</svg>`;
+}

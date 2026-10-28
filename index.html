@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boost Ball</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+</head>
+<body>
+<div id="app">
+  <div id="view"></div>
+
+  <div id="hud" class="hud">
+    <!-- Scoreboard -->
+    <div class="score" id="score">
+      <div class="team blue"><span class="tname">BLUE</span><span class="tscore" id="scoreBlue">0</span></div>
+      <div class="clock"><span id="clock">5:00</span><span class="ot" id="otLabel" hidden>OVERTIME</span></div>
+      <div class="team orange"><span class="tscore" id="scoreOrange">0</span><span class="tname">ORANGE</span></div>
+    </div>
+
+    <!-- Event feed -->
+    <ul class="feed" id="feed" aria-live="polite"></ul>
+
+    <!-- Boost gauge -->
+    <div class="boost" id="boost">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <linearGradient id="bg-grad" x1="0" x2="1" y1="1" y2="0">
+            <stop offset="0" stop-color="#ff6a1a"/>
+            <stop offset="1" stop-color="#ffd166"/>
+          </linearGradient>
+        </defs>
+        <circle class="ring-bg" cx="100" cy="100" r="78"/>
+        <circle class="ring-ticks" cx="100" cy="100" r="78"/>
+        <circle class="ring-fill" id="boostArc" cx="100" cy="100" r="78"/>
+        <circle class="ring-inner" cx="100" cy="100" r="62"/>
+      </svg>
+      <div class="boost-num"><span id="boostNum">33</span><small id="boostLabel">BOOST</small></div>
+      <div class="speed"><span id="speedNum">0</span> km/h<span class="ss" id="ssTag">SUPERSONIC</span></div>
+    </div>
+
+    <!-- Status chips -->
+    <div class="chips">
+      <span class="chip" id="chipCam">BALL CAM</span>
+      <span class="chip gold" id="chipInf" hidden>UNLIMITED BOOST</span>
+      <span class="chip" id="chipFlip" hidden>FLIP READY</span>
+      <span class="chip" id="chipFps" hidden>60 FPS</span>
+    </div>
+
+    <!-- Countdown and banners -->
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="banner" id="banner" hidden>
+      <div class="banner-band"></div>
+      <div class="banner-main" id="bannerMain">GOAL</div>
+      <div class="banner-sub"><span id="bannerSub"></span><b class="banner-extra" id="bannerExtra" hidden></b></div>
+    </div>
+    <div class="popups" id="popups"></div>
+    <div class="replay" id="replayTag" hidden><span class="rec"></span>REPLAY<small>SPACE TO SKIP</small></div>
+    <div class="anthem-tag" id="anthemTag" hidden><span class="swatchy eq"><i></i><i></i><i></i><i></i></span><span><small>Anthem</small><b id="anthemName"></b></span></div>
+    <div class="hint" id="hint" hidden></div>
+  </div>
+
+  <!-- Home screen: the 3D showroom (or an arena preview) renders behind it -->
+  <div class="home menu" id="home">
+    <header class="home-top">
+      <div class="home-logo"><b>BOOST BALL</b><span>ROCKET CAR SOCCER</span></div>
+      <div class="player-card" id="playerCard">
+        <div class="pc-level"><small>LVL</small><b id="pcLevel">1</b></div>
+        <span class="pc-icon" id="pcIcon" aria-hidden="true"></span>
+        <div class="pc-main">
+          <input id="pcName" class="pc-name" maxlength="16" spellcheck="false" aria-label="Player name" value="PLAYER">
+          <span class="pc-title" id="pcTitle">ROOKIE</span>
+          <div class="pc-xp"><i id="pcXp"></i></div>
+          <span class="pc-record" id="pcRecord">0 matches</span>
+        </div>
+        <button type="button" class="pc-acct" id="pcAccount" title="Switch account"><span id="pcMode">GUEST</span><small>Switch</small></button>
+      </div>
+    </header>
+
+    <nav class="home-nav" id="homeNav" aria-label="Main menu">
+      <button type="button" data-page="play" class="nav-play"><span>Play</span><small>Matches and free play</small></button>
+      <button type="button" data-page="online"><span>Online</span><small>Play other people</small></button>
+      <button type="button" data-page="garage"><span>Garage</span><small>Cars, paint, boost, ball</small></button>
+      <button type="button" data-page="quests"><span>Quests <i class="badge" id="questBadge" hidden></i></span><small>Earn Sport Drops</small></button>
+      <button type="button" data-page="drops"><span>Drops <i class="badge" id="dropBadge" hidden></i></span><small>Open your Sport Drops</small></button>
+      <button type="button" data-page="arenas"><span>Arenas</span><small>Pick a map</small></button>
+      <button type="button" data-page="settings"><span>Settings</span><small>Graphics, camera, sound</small></button>
+      <button type="button" data-page="controls"><span>Controls</span><small>Change any key</small></button>
+    </nav>
+
+    <aside class="home-tiles" id="homeTiles">
+      <button type="button" class="tile tile-quick" id="tileQuick">
+        <span class="tile-tag">Quick match</span>
+        <b id="tileQuickMode">2V2</b>
+        <small id="tileQuickInfo">Medium bots · Aurora Arena</small>
+        <span class="tile-go">Kick off <kbd>Enter</kbd></span>
+      </button>
+      <button type="button" class="tile tile-free" id="tileFree">
+        <span class="tile-tag">Free play</span>
+        <b>Training</b>
+        <small>No clock, no bots. Keys 1-4 set up shots: ball on hood, in front, shot at you, straight up.</small>
+      </button>
+      <button type="button" class="tile tile-sky" id="tileSky">
+        <span class="tile-tag">Free roam</span>
+        <b>Sky Field</b>
+        <small>A floor that never ends and unlimited boost. Fly as far as you like.</small>
+      </button>
+      <div class="tile tile-tip">
+        <span class="tile-tag">Tip</span>
+        <p id="tileTip"></p>
+      </div>
+    </aside>
+
+    <section class="home-page" data-page="play">
+      <div class="page-head"><h2>Play</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="field">
+        <span class="field-label">Mode</span>
+        <div class="seg" role="radiogroup" aria-label="Mode" id="modeGroup">
+          <button type="button" data-mode="1v1" class="on">1v1</button>
+          <button type="button" data-mode="2v2">2v2</button>
+          <button type="button" data-mode="3v3">3v3</button>
+          <button type="button" data-mode="free">Free play</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Bots</span>
+        <div class="seg" role="radiogroup" aria-label="Bot difficulty" id="diffGroup">
+          <button type="button" data-diff="easy">Easy</button>
+          <button type="button" data-diff="medium" class="on">Medium</button>
+          <button type="button" data-diff="hard">Hard</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Arena</span>
+        <button type="button" class="pick" id="arenaPick"><b id="arenaPickName">Aurora Arena</b><small>Change</small></button>
+      </div>
+      <div class="field">
+        <span class="field-label">Car</span>
+        <button type="button" class="pick" id="carPick"><b id="carPickName">Strider</b><small>Change</small></button>
+      </div>
+      <div class="field">
+        <span class="field-label">Graphics</span>
+        <div class="seg small" role="radiogroup" aria-label="Graphics quality" id="gfxGroup">
+          <button type="button" data-q="auto">Auto</button>
+          <button type="button" data-q="lowest">Lowest</button>
+          <button type="button" data-q="low">Low</button>
+          <button type="button" data-q="medium">Medium</button>
+          <button type="button" data-q="high">High</button>
+        </div>
+        <span class="field-note" id="gfxNote"></span>
+      </div>
+      <button type="button" class="kick" id="startBtn">Kick off</button>
+    </section>
+
+    <section class="home-page" data-page="online" hidden>
+      <div class="page-head"><h2>Online</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div id="onlineBody" class="online-body"></div>
+    </section>
+
+    <section class="home-page wide" data-page="garage" hidden>
+      <div class="page-head"><h2>Garage</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="gtabs" id="garageTabs" role="tablist" aria-label="Garage">
+        <button type="button" data-gtab="car" class="on">Car</button>
+        <button type="button" data-gtab="paint">Paint</button>
+        <button type="button" data-gtab="boost">Boost</button>
+        <button type="button" data-gtab="ball">Ball</button>
+        <button type="button" data-gtab="explosion">Goal</button>
+        <button type="button" data-gtab="anthem">Anthem</button>
+        <button type="button" data-gtab="player">Player</button>
+      </div>
+      <div id="garageBody" class="garage-body"></div>
+      <div class="field">
+        <span class="field-label">Team color</span>
+        <div class="seg" role="radiogroup" aria-label="Preview team" id="teamPreview">
+          <button type="button" data-team="0" class="on">Blue</button>
+          <button type="button" data-team="1">Orange</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-page" data-page="quests" hidden>
+      <div class="page-head"><h2>Quests</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <p class="page-note">Finish a quest to earn Sport Drops. A new quest takes its place. Every level up gives a drop too.</p>
+      <div class="quest-list" id="questList"></div>
+      <div class="level-box">
+        <div><b>Level <span id="qLevel">1</span></b><small id="qLevelNote"></small></div>
+        <div class="pc-xp big"><i id="qXp"></i></div>
+      </div>
+    </section>
+
+    <section class="home-page" data-page="drops" hidden>
+      <div class="page-head"><h2>Sport Drops</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="drop-box">
+        <div class="crate" id="crate" aria-hidden="true"><i></i></div>
+        <div class="drop-side">
+          <b id="dropCount">0</b>
+          <small>unopened</small>
+          <button type="button" class="kick" id="openDrop">Open drop</button>
+        </div>
+      </div>
+      <p class="page-note" id="dropNote">Odds: Common 55%, Rare 28%, Epic 13%, Legendary 4%. You never get an item you already own.</p>
+      <div class="collection" id="collection"></div>
+    </section>
+
+    <section class="home-page" data-page="arenas" hidden>
+      <div class="page-head"><h2>Arenas</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="arena-list" id="arenaList" role="radiogroup" aria-label="Arena"></div>
+    </section>
+
+    <section class="home-page" data-page="settings" hidden>
+      <div class="page-head"><h2>Settings</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div id="homeSettingsSlot"></div>
+    </section>
+
+    <section class="home-page wide" data-page="controls" hidden>
+      <div class="page-head"><h2>Controls</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div id="homeControlsSlot"></div>
+    </section>
+
+    <div class="home-car" id="homeCar">
+      <span class="home-car-class" id="homeCarClass">Standard hitbox</span>
+      <b id="homeCarName">STRIDER</b>
+      <p id="homeCarBlurb"></p>
+    </div>
+    <div class="home-foot">
+      <span><kbd>Enter</kbd> kick off</span>
+      <span><kbd>F</kbd> fullscreen</span>
+      <span class="hint-drag">Drag the car to spin it</span>
+      <span class="hint-pad"><kbd class="ps-only">Options</kbd><kbd class="xb-only">Start</kbd> kick off · <kbd class="ps-only">Cross</kbd><kbd class="xb-only">A</kbd> select · <kbd class="ps-only">Circle</kbd><kbd class="xb-only">B</kbd> back</span>
+      <span class="sb-fps" id="sbFps"></span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <!-- Login -->
+  <div class="overlay login" id="login" hidden>
+    <div class="login-card">
+      <div class="home-logo"><b>BOOST BALL</b><span>ROCKET CAR SOCCER</span></div>
+      <p class="login-status" id="loginStatus">Looking for your account...</p>
+      <div id="loginEmail" class="login-block" hidden>
+        <label for="loginMail" class="field-label">Email</label>
+        <input id="loginMail" type="email" class="login-input" autocomplete="email" spellcheck="false" placeholder="you@example.com">
+        <label for="loginPass" class="field-label">Password</label>
+        <input id="loginPass" type="password" class="login-input" autocomplete="current-password" placeholder="At least 6 characters">
+        <div class="login-row">
+          <button type="button" class="kick" id="mailLogin">Log in</button>
+          <button type="button" class="login-alt" id="mailSignup">Create account</button>
+        </div>
+      </div>
+      <div id="loginExisting" class="login-block" hidden>
+        <button type="button" class="kick" id="loginBtn">Log in as <span id="loginName"></span></button>
+      </div>
+      <div id="loginCreate" class="login-block" hidden>
+        <label for="newName" class="field-label">Player name</label>
+        <input id="newName" class="login-input" maxlength="16" spellcheck="false" autocomplete="off" placeholder="Your name">
+        <label class="check"><input type="checkbox" id="carryGuest" checked> Bring my guest progress</label>
+        <button type="button" class="kick" id="createBtn">Create account</button>
+      </div>
+      <button type="button" class="login-guest" id="guestBtn">Play as guest</button>
+      <button type="button" class="login-guest" id="logoutBtn" hidden>Log out of <span id="logoutMail"></span></button>
+      <p class="login-note" id="loginNote"></p>
+    </div>
+  </div>
+
+  <!-- Sport Drop reveal -->
+  <div class="overlay reveal" id="reveal" hidden>
+    <div class="reveal-card" id="revealCard">
+      <span class="reveal-rarity" id="revealRarity"></span>
+      <div class="reveal-art" id="revealArt"></div>
+      <b class="reveal-name" id="revealName"></b>
+      <small class="reveal-cat" id="revealCat"></small>
+      <div class="btns">
+        <button type="button" class="primary" id="revealEquip">Equip</button>
+        <button type="button" id="revealNext">Open another</button>
+        <button type="button" id="revealClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause menu -->
+  <div class="overlay menu" id="pause" hidden>
+    <div class="panel">
+      <h2>Paused</h2>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab on" data-tab="match">Match</button>
+        <button type="button" class="tab" data-tab="settings">Settings</button>
+        <button type="button" class="tab" data-tab="controls">Controls</button>
+      </div>
+      <section class="tabpane" data-pane="match">
+        <div class="btns">
+          <button type="button" id="resumeBtn" class="primary">Resume</button>
+          <button type="button" id="restartBtn">Restart match</button>
+          <button type="button" id="menuBtn"><span class="off-online">Main menu</span><span class="on-online">Leave match</span></button>
+          <button type="button" id="fullBtn">Fullscreen <kbd>F</kbd></button>
+        </div>
+      </section>
+      <section class="tabpane" data-pane="settings" hidden>
+        <div class="settings" id="settingsBlock">
+          <label for="setQuality">Graphics</label>
+          <select id="setQuality"><option value="auto">Auto</option><option value="lowest">Lowest (weak laptops)</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+          <label for="setFov">Field of view <output id="outFov">110</output></label>
+          <input type="range" id="setFov" min="90" max="115" step="1" value="110">
+          <label for="setDist">Camera distance <output id="outDist">270</output></label>
+          <input type="range" id="setDist" min="200" max="340" step="5" value="270">
+          <label for="setHeight">Camera height <output id="outHeight">100</output></label>
+          <input type="range" id="setHeight" min="40" max="140" step="5" value="100">
+          <label for="setAngle">Camera angle <output id="outAngle">-3</output></label>
+          <input type="range" id="setAngle" min="-15" max="0" step="1" value="-3">
+          <label for="setStiff">Camera stiffness <output id="outStiff">0.45</output></label>
+          <input type="range" id="setStiff" min="0" max="1" step="0.05" value="0.45">
+          <label for="setTrans">Transition speed <output id="outTrans">1.2</output></label>
+          <input type="range" id="setTrans" min="1" max="2" step="0.1" value="1.2">
+          <label for="setVol">Volume <output id="outVol">80</output></label>
+          <input type="range" id="setVol" min="0" max="100" step="1" value="80">
+          <label for="setAnthemVol">Anthem volume <output id="outAnthemVol">80</output></label>
+          <input type="range" id="setAnthemVol" min="0" max="100" step="1" value="80">
+          <label class="check"><input type="checkbox" id="setRumble" checked> Controller vibration</label>
+          <label class="check"><input type="checkbox" id="setFps"> Show frame rate</label>
+          <label class="check"><input type="checkbox" id="setBallCam" checked> Ball cam on by default</label>
+        </div>
+      </section>
+      <section class="tabpane" data-pane="controls" hidden>
+        <div id="controlsBlock">
+        <div class="bindBar"><span id="bindHint"></span><button type="button" id="bindReset">Reset to defaults</button></div>
+        <div class="bindScroll">
+        <table class="keys binds">
+          <thead><tr><th>Action</th><th>Key</th><th>Second key</th><th>Gamepad</th></tr></thead>
+          <tbody id="bindRows"></tbody>
+        </table>
+        </div>
+        <p class="tip">Half flip: back flip, then push forward to cancel the flip and roll upright. Flip reset: touch the ball with all four wheels in the air to get your flip back.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- End of match -->
+  <div class="overlay menu" id="results" hidden>
+    <div class="panel wide">
+      <h2 id="resultTitle">BLUE WINS</h2>
+      <p class="final" id="resultScore">3 - 1</p>
+      <p class="result-reward" id="resultReward"></p>
+      <table class="stats" id="statsTable"></table>
+      <div class="btns row">
+        <button type="button" id="againBtn" class="primary"><span class="off-online">Play again</span><span class="on-online">Back to online</span></button>
+        <button type="button" id="modeBtn2">Main menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading"><div class="ld-title">BOOST BALL</div><div class="ld-bar"><i id="ldFill"></i></div><div class="ld-text" id="ldText">Loading physics</div></div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

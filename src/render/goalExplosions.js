@@ -1,0 +1,658 @@
+// Goal explosions: 15 styles to pick in the garage. Each one is built from the shared effect pieces in
+// Effects (fireballs, flashes, rings, glow / smoke / streak particles, timed steps and small meshes),
+// colored by the scoring team. All original designs.
+import * as THREE from 'three';
+
+const v = new THREE.Vector3();
+const v2 = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+const WHITE = new THREE.Color(1, 1, 1);
+const GOLD = new THREE.Color(1, 0.82, 0.35);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// Random unit vector; `lift` biases it upward.
+function randDir(out, lift = 0) {
+  out.set(Math.random() - 0.5, Math.random() - 0.5 + lift, Math.random() - 0.5);
+  if (out.lengthSq() < 1e-4) out.set(0, 1, 0);
+  return out.normalize();
+}
+
+function palette(tc) {
+  return { tc, hot: tc.clone().lerp(WHITE, 0.35), pale: tc.clone().lerp(WHITE, 0.7), deep: tc.clone().multiplyScalar(0.35) };
+}
+
+// Glow particles flying out in all directions.
+function burst(fx, pos, n, s0, s1, life, size0, size1, c0, c1, { lift = 0, drag = 1.4, grav = 9, alpha = 1 } = {}) {
+  const k = Math.round(n * fx.quality.particles);
+  for (let i = 0; i < k; i++) {
+    randDir(v, lift);
+    const sp = rnd(s0, s1);
+    const a = typeof c0 === 'function' ? c0() : c0;
+    const b = typeof c1 === 'function' ? c1() : c1 || a;
+    fx.glow.spawn(pos.x, pos.y, pos.z, v.x * sp, v.y * sp, v.z * sp, life * rnd(0.7, 1.3), size0, size1, a, b, alpha, drag, grav);
+  }
+}
+
+function streakBurst(fx, pos, n, s0, s1, life, color, { lift = 0, drag = 1.2, grav = 9.8, len = 0.03 } = {}) {
+  const k = Math.round(n * fx.quality.particles);
+  for (let i = 0; i < k; i++) {
+    randDir(v, lift);
+    const sp = rnd(s0, s1);
+    fx.streaks.spawn(pos.x, pos.y, pos.z, v.x * sp, v.y * sp, v.z * sp, life * rnd(0.6, 1.3), len, typeof color === 'function' ? color() : color, drag, grav);
+  }
+}
+
+function smokeBurst(fx, pos, n, s0, s1, life, size0, size1, c0, c1, alpha, { lift = 0.3, drag = 1.1, grav = -0.7 } = {}) {
+  const k = Math.round(n * fx.quality.particles);
+  for (let i = 0; i < k; i++) {
+    randDir(v, lift);
+    const sp = rnd(s0, s1);
+    fx.smoke.spawn(pos.x, pos.y, pos.z, v.x * sp, v.y * sp + 1.5, v.z * sp, life * rnd(0.7, 1.3), size0, size1, c0, c1, alpha, drag, grav);
+  }
+}
+
+// Direction from the goal toward the field.
+const fieldDir = (pos) => new THREE.Vector3(0, 0, -Math.sign(pos.z) || 1);
+
+function classic(fx, pos, tc) {
+  const { hot, deep, pale } = palette(tc);
+  fx.fireball(pos, tc, hot, 0.7, 6.5, 0.85, 'plasma', 1.2);
+  fx.fireball(pos, hot, pale, 0.4, 3.0, 0.4, 'plasma', 0.6);
+  fx.fireball(pos, tc, hot, 1.2, 9.0, 2.4, 'smoke', 1.6);
+  fx.fireball(pos, tc, hot, 1.0, 16, 0.45, 'shell', 0);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1.2, 21, 0.75, tc, 1, 0.93);
+  fx.ring(pos, fieldDir(pos), 1.0, 12, 0.4, hot, 0.8, 0.9);
+  burst(fx, pos, 380, 8, 34, 1.3, 0.5, 0.12, hot, deep, { lift: 0.15 });
+  burst(fx, pos, 70, 4, 13, 0.85, 3.0, 6.0, tc, deep, { alpha: 0.16, drag: 3.5, grav: -1 });
+  smokeBurst(fx, pos, 90, 3, 10, 3.1, 2.0, 6.5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.55);
+  burst(fx, pos, 200, 9, 24, 3.2, 0.13, 0.13, () => (Math.random() < 0.65 ? tc : WHITE), null, { lift: 1.2, drag: 1.8, grav: 3.5 });
+  streakBurst(fx, pos, 260, 18, 58, 0.8, () => (Math.random() < 0.5 ? hot : fx.colors.spark), { lift: 0.1 });
+  fx.flash(pos, 8, 0.18, WHITE);
+  fx.flash(pos, 26, 0.8, tc);
+  fx.shake = Math.max(fx.shake, 1.3);
+}
+
+function fireworks(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  fx.flash(pos, 10, 0.25, hot);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 10, 0.5, tc, 0.8, 0.9);
+  smokeBurst(fx, pos, 30, 1, 4, 2, 1, 3.5, fx.colors.smokeLight, fx.colors.smokeDark, 0.35);
+  const colors = [tc, GOLD, WHITE, pale];
+  const dir = fieldDir(pos);
+  for (let i = 0; i < 9; i++) {
+    const t = rnd(0.45, 1.0);
+    const vel = new THREE.Vector3(rnd(-7, 7), rnd(13, 19), rnd(-3, 3) + dir.z * rnd(2, 7));
+    const start = pos.clone();
+    const color = colors[i % colors.length];
+    fx.later(i * 0.08, () => {
+      // Rocket: a bright head plus its sparkling trail, no gravity so the burst point is known.
+      fx.glow.spawn(start.x, start.y, start.z, vel.x, vel.y, vel.z, t, 0.45, 0.3, WHITE, color, 1, 0, 0);
+      for (let k = 0; k < 14; k++) {
+        const f = k / 14;
+        fx.later(f * t, () => fx.glow.spawn(start.x + vel.x * f * t, start.y + vel.y * f * t, start.z + vel.z * f * t, rnd(-0.5, 0.5), rnd(-1, 0), rnd(-0.5, 0.5), 0.5, 0.2, 0.02, GOLD, color, 0.8, 1, 2));
+      }
+      fx.later(t, () => {
+        const p = start.clone().addScaledVector(vel, t);
+        burst(fx, p, 170, 7, 13, 1.6, 0.55, 0.1, color, color === WHITE ? GOLD : WHITE, { drag: 1.2, grav: 3.5 });
+        streakBurst(fx, p, 40, 6, 12, 0.7, color, { grav: 4 });
+        fx.flash(p, 11, 0.35, color);
+        // Crackle a moment later.
+        fx.later(0.5, () => burst(fx, p, 40, 2, 7, 0.35, 0.18, 0.02, WHITE, GOLD, { grav: 2 }));
+      });
+    });
+  }
+  fx.shake = Math.max(fx.shake, 0.5);
+}
+
+function supernova(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  fx.flash(pos, 40, 0.5, WHITE);
+  fx.flash(pos, 30, 1.6, tc);
+  fx.fireball(pos, pale, WHITE, 0.5, 11, 1.1, 'plasma', 0);
+  fx.fireball(pos, tc, hot, 1, 26, 0.7, 'shell', 0);
+  fx.later(0.15, () => fx.fireball(pos, tc, pale, 1, 20, 0.9, 'shell', 0));
+  fx.ring(pos, fieldDir(pos), 1, 30, 1.2, pale, 1, 0.96);
+  fx.ring(pos, UP, 1, 26, 1.0, tc, 0.9, 0.95);
+  fx.ring(pos, v.set(1, 0.4, 0).normalize().clone(), 1, 22, 1.1, hot, 0.8, 0.95);
+  burst(fx, pos, 40, 1, 4, 2.2, 5, 11, tc, pale, { alpha: 0.12, drag: 2, grav: 0 });
+  burst(fx, pos, 500, 2, 30, 2.4, 0.22, 0.05, () => (Math.random() < 0.5 ? WHITE : pale), tc, { drag: 2.2, grav: 0.4 });
+  fx.shake = Math.max(fx.shake, 1.6);
+}
+
+function shockwave(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  fx.fireball(pos, tc, hot, 0.5, 4, 0.5, 'plasma', 0.5);
+  fx.flash(pos, 14, 0.3, pale);
+  for (let i = 0; i < 4; i++) {
+    fx.later(i * 0.14, () => {
+      fx.ring(v2.set(pos.x, 0.07, pos.z), UP, 1, 18 + i * 6, 0.9, i % 2 ? pale : tc, 1, 0.9);
+      fx.ring(pos, fieldDir(pos), 1, 10 + i * 4, 0.6, hot, 0.7, 0.88);
+      fx.fireball(pos, tc, hot, 1, 10 + i * 5, 0.5, 'shell', 0);
+      // Dust kicked up around the ground ring.
+      const n = Math.round(30 * fx.quality.particles);
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 3 + i * 2;
+        fx.smoke.spawn(pos.x + Math.cos(a) * r, 0.3, pos.z + Math.sin(a) * r, Math.cos(a) * 9, rnd(0.5, 2), Math.sin(a) * 9, rnd(0.8, 1.4), 1, 3.5, fx.colors.dust, fx.colors.smokeDark, 0.35, 2, -0.3);
+      }
+      fx.shake = Math.max(fx.shake, 1.2);
+    });
+  }
+  streakBurst(fx, pos, 120, 20, 50, 0.5, WHITE, { lift: -0.1 });
+}
+
+function inferno(fx, pos, tc) {
+  const fire = new THREE.Color(1, 0.42, 0.08).lerp(tc, 0.25);
+  const core = new THREE.Color(1, 0.62, 0.22);
+  for (let i = 0; i < 7; i++) {
+    fx.later(i * 0.11, () => {
+      const p = pos.clone().add(v.set(rnd(-1.5, 1.5), rnd(0, 1.5), rnd(-1.5, 1.5)));
+      fx.fireball(p, fire, core, 0.6, rnd(3.5, 5.5), 1.1, 'plasma', rnd(5, 9));
+      fx.fireball(p, fire, core, 1, rnd(5, 7), 2.6, 'smoke', rnd(3, 5));
+      burst(fx, p, 60, 3, 9, 1.6, 0.4, 0.05, core, fire, { lift: 0.8, drag: 1, grav: -3 });
+    });
+  }
+  burst(fx, pos, 300, 6, 22, 2.5, 0.22, 0.04, () => (Math.random() < 0.5 ? core : fire), fx.colors.ember, { lift: 0.6, drag: 1.1, grav: -1.5 });
+  smokeBurst(fx, pos, 120, 2, 7, 4, 2, 7, fx.colors.smokeExpl, fx.colors.smokeDark, 0.6, { lift: 1, grav: -2 });
+  fx.flash(pos, 24, 1.2, fire);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 16, 0.8, fire, 0.9, 0.9);
+  fx.shake = Math.max(fx.shake, 1.1);
+}
+
+function frost(fx, pos, tc) {
+  const ice = new THREE.Color(0.7, 0.92, 1).lerp(tc, 0.2);
+  const pale = new THREE.Color(0.92, 0.98, 1);
+  fx.flash(pos, 22, 0.6, ice);
+  fx.fireball(pos, ice, pale, 0.6, 7, 0.6, 'plasma', 0);
+  fx.fireball(pos, ice, pale, 1, 15, 0.5, 'shell', 0);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 20, 1.2, pale, 0.9, 0.93);
+  streakBurst(fx, pos, 260, 14, 40, 0.9, () => (Math.random() < 0.5 ? pale : ice), { len: 0.05, grav: 6 });
+  // Shards that hang a moment, then snow that drifts down for a few seconds.
+  burst(fx, pos, 160, 4, 16, 1.8, 0.3, 0.08, pale, ice, { drag: 2.5, grav: 1 });
+  const n = Math.round(400 * fx.quality.particles);
+  for (let i = 0; i < n; i++) {
+    const p = v.set(pos.x + rnd(-10, 10), pos.y + rnd(1, 9), pos.z + rnd(-10, 10) - Math.sign(pos.z) * 4);
+    fx.glow.spawn(p.x, p.y, p.z, rnd(-0.6, 0.6), rnd(-1.2, -0.4), rnd(-0.6, 0.6), rnd(2.5, 4.5), 0.12, 0.1, WHITE, pale, 0.9, 0.6, 0.3);
+  }
+  smokeBurst(fx, pos, 70, 2, 7, 3, 2, 6, pale, ice, 0.3, { lift: 0.2, grav: 0.2 });
+  fx.shake = Math.max(fx.shake, 0.9);
+}
+
+function lightning(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const bolt = (target) => {
+    const top = target.clone().add(v.set(rnd(-6, 6), 20, rnd(-4, 4)));
+    let prev = top.clone();
+    const steps = 12;
+    for (let s = 1; s <= steps; s++) {
+      const f = s / steps;
+      const p = top.clone().lerp(target, f);
+      if (s < steps) p.add(v.set(rnd(-1.4, 1.4), rnd(-0.5, 0.5), rnd(-1.4, 1.4)));
+      const dots = 7;
+      for (let d = 0; d < dots; d++) {
+        const q = prev.clone().lerp(p, d / dots);
+        fx.glow.spawn(q.x, q.y, q.z, 0, 0, 0, rnd(0.14, 0.26), 0.75, 0.4, WHITE, pale, 1, 0, 0);
+      }
+      // A side branch now and then.
+      if (Math.random() < 0.25) {
+        const b = p.clone().add(v.set(rnd(-3, 3), rnd(-2, 0), rnd(-3, 3)));
+        for (let d = 0; d < 6; d++) {
+          const q = p.clone().lerp(b, d / 6);
+          fx.glow.spawn(q.x, q.y, q.z, 0, 0, 0, 0.12, 0.3, 0.1, pale, tc, 0.9, 0, 0);
+        }
+      }
+      prev = p;
+    }
+    fx.flash(target, 16, 0.18, pale);
+    fx.flash(top, 10, 0.12, WHITE);
+    streakBurst(fx, target, 60, 8, 24, 0.5, () => (Math.random() < 0.5 ? WHITE : hot));
+  };
+  for (let i = 0; i < 6; i++) {
+    fx.later(i * rnd(0.1, 0.18), () => bolt(pos.clone().add(v2.set(rnd(-3, 3), rnd(-1, 1), rnd(-2, 2)))));
+  }
+  fx.fireball(pos, tc, hot, 0.5, 5, 0.6, 'plasma', 0.5);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 18, 0.6, pale, 1, 0.94);
+  fx.later(0.9, () => smokeBurst(fx, pos, 50, 1, 4, 2.5, 1.5, 5, fx.colors.smokeLight, fx.colors.smokeDark, 0.3));
+  fx.shake = Math.max(fx.shake, 1.2);
+}
+
+function blackHole(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const dark = new THREE.Color(0.02, 0.0, 0.05);
+  const pull = 0.75;
+  // Matter sucked in from a sphere around the goal, then a dark core, then the blast.
+  const n = Math.round(420 * fx.quality.particles);
+  for (let i = 0; i < n; i++) {
+    randDir(v);
+    const r = rnd(6, 12);
+    const t = rnd(0.45, pull);
+    const p = pos.clone().addScaledVector(v, r);
+    fx.glow.spawn(p.x, p.y, p.z, -v.x * (r / t), -v.y * (r / t), -v.z * (r / t), t, 0.25, 0.1, pale, tc, 1, 0, 0);
+  }
+  fx.ring(pos, fieldDir(pos), 14, 0.5, pull, tc, 0.9, 0.9);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 16, 0.5, pull, hot, 0.7, 0.92);
+  fx.fireball(pos, dark, tc, 0.3, 3.2, pull + 0.3, 'smoke', 0);
+  fx.flash(pos, 6, pull, new THREE.Color(0.35, 0.1, 0.6));
+  fx.later(pull, () => {
+    fx.flash(pos, 34, 0.4, WHITE);
+    fx.fireball(pos, tc, hot, 1, 22, 0.55, 'shell', 0);
+    fx.fireball(pos, tc, pale, 0.6, 7, 0.6, 'plasma', 0);
+    streakBurst(fx, pos, 320, 25, 60, 0.6, () => (Math.random() < 0.5 ? pale : tc), { lift: 0 });
+    burst(fx, pos, 250, 10, 30, 1.2, 0.35, 0.05, hot, tc, { grav: 3 });
+    fx.ring(pos, fieldDir(pos), 1, 24, 0.7, pale, 1, 0.94);
+    fx.shake = Math.max(fx.shake, 1.8);
+  });
+}
+
+function confetti(fx, pos, tc) {
+  const colors = [tc, WHITE, GOLD, new THREE.Color(1, 0.3, 0.55), new THREE.Color(0.3, 1, 0.55), new THREE.Color(0.35, 0.6, 1), new THREE.Color(0.75, 0.4, 1)];
+  fx.flash(pos, 12, 0.25, WHITE);
+  for (let wave = 0; wave < 3; wave++) {
+    fx.later(wave * 0.18, () => {
+      burst(fx, pos, 420, 8, 24, 4.2, 0.24, 0.22, () => pick(colors), null, { lift: 1.4, drag: 2.2, grav: 2.5 });
+      fx.flash(pos, 6, 0.15, pick(colors));
+    });
+  }
+  // Streamers: long-lived streaks.
+  streakBurst(fx, pos, 120, 10, 22, 1.6, () => pick(colors), { lift: 1.2, drag: 1.6, grav: 3, len: 0.04 });
+  smokeBurst(fx, pos, 25, 1, 3, 1.5, 1, 3, fx.colors.smokeLight, fx.colors.smokeLight, 0.25);
+  fx.shake = Math.max(fx.shake, 0.4);
+}
+
+function geyser(fx, pos, tc) {
+  const { hot, pale, deep } = palette(tc);
+  const base = new THREE.Vector3(pos.x, 0.3, pos.z);
+  fx.fireball(base, tc, hot, 0.5, 4, 0.6, 'plasma', 2);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 12, 0.8, pale, 0.9, 0.9);
+  for (let i = 0; i < 26; i++) {
+    fx.later(i * 0.045, () => {
+      const n = Math.round(30 * fx.quality.particles);
+      for (let k = 0; k < n; k++) {
+        const vy = rnd(17, 27);
+        fx.glow.spawn(base.x + rnd(-0.6, 0.6), base.y, base.z + rnd(-0.6, 0.6), rnd(-2.2, 2.2), vy, rnd(-2.2, 2.2), rnd(1.6, 2.6), rnd(0.25, 0.45), 0.08, Math.random() < 0.6 ? pale : tc, deep, 1, 0.3, 10);
+      }
+      fx.smoke.spawn(base.x, base.y, base.z, rnd(-1, 1), rnd(4, 8), rnd(-1, 1), 1.8, 1.2, 4, pale, fx.colors.smokeLight, 0.3, 1, -0.5);
+    });
+  }
+  fx.later(1.25, () => burst(fx, v.set(pos.x, 18, pos.z).clone(), 160, 2, 8, 2, 0.3, 0.05, pale, tc, { grav: 6 }));
+  fx.flash(base, 12, 0.5, hot);
+  fx.shake = Math.max(fx.shake, 0.8);
+}
+
+function rainbow(fx, pos, tc) {
+  const bands = [[1, 0.2, 0.2], [1, 0.55, 0.1], [1, 0.95, 0.2], [0.25, 1, 0.35], [0.2, 0.75, 1], [0.35, 0.35, 1], [0.8, 0.35, 1]].map((c) => new THREE.Color(...c));
+  bands.forEach((c, i) => {
+    fx.later(i * 0.07, () => {
+      fx.ring(pos, fieldDir(pos), 1, 8 + i * 2.2, 1.1, c, 0.85, 0.92);
+      fx.ring(v2.set(pos.x, 0.06 + i * 0.01, pos.z), UP, 1, 12 + i * 2.5, 1.2, c, 0.8, 0.92);
+    });
+  });
+  fx.flash(pos, 16, 0.5, WHITE);
+  fx.fireball(pos, tc, WHITE, 0.5, 5, 0.5, 'plasma', 0.5);
+  streakBurst(fx, pos, 280, 14, 40, 1, () => pick(bands), { lift: 0.3 });
+  burst(fx, pos, 260, 4, 18, 2.4, 0.22, 0.06, () => pick(bands), null, { lift: 0.6, drag: 1.6, grav: 2.5 });
+  fx.shake = Math.max(fx.shake, 0.9);
+}
+
+// Small glowing cubes (meshes) that tumble out and bounce on the floor.
+function cubes(fx, pos, colors, n, speed, size = 0.24, life = 2.6) {
+  const geo = new THREE.BoxGeometry(size, size, size);
+  const mats = colors.map((c) => new THREE.MeshBasicMaterial({ color: c.clone().multiplyScalar(1.4), toneMapped: false }));
+  const k = Math.round(n * Math.max(0.35, fx.quality.particles));
+  for (let i = 0; i < k; i++) {
+    const m = new THREE.Mesh(geo, pick(mats));
+    m.position.copy(pos);
+    const vel = randDir(new THREE.Vector3(), 0.6).multiplyScalar(rnd(speed * 0.35, speed));
+    const spin = new THREE.Vector3(rnd(-12, 12), rnd(-12, 12), rnd(-12, 12));
+    const l = life * rnd(0.7, 1.2);
+    fx.temp(m, l, (dt, age) => {
+      vel.y -= 12 * dt;
+      m.position.addScaledVector(vel, dt);
+      if (m.position.y < size / 2) {
+        m.position.y = size / 2;
+        vel.y = Math.abs(vel.y) * 0.45;
+        vel.x *= 0.7;
+        vel.z *= 0.7;
+        spin.multiplyScalar(0.6);
+      }
+      m.rotation.x += spin.x * dt;
+      m.rotation.y += spin.y * dt;
+      m.rotation.z += spin.z * dt;
+      m.scale.setScalar(Math.min(1, (l - age) * 3));
+    });
+  }
+  fx.later(life * 1.3, () => {
+    geo.dispose();
+    for (const mt of mats) mt.dispose();
+  });
+}
+
+function voxel(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  cubes(fx, pos, [tc, hot, pale, WHITE], 160, 22);
+  fx.flash(pos, 18, 0.3, pale);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 14, 0.5, tc, 1, 0.75);
+  fx.ring(pos, fieldDir(pos), 1, 9, 0.4, hot, 0.9, 0.7);
+  burst(fx, pos, 120, 6, 18, 0.8, 0.3, 0.3, tc, hot, { grav: 6 });
+  fx.shake = Math.max(fx.shake, 1);
+}
+
+function starburst(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const dir = fieldDir(pos);
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  const rays = 14;
+  for (let r = 0; r < rays; r++) {
+    const a = (r / rays) * Math.PI * 2;
+    const rayDir = new THREE.Vector3().addScaledVector(side, Math.cos(a)).addScaledVector(UP, Math.sin(a));
+    rayDir.addScaledVector(dir, 0.25).normalize();
+    const n = Math.round(26 * fx.quality.particles);
+    for (let k = 0; k < n; k++) {
+      const sp = 4 + (k / n) * 30;
+      fx.glow.spawn(pos.x, pos.y, pos.z, rayDir.x * sp, rayDir.y * sp, rayDir.z * sp, 1.3, 0.6, 0.08, k % 3 ? pale : WHITE, tc, 1, 1.8, 0);
+    }
+  }
+  fx.flash(pos, 30, 0.7, pale);
+  fx.flash(pos, 9, 0.2, WHITE);
+  fx.fireball(pos, tc, hot, 0.5, 4.5, 0.5, 'plasma', 0);
+  fx.ring(pos, dir, 1, 18, 0.9, hot, 0.9, 0.95);
+  // Twinkles where the rays fade.
+  fx.later(0.7, () => {
+    const n = Math.round(90 * fx.quality.particles);
+    for (let i = 0; i < n; i++) {
+      const p = v.copy(pos).addScaledVector(side, rnd(-14, 14)).addScaledVector(UP, rnd(-1, 13));
+      fx.glow.spawn(p.x, Math.max(0.3, p.y), p.z, 0, 0, 0, rnd(0.3, 0.8), 0.4, 0.02, WHITE, pale, 1, 0, 0);
+    }
+  });
+  fx.shake = Math.max(fx.shake, 0.9);
+}
+
+function meteor(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const fire = new THREE.Color(1, 0.5, 0.15).lerp(tc, 0.4);
+  const start = pos.clone().add(v.set(rnd(-4, 4), 24, -Math.sign(pos.z) * 14));
+  const fall = 0.42;
+  const steps = 16;
+  for (let s = 0; s <= steps; s++) {
+    const f = s / steps;
+    fx.later(f * fall, () => {
+      const p = start.clone().lerp(pos, f);
+      fx.glow.spawn(p.x, p.y, p.z, 0, 0, 0, 0.35, 1.6, 0.4, WHITE, fire, 1, 0, 0);
+      burst(fx, p, 8, 1, 3, 0.5, 0.35, 0.05, hot, fire, { grav: 0 });
+      fx.smoke.spawn(p.x, p.y, p.z, rnd(-0.5, 0.5), rnd(0, 1), rnd(-0.5, 0.5), 1.6, 1, 3, fx.colors.smokeExpl, fx.colors.smokeDark, 0.5, 1, -0.2);
+    });
+  }
+  fx.later(fall, () => {
+    fx.fireball(pos, fire, hot, 0.8, 8, 0.9, 'plasma', 1.5);
+    fx.fireball(pos, fire, hot, 1.2, 10, 2.6, 'smoke', 1.2);
+    fx.fireball(pos, tc, pale, 1, 18, 0.5, 'shell', 0);
+    fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 24, 0.8, fire, 1, 0.9);
+    cubes(fx, pos, [new THREE.Color(0.25, 0.2, 0.18), fire, tc], 60, 18, 0.3, 2.2);
+    streakBurst(fx, pos, 260, 16, 50, 0.8, () => (Math.random() < 0.5 ? hot : fx.colors.spark), { lift: 0.3 });
+    smokeBurst(fx, pos, 110, 3, 11, 3.2, 2, 7, fx.colors.smokeExpl, fx.colors.smokeDark, 0.6);
+    fx.flash(pos, 30, 0.8, fire);
+    fx.shake = Math.max(fx.shake, 2);
+  });
+}
+
+function vortex(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const T = 1.2;
+  const steps = 40;
+  for (let s = 0; s < steps; s++) {
+    fx.later((s / steps) * T, () => {
+      for (let arm = 0; arm < 3; arm++) {
+        const a = s * 0.55 + (arm * Math.PI * 2) / 3;
+        const r = 1.2 + s * 0.06;
+        const p = v.set(pos.x + Math.cos(a) * r, 0.3 + s * 0.12, pos.z + Math.sin(a) * r);
+        // Tangent plus a little outward and upward drift traces a widening spiral.
+        const tx = -Math.sin(a) * 4 + Math.cos(a) * 1.2;
+        const tz = Math.cos(a) * 4 + Math.sin(a) * 1.2;
+        const n = Math.max(1, Math.round(5 * fx.quality.particles));
+        for (let k = 0; k < n; k++) {
+          fx.glow.spawn(p.x, p.y, p.z, tx + rnd(-0.4, 0.4), rnd(2.5, 4), tz + rnd(-0.4, 0.4), rnd(0.8, 1.3), 0.4, 0.05, k % 2 ? pale : tc, hot, 1, 0.5, 0);
+        }
+      }
+      if (s % 8 === 0) fx.ring(v2.set(pos.x, 0.3 + s * 0.12, pos.z), UP, 1, 7 + s * 0.15, 0.6, s % 16 ? tc : pale, 0.7, 0.9);
+    });
+  }
+  fx.later(T, () => {
+    const top = new THREE.Vector3(pos.x, 0.3 + steps * 0.12, pos.z);
+    burst(fx, top, 260, 6, 20, 1.5, 0.35, 0.05, pale, tc, { grav: 4 });
+    fx.flash(top, 22, 0.5, hot);
+    fx.fireball(top, tc, pale, 1, 12, 0.5, 'shell', 0);
+    fx.shake = Math.max(fx.shake, 1);
+  });
+  fx.flash(pos, 10, 0.4, tc);
+  smokeBurst(fx, pos, 40, 1, 4, 2.5, 1.5, 4, fx.colors.smokeLight, fx.colors.smokeDark, 0.3);
+}
+
+// ------------------------------------------------------------------ Sport Drop explosions
+
+function bubbles(fx, pos, tc) {
+  const { pale, hot } = palette(tc);
+  fx.flash(pos, 12, 0.3, pale);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 12, 0.8, pale, 0.7, 0.85);
+  // Big soft spheres that wobble upward and pop.
+  const n = 34;
+  for (let i = 0; i < n; i++) {
+    const r = rnd(0.25, 0.8);
+    const geo = new THREE.SphereGeometry(r, 18, 12);
+    const mat = new THREE.MeshBasicMaterial({ color: (i % 3 ? tc : pale).clone().multiplyScalar(1.2), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.copy(pos).add(v.set(rnd(-2, 2), rnd(-1, 1), rnd(-2, 2)));
+    const vel = new THREE.Vector3(rnd(-3, 3), rnd(3, 7), rnd(-3, 3)).addScaledVector(fieldDir(pos), rnd(1, 4));
+    const life = rnd(1.4, 3.2);
+    const phase = rnd(0, 6);
+    fx.temp(m, life, (dt, age) => {
+      vel.multiplyScalar(Math.exp(-dt * 0.8));
+      m.position.addScaledVector(vel, dt);
+      m.position.x += Math.sin(age * 5 + phase) * 0.01;
+      m.scale.setScalar(1 + Math.sin(age * 9 + phase) * 0.06);
+      if (life - age < 0.08 && mat.opacity > 0) {
+        burst(fx, m.position, 12, 2, 5, 0.4, 0.15, 0.02, pale, tc, { grav: 2 });
+        mat.opacity = 0;
+      }
+    });
+    fx.later(life + 0.1, () => {
+      geo.dispose();
+      mat.dispose();
+    });
+  }
+  burst(fx, pos, 120, 3, 10, 1.4, 0.2, 0.05, pale, hot, { lift: 0.5, drag: 2, grav: -0.5 });
+  fx.shake = Math.max(fx.shake, 0.5);
+}
+
+function petals(fx, pos, tc) {
+  const pink = new THREE.Color(1, 0.62, 0.78);
+  const white = new THREE.Color(1, 0.93, 0.96);
+  const tint = tc.clone().lerp(pink, 0.6);
+  fx.flash(pos, 14, 0.4, pink);
+  // Petals: flat little cards that flutter down.
+  const geo = new THREE.PlaneGeometry(0.22, 0.14);
+  const mats = [pink, white, tint].map((c) => new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide, transparent: true, toneMapped: false }));
+  const n = Math.round(220 * Math.max(0.4, fx.quality.particles));
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(geo, pick(mats));
+    m.position.copy(pos);
+    const vel = randDir(new THREE.Vector3(), 1).multiplyScalar(rnd(6, 16));
+    const spin = new THREE.Vector3(rnd(-8, 8), rnd(-8, 8), rnd(-8, 8));
+    const life = rnd(2.5, 4.5);
+    fx.temp(m, life, (dt, age) => {
+      vel.multiplyScalar(Math.exp(-dt * 2.4));
+      vel.y -= 1.6 * dt;
+      m.position.addScaledVector(vel, dt);
+      m.position.x += Math.sin(age * 3 + i) * 0.012;
+      m.rotation.x += spin.x * dt;
+      m.rotation.y += spin.y * dt;
+      m.rotation.z += spin.z * dt;
+      if (m.position.y < 0.05) m.position.y = 0.05;
+    });
+  }
+  // Shared materials fade together near the end.
+  fx.temp(new THREE.Object3D(), 4.6, (dt, age) => {
+    for (const mt of mats) mt.opacity = Math.min(1, (4.6 - age) / 1.2);
+  });
+  fx.later(5, () => {
+    geo.dispose();
+    for (const m of mats) m.dispose();
+  });
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 14, 1, pink, 0.6, 0.9);
+  fx.fireball(pos, tint, white, 0.5, 4, 0.5, 'plasma', 0.4);
+  fx.shake = Math.max(fx.shake, 0.4);
+}
+
+function cometShower(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const dir = fieldDir(pos);
+  for (let c = 0; c < 9; c++) {
+    const delay = c * 0.09;
+    const target = pos.clone().add(v.set(rnd(-4, 4), rnd(-1, 1.5), rnd(-1, 1)));
+    const start = target.clone().add(v.set(rnd(-8, 8), rnd(16, 22), -dir.z * rnd(4, 12)));
+    const dur = 0.35;
+    const steps = 9;
+    for (let s = 0; s <= steps; s++) {
+      fx.later(delay + (s / steps) * dur, () => {
+        const p = start.clone().lerp(target, s / steps);
+        fx.glow.spawn(p.x, p.y, p.z, 0, 0, 0, 0.45, 0.9, 0.1, WHITE, tc, 1, 0, 0);
+        burst(fx, p, 4, 0.5, 2, 0.6, 0.25, 0.04, pale, tc, { grav: 0 });
+      });
+    }
+    fx.later(delay + dur, () => {
+      fx.flash(target, 9, 0.25, pale);
+      streakBurst(fx, target, 40, 8, 20, 0.5, () => (Math.random() < 0.5 ? hot : WHITE), { lift: 0.3 });
+      fx.ring(v2.set(target.x, 0.06, target.z), UP, 0.5, 5, 0.4, tc, 0.8, 0.85);
+      fx.shake = Math.max(fx.shake, 0.6);
+    });
+  }
+  fx.later(1.1, () => {
+    fx.fireball(pos, tc, hot, 0.6, 6, 0.7, 'plasma', 0.8);
+    fx.fireball(pos, tc, hot, 1, 14, 0.4, 'shell', 0);
+    burst(fx, pos, 200, 6, 22, 1.2, 0.35, 0.06, hot, tc, { grav: 5 });
+  });
+}
+
+function heartbeat(fx, pos, tc) {
+  const red = new THREE.Color(1, 0.2, 0.35);
+  const pink = new THREE.Color(1, 0.6, 0.75);
+  const dir = fieldDir(pos);
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  // Heart outline (parametric heart curve), two beats.
+  const heart = (scale, life, color) => {
+    const n = Math.round(160 * Math.max(0.5, fx.quality.particles));
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * Math.PI * 2;
+      const hx = 16 * Math.pow(Math.sin(t), 3);
+      const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      const d = v.copy(side).multiplyScalar(hx / 16).addScaledVector(UP, hy / 16);
+      fx.glow.spawn(pos.x, pos.y + 1.5, pos.z, d.x * scale, d.y * scale, d.z * scale, life, 0.5, 0.15, color, pink, 1, 2.2, 0);
+    }
+  };
+  heart(9, 1.3, red);
+  fx.flash(pos, 16, 0.3, red);
+  fx.later(0.38, () => {
+    heart(14, 1.5, pink);
+    fx.flash(pos, 24, 0.35, pink);
+    fx.ring(pos, dir, 1, 14, 0.7, red, 0.8, 0.9);
+    fx.shake = Math.max(fx.shake, 0.8);
+  });
+  burst(fx, pos, 120, 2, 9, 1.8, 0.25, 0.06, pink, tc, { lift: 0.8, drag: 1.5, grav: 1.5 });
+  fx.fireball(pos, red, pink, 0.4, 4, 0.5, 'plasma', 0.5);
+}
+
+function phoenix(fx, pos, tc) {
+  const fire = new THREE.Color(1, 0.45, 0.1).lerp(tc, 0.2);
+  const gold = new THREE.Color(1, 0.82, 0.3);
+  const dir = fieldDir(pos);
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  const body = pos.clone().add(v.set(0, 2, 0));
+  fx.fireball(body, fire, gold, 0.5, 4, 1, 'plasma', 3);
+  fx.flash(body, 20, 0.8, fire);
+  // Two wings sweep out and up: streams of fire that rise in arcs.
+  for (let s = 0; s < 18; s++) {
+    fx.later(s * 0.035, () => {
+      for (const w of [1, -1]) {
+        const t = s / 18;
+        const n = Math.round(14 * fx.quality.particles) + 2;
+        for (let k = 0; k < n; k++) {
+          const spread = t * 9;
+          const vx = side.x * w * spread;
+          const vz = side.z * w * spread;
+          const vy = 6 + Math.sin(t * Math.PI) * 7 - t * 3;
+          fx.glow.spawn(body.x, body.y, body.z, vx + rnd(-0.8, 0.8), vy + rnd(-0.8, 0.8), vz + rnd(-0.8, 0.8) + dir.z * 2, rnd(0.9, 1.4), 0.6, 0.08, k % 2 ? gold : fire, fx.colors.ember, 1, 1.2, 4);
+        }
+      }
+    });
+  }
+  // Head and tail.
+  fx.later(0.3, () => {
+    burst(fx, body.clone().add(v.set(0, 5, 0)), 80, 2, 6, 1, 0.5, 0.1, gold, fire, { grav: 2 });
+    streakBurst(fx, body, 120, 10, 30, 0.8, () => (Math.random() < 0.5 ? gold : fire), { lift: 0.8 });
+  });
+  smokeBurst(fx, pos, 60, 2, 6, 3, 1.5, 5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.45, { lift: 0.8, grav: -1.5 });
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 18, 0.8, fire, 0.9, 0.9);
+  fx.shake = Math.max(fx.shake, 1.1);
+}
+
+function galaxy(fx, pos, tc) {
+  const { pale, hot } = palette(tc);
+  const violet = new THREE.Color(0.65, 0.4, 1);
+  const center = pos.clone().add(v.set(0, 1.5, 0));
+  fx.flash(center, 30, 0.9, violet);
+  fx.fireball(center, violet, pale, 0.5, 3, 1.6, 'plasma', 0);
+  // Spiral disk: stars launched along two arms with tangential speed, so the disk spins outward.
+  const arms = 3;
+  const n = Math.round(600 * fx.quality.particles);
+  for (let i = 0; i < n; i++) {
+    const arm = i % arms;
+    const d = Math.random();
+    const a = (arm / arms) * Math.PI * 2 + d * 5;
+    const r = 0.5 + d * 2;
+    const p = v.set(center.x + Math.cos(a) * r, center.y + rnd(-0.15, 0.15), center.z + Math.sin(a) * r);
+    const sp = 3 + d * 10;
+    const tx = -Math.sin(a) * sp * 0.7 + Math.cos(a) * sp * 0.6;
+    const tz = Math.cos(a) * sp * 0.7 + Math.sin(a) * sp * 0.6;
+    const c = Math.random() < 0.3 ? WHITE : Math.random() < 0.5 ? violet : tc;
+    fx.glow.spawn(p.x, p.y, p.z, tx, rnd(-0.3, 0.3), tz, rnd(1.8, 3), rnd(0.15, 0.35), 0.05, c, pale, 1, 1.4, 0);
+  }
+  fx.ring(center, UP, 1, 16, 1.6, violet, 0.8, 0.95);
+  fx.ring(center, UP, 1, 10, 1.2, hot, 0.6, 0.9);
+  fx.later(1.4, () => {
+    fx.flash(center, 26, 0.5, WHITE);
+    fx.fireball(center, tc, pale, 1, 20, 0.6, 'shell', 0);
+    streakBurst(fx, center, 200, 15, 40, 0.7, () => (Math.random() < 0.5 ? WHITE : violet));
+    fx.shake = Math.max(fx.shake, 1.4);
+  });
+}
+
+export const GOAL_EXPLOSIONS = [
+  { id: 'classic', name: 'Classic', blurb: 'Fireball, shock ring and embers.', fn: classic },
+  { id: 'fireworks', name: 'Fireworks', blurb: 'Rockets that burst over the goal.', fn: fireworks },
+  { id: 'supernova', name: 'Supernova', blurb: 'White-hot flash and huge light rings.', fn: supernova },
+  { id: 'shockwave', name: 'Shockwave', blurb: 'Four rings rip across the floor.', fn: shockwave },
+  { id: 'inferno', name: 'Inferno', blurb: 'A rolling column of fire and smoke.', fn: inferno },
+  { id: 'frost', name: 'Frost', blurb: 'Ice shards, then snow drifts down.', fn: frost },
+  { id: 'lightning', name: 'Lightning', blurb: 'Bolts strike the goal from above.', fn: lightning },
+  { id: 'blackhole', name: 'Black Hole', blurb: 'Pulls everything in, then blows.', fn: blackHole },
+  { id: 'confetti', name: 'Confetti', blurb: 'Party cannon, three waves.', fn: confetti },
+  { id: 'geyser', name: 'Geyser', blurb: 'A fountain of light shoots up.', fn: geyser },
+  { id: 'rainbow', name: 'Rainbow', blurb: 'Seven colored rings ripple out.', fn: rainbow },
+  { id: 'voxel', name: 'Voxel', blurb: 'Glowing cubes tumble and bounce.', fn: voxel },
+  { id: 'starburst', name: 'Starburst', blurb: 'Rays of light in a star shape.', fn: starburst },
+  { id: 'meteor', name: 'Meteor', blurb: 'A burning rock hits the goal.', fn: meteor },
+  { id: 'vortex', name: 'Vortex', blurb: 'A spiral twister that pops at the top.', fn: vortex },
+  { id: 'bubbles', name: 'Bubbles', blurb: 'Glowing bubbles float up and pop.', fn: bubbles },
+  { id: 'petals', name: 'Petals', blurb: 'A cloud of petals flutters down.', fn: petals },
+  { id: 'cometshower', name: 'Comet Shower', blurb: 'Nine comets rain into the goal.', fn: cometShower },
+  { id: 'heartbeat', name: 'Heartbeat', blurb: 'Two heart-shaped pulses.', fn: heartbeat },
+  { id: 'phoenix', name: 'Phoenix', blurb: 'A fire bird spreads its wings.', fn: phoenix },
+  { id: 'galaxy', name: 'Galaxy', blurb: 'A spinning spiral of stars, then a flash.', fn: galaxy },
+];
+
+export const EXPLOSION_IDS = GOAL_EXPLOSIONS.map((e) => e.id);
+
+export function playGoalExplosion(fx, id, pos, teamColor) {
+  const e = GOAL_EXPLOSIONS.find((x) => x.id === id) || GOAL_EXPLOSIONS[0];
+  e.fn(fx, pos.clone(), new THREE.Color(teamColor));
+}
