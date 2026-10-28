@@ -36,6 +36,7 @@ import { predictBall, goalBound } from './ballPredict.js';
 import { teamRole } from './roles.js';
 import { Online } from '../net/online.js';
 import { NetPlay } from '../net/netplay.js';
+import { bannerCard } from '../ui/playerCard.js';
 
 const TICK = 1 / CONFIG.game.tickRate;
 const BOT_NAMES = ['Comet', 'Volt', 'Nyx', 'Pike', 'Echo', 'Rook', 'Ember', 'Halo', 'Quill', 'Sable', 'Drift', 'Juno'];
@@ -272,6 +273,7 @@ export class Game {
     this.recorded = false;
     this.zeroSeconds = false;
     this.hud.setScore(0, 0);
+    this.matchTime = 0;
     this.kickoffSetup();
     document.querySelectorAll('#modeGroup button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     document.querySelectorAll('#diffGroup button').forEach((b) => b.classList.toggle('on', b.dataset.diff === difficulty));
@@ -354,6 +356,7 @@ export class Game {
     else this.home.hide();
     this.hud.showHud(s !== 'home');
     this.hud.replay(s === 'replay');
+    this.showReplayCard(s === 'replay');
     if (s === 'home') {
       this.sim.freezeCars = true;
       this.cameraRig.snap();
@@ -530,6 +533,11 @@ export class Game {
       return;
     }
     this.stateTime += dt;
+    // Play time for the profile (anything but menus and the end screen).
+    if (this.state === 'countdown' || this.state === 'play' || this.state === 'goal' || this.state === 'replay') {
+      this.account.addPlaytime(dt);
+      this.matchTime = (this.matchTime || 0) + dt;
+    }
 
     const stepping = this.state === 'play' || this.state === 'countdown' || this.state === 'goal';
     if (stepping) {
@@ -759,6 +767,30 @@ export class Game {
     this.startMatch();
   }
 
+  // Goal replay: the scorer's banner card (name, title, icon, banner, level) at the bottom.
+  showReplayCard(on) {
+    const box = document.getElementById('replayCard');
+    if (!box) return;
+    box.textContent = '';
+    box.hidden = true;
+    const gi = this.goalInfo;
+    if (!on || !gi) return;
+    const sp = gi.scorer;
+    const label = document.createElement('span');
+    label.className = 'replay-card-label';
+    label.textContent = sp ? 'Goal by' : `${CONFIG.teams[gi.team].name} goal`;
+    box.appendChild(label);
+    if (sp) {
+      const lo = this.account.loadout;
+      const look = sp.isPlayer
+        ? { name: sp.name, title: lo.title, icon: lo.icon, banner: lo.banner, level: this.account.level() }
+        : sp.card || { name: sp.name, title: null, icon: 'ball', banner: 'default', level: null };
+      const card = bannerCard({ ...look, sub: `${gi.speedKmh} KM/H${sp.card || sp.isPlayer ? '' : ' · BOT'}` }, `replay ${sp.team ? 'orange' : 'blue'}`);
+      box.appendChild(card);
+    }
+    box.hidden = false;
+  }
+
   // ------------------------------------------------------------------ online
   // Build the cars for an online match from the host's slot list (same order on every page).
   setupNetMatch(slots, mode, isHost) {
@@ -797,6 +829,7 @@ export class Game {
         p.remote = sl.peer;
         p.explosion = EXPLOSION_IDS.includes(L.expl) ? L.expl : 'classic';
         p.anthem = item('anthem', L.anthem) ? L.anthem : null;
+        p.card = { name: p.name, title: L.title, icon: L.icon, banner: L.banner, level: Number(L.lvl) || 1 };
       } else {
         // Bot: the host drives it; everyone uses the same name and car for it.
         const name = BOT_NAMES[(botN * 5 + 3) % BOT_NAMES.length];
@@ -820,6 +853,7 @@ export class Game {
     this.matchOver = false;
     this.recorded = false;
     this.zeroSeconds = false;
+    this.matchTime = 0;
     this.hud.setScore(0, 0);
   }
 
@@ -1689,7 +1723,13 @@ export class Game {
         this.recorded = true;
         const me = this.player;
         const draw = this.score[0] === this.score[1];
-        reward = this.account.recordMatch({ won: !draw && me.team === w, draw, goals: me.stats.goals, mvp: !draw && mvp === me, score: me.stats.score });
+        reward = this.account.recordMatch({
+          won: !draw && me.team === w, draw, goals: me.stats.goals, mvp: !draw && mvp === me, score: me.stats.score,
+          history: {
+            mode: this.mode, online: !!this.np, team: me.team, scoreUs: this.score[me.team], scoreThem: this.score[1 - me.team],
+            assists: me.stats.assists, saves: me.stats.saves, shots: me.stats.shots, demos: me.stats.demos, seconds: this.matchTime || 0,
+          },
+        });
       }
       const rw = document.getElementById('resultReward');
       if (rw) {

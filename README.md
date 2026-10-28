@@ -58,6 +58,11 @@ npm test         # physics checks against reference numbers
   Other pages put each shared car where it should be now (moved forward by its age) and pull their
   ball toward the host's. If a player leaves, a bot takes over their car; if the host leaves, the
   match ends. Code: src/net/ (online.js lobby/queue/rooms, netplay.js match sync, codec.js).
+- Players page (website): leaderboard by play time, goals or wins, name search, and each player's
+  profile card (banner, icon, title, level), stats and last 25 matches. Supabase tables: `profiles`
+  (public stats columns, readable by everyone, writable only by the owner) and `matches` (one row
+  per finished match, readable by everyone, each player adds only their own).
+- Goal replays show the scorer's banner card: name, title, icon, banner, level and shot speed.
 - 5 arenas with the same field and physics: Aurora Arena (night), Solstice Park (day),
   Neon District (city night), Frostbite Bowl (snow), Dune Canyon (sunset).
 - 1v1, 2v2, 3v3 against bots (Easy, Medium, Hard) or free play.

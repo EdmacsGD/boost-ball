@@ -10,6 +10,7 @@ import { iconSvg } from './icons.js';
 import { anthemSpec } from '../audio/anthems.js';
 import { eqSwatch } from './anthemEditor.js';
 import { OnlinePage } from './onlinePage.js';
+import { PlayersPage } from './playersPage.js';
 
 const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + Number(n).toString(16).padStart(6, '0');
@@ -100,6 +101,7 @@ export class HomeScreen {
     this.page = 'main';
     this.gtab = 'car';
     this.onlinePage = new OnlinePage(game);
+    this.playersPage = new PlayersPage(game);
     this.tipIndex = Math.floor(Math.random() * TIPS.length);
     const click = (fn) => () => {
       game.audio.init();
@@ -114,6 +116,7 @@ export class HomeScreen {
     $('tileQuick').addEventListener('click', click(() => game.startQuickMatch()));
     $('tileFree').addEventListener('click', click(() => game.startFreePlay()));
     $('tileSky').addEventListener('click', click(() => game.startEndless()));
+    $('creditsLink').addEventListener('click', click(() => this.setPage('credits')));
     $('arenaPick').addEventListener('click', click(() => this.setPage('arenas')));
     $('carPick').addEventListener('click', click(() => {
       this.gtab = 'car';
@@ -222,6 +225,7 @@ export class HomeScreen {
     this.refresh();
     if (was === 'online' && name !== 'online') this.onlinePage.shown(false);
     if (name === 'online') this.onlinePage.shown(true);
+    if (name === 'players' && was !== 'players') this.playersPage.shown();
   }
 
   // ------------------------------------------------------------------ garage

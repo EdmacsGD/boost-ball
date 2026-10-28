@@ -55,6 +55,6 @@ export function decodeBall(a) {
 }
 
 // Look of a player's car, from their loadout (strings only; checked against the catalog on use).
-export function encodeLook(lo, accentHex) {
-  return { car: lo.car, acc: accentHex, paint: lo.paint, finish: lo.finish, decal: lo.decal, boost: lo.boost, expl: lo.explosion, anthem: String(lo.anthem || '').startsWith('custom:') ? 'none' : lo.anthem, title: lo.title };
+export function encodeLook(lo, accentHex, level = 1) {
+  return { icon: lo.icon, banner: lo.banner, lvl: level, car: lo.car, acc: accentHex, paint: lo.paint, finish: lo.finish, decal: lo.decal, boost: lo.boost, expl: lo.explosion, anthem: String(lo.anthem || '').startsWith('custom:') ? 'none' : lo.anthem, title: lo.title };
 }

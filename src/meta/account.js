@@ -23,6 +23,7 @@ function freshData(name) {
     wins: 0,
     goals: 0,
     mvps: 0,
+    playtime: 0, // seconds played (matches, training, Sky Field)
     drops: WELCOME_DROPS,
     opened: 0,
     owned: [],
@@ -40,7 +41,7 @@ function clean(d) {
     ...f,
     name: String(d.name || f.name).slice(0, 16),
     created: num(d.created, f.created),
-    xp: num(d.xp), matches: num(d.matches), wins: num(d.wins), goals: num(d.goals), mvps: num(d.mvps),
+    xp: num(d.xp), matches: num(d.matches), wins: num(d.wins), goals: num(d.goals), mvps: num(d.mvps), playtime: num(d.playtime),
     drops: num(d.drops, WELCOME_DROPS), opened: num(d.opened),
     owned: Array.isArray(d.owned) ? d.owned.filter((k) => typeof k === 'string').slice(0, 500) : [],
     loadout: { ...DEFAULT_LOADOUT },
@@ -124,12 +125,23 @@ export class Account {
           if (error) throw error;
           return { exists: !!row, data: () => (row ? row.data : null) };
         },
+        // The stats columns are what the Players page and leaderboard show to everyone.
         set: async (d) => {
-          const { error } = await sb.from('profiles').upsert({ id: u.id, name: String(d.name || '').slice(0, 16), data: d, updated_at: new Date().toISOString() });
+          const lo = d.loadout || {};
+          const { error } = await sb.from('profiles').upsert({
+            id: u.id, name: String(d.name || '').slice(0, 16), data: d, updated_at: new Date().toISOString(),
+            level: 1 + Math.floor((d.xp || 0) / XP_PER_LEVEL), matches: d.matches || 0, wins: d.wins || 0, goals: d.goals || 0,
+            playtime: Math.floor(d.playtime || 0), icon: lo.icon || null, banner: lo.banner || null, title: lo.title || null,
+          });
           if (error) throw error;
         },
       };
-      this.online = { id: u.id, ref };
+      // A finished match for the match history (shown on the profile).
+      const logMatch = async (row) => {
+        const { error } = await sb.from('matches').insert({ ...row, player_id: u.id });
+        if (error) throw error;
+      };
+      this.online = { id: u.id, ref, logMatch };
       const snap = await withTimeout(ref.get(), 8000);
       if (snap && snap.exists) this.remote = clean(snap.data());
       return this.online;
@@ -341,8 +353,21 @@ export class Account {
     return done;
   }
 
-  // End of a match against bots. Returns { xp, levels, quests }.
-  recordMatch({ won, draw, goals, mvp, score }) {
+  // Seconds of play; saved every 30 s while playing (and at the end of every match).
+  addPlaytime(dt) {
+    if (!this.mode || !(dt > 0)) return;
+    this.data.playtime = (this.data.playtime || 0) + Math.min(dt, 0.25);
+    const now = Date.now();
+    if (!this.lastPlaySave) this.lastPlaySave = now;
+    if (now - this.lastPlaySave > 30000) {
+      this.lastPlaySave = now;
+      this.save();
+    }
+  }
+
+  // End of a match (bots or online). Returns { xp, levels, quests }. `history`: details for the
+  // online match history ({ mode, online, team, scoreUs, scoreThem, assists, saves, shots, demos, seconds }).
+  recordMatch({ won, draw, goals, mvp, score, history = null }) {
     const d = this.data;
     d.matches += 1;
     if (won) d.wins += 1;
@@ -351,6 +376,16 @@ export class Account {
     const xp = score + (won ? 200 : draw ? 100 : 50);
     const levels = this.addXp(xp);
     const quests = [...this.event('matches', 1), ...(won ? this.event('wins', 1) : []), ...(mvp ? this.event('mvp', 1) : [])];
+    if (history && this.mode === 'online' && this.online && this.online.logMatch) {
+      const h = history;
+      const n = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+      this.online.logMatch({
+        mode: ['1v1', '2v2', '3v3'].includes(h.mode) ? h.mode : '1v1', online: !!h.online, team: h.team ? 1 : 0,
+        won: !!won, draw: !!draw, mvp: !!mvp, score_us: n(h.scoreUs, 99), score_them: n(h.scoreThem, 99),
+        goals: n(goals, 99), assists: n(h.assists, 99), saves: n(h.saves, 99), shots: n(h.shots, 99), demos: n(h.demos, 99),
+        points: n(score, 100000), seconds: n(h.seconds, 7200),
+      }).catch(() => {});
+    }
     this.save();
     this.changed();
     return { xp, levels, quests };

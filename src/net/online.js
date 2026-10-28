@@ -260,7 +260,7 @@ export class Online {
       return false;
     }
     const acc = this.game.account;
-    this.myLook = encodeLook(acc.loadout, this.game.accentHex());
+    this.myLook = encodeLook(acc.loadout, this.game.accentHex(), acc.level());
     this.match.presence({ role: this.role === 'host' ? 'host' : 'player', name: acc.data.name, look: this.myLook, want: null, car: null, m: null, s: null }).catch(() => {});
     this.match.onPeers((ch) => this.onMatchPeers(ch), () => this.lostRoom());
     return true;

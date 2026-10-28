@@ -56,6 +56,7 @@
     </div>
     <div class="popups" id="popups"></div>
     <div class="replay" id="replayTag" hidden><span class="rec"></span>REPLAY<small>SPACE TO SKIP</small></div>
+    <div class="replay-card" id="replayCard" hidden></div>
     <div class="anthem-tag" id="anthemTag" hidden><span class="swatchy eq"><i></i><i></i><i></i><i></i></span><span><small>Anthem</small><b id="anthemName"></b></span></div>
     <div class="hint" id="hint" hidden></div>
   </div>
@@ -86,7 +87,7 @@
       <button type="button" data-page="arenas"><span>Arenas</span><small>Pick a map</small></button>
       <button type="button" data-page="settings"><span>Settings</span><small>Graphics, camera, sound</small></button>
       <button type="button" data-page="controls"><span>Controls</span><small>Change any key</small></button>
-      <button type="button" data-page="credits"><span>Credits</span><small>Who made the game</small></button>
+      <button type="button" data-page="players"><span>Players</span><small>Leaderboard and profiles</small></button>
     </nav>
 
     <aside class="home-tiles" id="homeTiles">
@@ -213,6 +214,11 @@
       <div id="homeSettingsSlot"></div>
     </section>
 
+    <section class="home-page wide" data-page="players" hidden>
+      <div class="page-head"><h2>Players</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div id="playersBody" class="players-body"></div>
+    </section>
+
     <section class="home-page" data-page="credits" hidden>
       <div class="page-head"><h2>Credits</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
       <div class="credits">
@@ -243,6 +249,7 @@
       <span><kbd>F</kbd> fullscreen</span>
       <span class="hint-drag">Drag the car to spin it</span>
       <span class="hint-pad"><kbd class="ps-only">Options</kbd><kbd class="xb-only">Start</kbd> kick off · <kbd class="ps-only">Cross</kbd><kbd class="xb-only">A</kbd> select · <kbd class="ps-only">Circle</kbd><kbd class="xb-only">B</kbd> back</span>
+      <button type="button" class="foot-link" id="creditsLink">Credits</button>
       <span class="sb-fps" id="sbFps"></span>
     </div>
   </div>
