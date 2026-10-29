@@ -183,6 +183,8 @@ export function sharedCarAssets() {
 }
 
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
+// Most a drawn wheel hangs below its resting spot (m).
+const DROOP = 0.035;
 const tmpA = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
 
@@ -610,7 +612,10 @@ export class CarModel {
       const def = w.def;
       const phys = w.phys;
       const hardY = phys.offset[2] * UU;
-      const len = suspension ? suspension[i] : Math.min(restLen(phys), (phys.suspensionRest - V.maxSuspensionTravel + V.maxSuspensionTravel) * UU);
+      // In the air (or upside down) the physics wheel hangs at full travel, 13 cm below its rest
+      // spot, which looks broken on the model. Drawn wheels drop at most DROOP below rest.
+      const rest = restLen(phys);
+      const len = suspension ? Math.min(suspension[i], rest + DROOP) : rest;
       const target = hardY - len + w.visualDrop;
       if (snap) w.hub.position.y = target;
       else w.hub.position.y += (target - w.hub.position.y) * Math.min(1, dt * 30);
