@@ -47,6 +47,7 @@ export class FreeCam {
 
   allowed() {
     const g = this.game;
+    if (g.state === 'theater') return true; // match replay
     return g.mode === 'free' && !g.np && (g.state === 'play' || g.state === 'countdown' || g.state === 'goal');
   }
 
@@ -68,15 +69,15 @@ export class FreeCam {
     this.vel.set(0, 0, 0);
     this.active = true;
     document.body.classList.add('free-cam');
-    this.game.hud.hint('FREE CAMERA · WASD move · mouse look · Space / X up and down · Shift fast · V to exit');
+    if (this.game.state !== 'theater') this.game.hud.hint('FREE CAMERA · WASD move · mouse look · Space / X up and down · Shift fast · V to exit');
   }
 
   stop() {
     if (!this.active) return;
     this.active = false;
     document.body.classList.remove('free-cam');
-    this.game.hud.hint('');
     if (document.pointerLockElement === this.canvas && document.exitPointerLock) document.exitPointerLock();
+    if (this.game.state !== 'theater') this.game.hud.hint('');
     this.game.cameraRig.snap();
   }
 

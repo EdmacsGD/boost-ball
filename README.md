@@ -77,6 +77,10 @@ Aurora Arena, Solstice Park, Neon District, Frostbite Bowl, Dune Canyon, Sky Hav
 
 **Free camera** (free play and Sky Field): V or R3 toggles it. WASD / left stick to move, mouse or right stick to look, Space / X (A / B) up and down, Shift (right trigger) faster.
 
+## Match replay
+
+After a match (bots or online), **Watch replay** on the end screen plays the whole match again from a recording of every car and the ball (30 times a second). Cameras: free camera (WASD / mouse, the default), ball camera, or follow any player (C cycles). K play/pause, J / L 10 seconds back / forward, , / . speed (0.25x to 4x), drag the timeline (goal markers on it), Esc back to the results. The recording is kept until the next match starts.
+
 ## Achievement items
 
 These never come from Sport Drops. Stats count in finished matches (bots or online), not free play.

@@ -32,7 +32,8 @@ import { PadNav } from '../ui/padnav.js';
 // Where the car stands on the pitch behind the home screen menus.
 const HOME_SPOT = new THREE.Vector3(0, 0, -16);
 import { Bot } from './bot.js';
-import { ReplayBuffer, lerpPose } from './replay.js';
+import { ReplayBuffer, lerpPose, MatchRecorder } from './replay.js';
+import { Theater } from './theater.js';
 import { AnthemPlayer, anthemSpec } from '../audio/anthems.js';
 import { AnthemStore } from '../meta/anthemStore.js';
 import { AnthemUploads } from '../ui/anthemEditor.js';
@@ -152,6 +153,7 @@ export class Game {
     this.applyCameraSettings();
     this.cameraRig.ballCam = this.settings.ballCam;
     this.freeCam = new FreeCam(this);
+    this.theater = new Theater(this);
 
     this.input = new Input(window);
     this.input.setBindings(this.settings.bindings);
@@ -282,6 +284,7 @@ export class Game {
     this.zeroSeconds = false;
     this.hud.setScore(0, 0);
     this.matchTime = 0;
+    this.matchRec = mode !== 'free' ? new MatchRecorder(this.players.map((p) => p.car.id)) : null;
     this.kickoffSetup();
     document.querySelectorAll('#modeGroup button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     document.querySelectorAll('#diffGroup button').forEach((b) => b.classList.toggle('on', b.dataset.diff === difficulty));
@@ -355,6 +358,7 @@ export class Game {
   }
 
   enterState(s) {
+    if (this.state === 'theater' && s !== 'theater') this.theater.teardown();
     this.state = s;
     this.stateTime = 0;
     if (s === 'home') {
@@ -386,6 +390,7 @@ export class Game {
     }
     if (s === 'ended') {
       this.sim.freezeCars = true;
+      this.lastMatch = this.matchRec;
       this.showResults();
     }
   }
@@ -438,6 +443,7 @@ export class Game {
       }
       this.enterHome();
     });
+    $('watchBtn').addEventListener('click', () => this.theater.open());
     $('againBtn').addEventListener('click', () => {
       $('results').hidden = true;
       if (this.np) {
@@ -573,6 +579,7 @@ export class Game {
       if (steps === MAX_TICKS_PER_FRAME) this.acc = 0;
     }
     this.updateState(dt);
+    if (this.state === 'theater') this.theater.update(dt);
     this.online.update(dt);
     const alpha = clamp(this.acc / TICK, 0, 1);
     this.updateVisuals(dt, alpha);
@@ -944,6 +951,7 @@ export class Game {
     }
     this.ballModel?.setSkin(lo.ball);
     this.player = me || this.players[0];
+    this.matchRec = new MatchRecorder(this.players.map((p) => p.car.id));
     this.score = [0, 0];
     this.clock = CONFIG.game.matchSeconds;
     this.overtime = false;
@@ -1430,6 +1438,7 @@ export class Game {
     this.sim.step();
     if (this.endlessOn && this.player) this.endlessTick();
     this.simTime += TICK;
+    if (this.matchRec && (this.state === 'play' || this.state === 'goal' || this.state === 'countdown')) this.matchRec.record(TICK, this.simTime, this.sim, this.score);
     this.handleEvents();
     if (playing) this.matchTick();
     if (this.state !== 'home') this.replay.record(TICK, this.simTime, this.sim);
@@ -1731,6 +1740,7 @@ export class Game {
     ball.body.setEnabled(false);
     this.ballHidden = true;
     this.goalInfo = { team, time: this.simTime, pos: explodePos, scorer: sp, assist: ap, speedKmh, explosion, goalsBy: sp ? sp.stats.goals : 0 };
+    if (this.matchRec) this.matchRec.addGoal(this.goalInfo);
     this.stadium.drawJumbo({ banner: 'GOAL' });
     if (this.overtime || this.mode === 'free') this.matchOver = this.overtime;
     this.enterState('goal');
@@ -1826,6 +1836,7 @@ export class Game {
   showResults() {
     setTimeout(() => {
       const el = document.getElementById('results');
+      document.getElementById('watchBtn').hidden = !this.theater.available();
       const w = this.score[0] > this.score[1] ? 0 : 1;
       document.getElementById('resultTitle').textContent = this.score[0] === this.score[1] ? 'DRAW' : `${CONFIG.teams[w].name} WINS`;
       const scoreEl = document.getElementById('resultScore');
@@ -1901,9 +1912,11 @@ export class Game {
   // ------------------------------------------------------------------ visuals
   updateVisuals(dt, alpha) {
     const cam = this.renderer.camera;
-    const replaying = this.state === 'replay';
+    const theater = this.state === 'theater';
+    const replaying = this.state === 'replay' || theater;
     let sample = null;
-    if (replaying) sample = this.replay.sample(this.replayT);
+    if (theater) sample = this.theater.sample();
+    else if (replaying) sample = this.replay.sample(this.replayT);
 
     // Cars.
     for (const p of this.players) {
@@ -1998,8 +2011,8 @@ export class Game {
     if (replaying && sample) {
       lerpPose(sample.a.ball, sample.b.ball, sample.k, ballPos, ballQuat);
       ballVel = new THREE.Vector3().fromArray(sample.a.ball.v);
-      ballOn = sample.a.ball.on && this.replayT < this.goalInfo.time;
-      if (!this.replayExploded && this.replayT >= this.goalInfo.time) {
+      ballOn = theater ? sample.a.ball.on : sample.a.ball.on && this.replayT < this.goalInfo.time;
+      if (!theater && !this.replayExploded && this.replayT >= this.goalInfo.time) {
         this.replayExploded = true;
         this.effects.goalExplosion(this.goalInfo.pos, CONFIG.teams[this.goalInfo.team].color, true, this.goalInfo.explosion);
         this.audio.play('demo', { volume: 0.6 });
@@ -2061,6 +2074,10 @@ export class Game {
       return;
     }
     if (this.freeCam.active && this.freeCam.update(dt, rig)) return;
+    if (this.state === 'theater') {
+      this.theater.camera(dt, rig);
+      return;
+    }
     if (this.explPreview && this.state === 'home') {
       const ep = this.explPreview;
       ep.t += dt;

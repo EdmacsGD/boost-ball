@@ -1265,5 +1265,17 @@ body.online-match #restartBtn { display: none; }
 .chat-log span { color: #fff; }
 
 /* Free camera: hide the HUD except the controls hint. */
-body.free-cam #hud > *:not(#hint) { visibility: hidden; }
-body.free-cam #hint { visibility: visible; left: 50%; right: auto; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100vw - 32px); text-align: center; color: #fff; background: rgba(8, 13, 24, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); padding: 8px 14px; font-size: 12px; }
+body.free-cam:not(.theater) #hud > *:not(#hint) { visibility: hidden; }
+body.free-cam:not(.theater) #hint { visibility: visible; left: 50%; right: auto; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100vw - 32px); text-align: center; color: #fff; background: rgba(8, 13, 24, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); padding: 8px 14px; font-size: 12px; }
+
+/* Match replay (theater). */
+body.theater #hud > *:not(.theater-bar):not(#score):not(#feed) { visibility: hidden; }
+.theater-bar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(760px, calc(100vw - 32px)); display: grid; gap: 8px; padding: 10px 12px; background: rgba(8, 13, 24, 0.82); border: 1px solid var(--line); pointer-events: auto; z-index: 5; }
+.theater-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.theater-time { margin-left: auto; font: 800 14px/1 var(--display); letter-spacing: 0.08em; color: #fff; }
+.theater-line { position: relative; height: 22px; }
+.theater-line input { width: 100%; margin: 0; height: 22px; accent-color: var(--gold); }
+.goal-mark { position: absolute; top: 0; width: 3px; height: 8px; transform: translateX(-1px); pointer-events: none; }
+.goal-mark.blue { background: var(--blue); }
+.goal-mark.orange { background: var(--orange); }
+.theater-help { margin: 0; font-size: 10px; letter-spacing: 0.08em; color: var(--muted); }
