@@ -6,7 +6,7 @@ export class HUD {
   constructor() {
     this.el = {
       scoreBlue: $('scoreBlue'), scoreOrange: $('scoreOrange'), clock: $('clock'), clockBox: document.querySelector('.clock'),
-      otLabel: $('otLabel'), feed: $('feed'), boost: $('boost'), boostArc: $('boostArc'), boostNum: $('boostNum'),
+      otLabel: $('otLabel'), feed: $('feed'), chatLog: $('chatLog'), boost: $('boost'), boostArc: $('boostArc'), boostNum: $('boostNum'),
       boostLabel: $('boostLabel'), speedNum: $('speedNum'), speed: document.querySelector('.speed'),
       chipCam: $('chipCam'), chipInf: $('chipInf'), chipFlip: $('chipFlip'), chipFps: $('chipFps'),
       countdown: $('countdown'), banner: $('banner'), bannerMain: $('bannerMain'), bannerSub: $('bannerSub'), bannerExtra: $('bannerExtra'),
@@ -171,6 +171,23 @@ export class HUD {
     while (this.el.feed.children.length > 5) this.el.feed.firstChild.remove();
     setTimeout(() => li.classList.add('out'), 5000);
     setTimeout(() => li.remove(), 5600);
+  }
+
+  // Quick chat line (online matches): "NAME: Nice shot!" on the left side.
+  chat(name, team, text) {
+    const box = this.el.chatLog;
+    if (!box) return;
+    const li = document.createElement('li');
+    const b = document.createElement('b');
+    b.className = team === 1 ? 'orange' : 'blue';
+    b.textContent = name;
+    const t = document.createElement('span');
+    t.textContent = text;
+    li.append(b, t);
+    box.appendChild(li);
+    while (box.children.length > 4) box.firstChild.remove();
+    setTimeout(() => li.classList.add('out'), 4500);
+    setTimeout(() => li.remove(), 5100);
   }
 
   replay(on) {

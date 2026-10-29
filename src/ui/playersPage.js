@@ -4,6 +4,7 @@ import { playersAvailable, topPlayers, playerById, playerMatches, formatPlaytime
 import { bannerCard, badgePill } from './playerCard.js';
 import { iconSvg } from './icons.js';
 import { item } from '../meta/items.js';
+import { tierOf } from '../meta/rank.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -156,8 +157,18 @@ export class PlayersPage {
       const pill = badgePill(badgeOf(r.id));
       if (pill) nameLine.appendChild(pill);
       who.append(nameLine, el('small', '', `LVL ${r.level || 1} · ${(item('title', r.title) || { name: 'Rookie' }).name.toUpperCase()}`));
-      const val = this.sort === 'playtime' ? formatPlaytime(r.playtime) : String(this.sort === 'goals' ? r.goals : r.wins);
-      row.append(rank, ic, who, el('span', 'board-val', val));
+      const sortDef = SORTS[this.sort];
+      let valEl;
+      if (sortDef.rating) {
+        const rv = Number(r[sortDef.col]) || 1000;
+        const t = tierOf(rv);
+        valEl = el('span', 'board-val tier');
+        valEl.style.setProperty('--tier', t.color);
+        valEl.append(el('b', '', String(rv)), el('small', '', t.name));
+      } else {
+        valEl = el('span', 'board-val', this.sort === 'playtime' ? formatPlaytime(r.playtime) : String(this.sort === 'goals' ? r.goals : r.wins));
+      }
+      row.append(rank, ic, who, valEl);
       row.title = `Open ${r.name || 'PLAYER'}'s profile`;
       row.addEventListener('click', this.game.home.click(() => this.open(r.id)));
       list.appendChild(row);
@@ -191,6 +202,16 @@ export class PlayersPage {
       stats.appendChild(s);
     }
     body.appendChild(stats);
+    const rr = el('div', 'rating-row');
+    for (const m of ['1v1', '2v2', '3v3']) {
+      const v = Number(p[`elo_${m}`]) || 1000;
+      const t = tierOf(v);
+      const c = el('span', 'rating-chip');
+      c.style.setProperty('--tier', t.color);
+      c.append(el('small', '', `Rank ${m}`), el('b', '', String(v)), el('i', '', t.name));
+      rr.appendChild(c);
+    }
+    body.appendChild(rr);
     const head = el('span', 'field-label', 'Match history');
     body.appendChild(head);
     if (!v.matches.length) {
@@ -204,7 +225,8 @@ export class PlayersPage {
       row.appendChild(el('span', 'hist-res', res));
       const mid = el('div', 'hist-mid');
       const score = el('b', '', `${m.score_us} - ${m.score_them}`);
-      const tags = el('small', '', `${m.mode} · ${m.online ? 'Online' : 'Bots'}${m.team ? ' · Orange' : ' · Blue'}${m.mvp ? ' · MVP' : ''}`);
+      const elo = m.ranked && Number.isFinite(m.elo_change) ? ` · Ranked ${m.elo_change >= 0 ? '+' : ''}${m.elo_change}` : '';
+      const tags = el('small', '', `${m.mode} · ${m.online ? 'Online' : 'Bots'}${m.team ? ' · Orange' : ' · Blue'}${m.mvp ? ' · MVP' : ''}${elo}`);
       mid.append(score, tags);
       const line = el('span', 'hist-stats', `${m.goals} G · ${m.assists} A · ${m.saves} S · ${m.points} pts`);
       row.append(mid, line, el('span', 'hist-when', when(m.played_at)));

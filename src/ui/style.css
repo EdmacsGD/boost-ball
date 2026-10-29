@@ -1245,3 +1245,21 @@ body.online-match #restartBtn { display: none; }
 .board-name { display: flex; align-items: center; min-width: 0; }
 .board-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-title .badge-pill { margin-left: 8px; }
+
+/* Ranked rating chips (Online page). */
+.rating-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.rating-chip { display: grid; grid-template-columns: auto auto; column-gap: 8px; align-items: baseline; padding: 8px 12px; background: rgba(8, 13, 24, 0.7); border: 1px solid var(--line); border-left: 3px solid var(--tier); }
+.rating-chip small { grid-column: 1 / -1; font: 700 9px/1 var(--display); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; }
+.rating-chip b { font: 800 20px/1.1 var(--display); color: #fff; }
+.rating-chip i { font: 800 11px/1 var(--display); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tier); }
+.board-val.tier { display: grid; justify-items: end; gap: 1px; }
+.board-val.tier small { font: 800 9px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--tier); }
+
+/* Quick chat (online). */
+.chat-log { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 38%; list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; justify-items: start; font-family: var(--display); pointer-events: none; max-width: min(360px, 60vw); }
+.chat-log li { display: flex; gap: 8px; align-items: baseline; background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; font-size: 15px; font-weight: 700; animation: feedIn 0.25s ease-out; transition: opacity 0.5s; }
+.chat-log li.out { opacity: 0; }
+.chat-log b { font-weight: 800; letter-spacing: 0.04em; }
+.chat-log b.blue { color: #7db6ff; }
+.chat-log b.orange { color: #ffae6a; }
+.chat-log span { color: #fff; }

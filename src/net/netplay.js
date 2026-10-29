@@ -10,6 +10,9 @@ import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
 import { encodeCar, decodeCar, encodeBall, decodeBall } from './codec.js';
 
+// Quick chat: number keys 1-6 in online matches. Only the index travels, so nobody can send text.
+export const QUICK_CHAT = ['Nice shot!', 'What a save!', 'Great pass!', 'Thanks!', 'Sorry!', 'gg'];
+
 const G = CONFIG.physics.gravityZ * UU; // m/s^2, negative
 const PHASES = { countdown: 'cd', play: 'pl', goal: 'gl', replay: 'rp', ended: 'en' };
 const v0 = new THREE.Vector3();
@@ -40,6 +43,9 @@ export class NetPlay {
     this.demoBy = -1;
     this.dmSeen = new Map(); // peer -> demo count seen
     this.clockOff = new Map(); // sender -> smallest (arrival - send time) seen, in ms
+    this.qc = null; // our last quick chat [number, message index]
+    this.qcSent = []; // times of our recent messages (spam limit)
+    this.qcSeen = new Map(); // peer -> last quick chat number shown
   }
 
   // Local time a message was sent, from the sender's time stamp. Arrival times jitter by tens of ms
@@ -68,6 +74,7 @@ export class NetPlay {
     const g = this.game;
     const me = g.player;
     const patch = { car: encodeCar(me.car), ts: Date.now(), rtt: Math.round(this.rtt * 1000) };
+    if (this.qc) patch.qc = this.qc;
     if (this.client) {
       patch.dm = [this.demos, this.demoBy];
       return patch;
@@ -106,6 +113,15 @@ export class NetPlay {
     p.netT = this.sentAt(peer, at, Number(pr.ts));
     p.netLead = Math.min(0.25, (Number(pr.rtt) || 120) / 2000);
     if (this.isHost && Number.isFinite(pr.ts)) this.ack[peer] = pr.ts;
+    // Quick chat from this player.
+    if (Array.isArray(pr.qc)) {
+      const n = Number(pr.qc[0]) || 0;
+      const idx = Number(pr.qc[1]);
+      if (n > (this.qcSeen.get(peer) || 0) && QUICK_CHAT[idx]) {
+        this.qcSeen.set(peer, n);
+        g.hud.chat(p.name, p.team, QUICK_CHAT[idx]);
+      }
+    }
     // Their car was demolished: credit the attacker (host keeps the stats).
     if (Array.isArray(pr.dm)) {
       const n = Number(pr.dm[0]) || 0;
@@ -352,6 +368,19 @@ export class NetPlay {
     p.visErrQ.slerp(qi.identity(), 1 - k);
     p.renderPos.add(p.visErr);
     p.renderQuat.premultiply(p.visErrQ);
+  }
+
+  // Our quick chat: at most 3 messages every 5 seconds.
+  say(idx) {
+    if (!QUICK_CHAT[idx]) return false;
+    const now = Date.now();
+    this.qcSent = this.qcSent.filter((t) => now - t < 5000);
+    if (this.qcSent.length >= 3) return false;
+    this.qcSent.push(now);
+    this.qc = [((this.qc && this.qc[0]) || 0) + 1, idx];
+    const me = this.game.player;
+    this.game.hud.chat(me.name, me.team, QUICK_CHAT[idx]);
+    return true;
   }
 
   myTouch() {

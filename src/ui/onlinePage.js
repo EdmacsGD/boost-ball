@@ -1,6 +1,7 @@
 // Home screen "Online" page: quick play queue, create / join a match by code, open matches, and the
 // match lobby (teams, start, leave). Draws from the Online state and redraws on every change.
 import { perTeamOf, cleanCode } from '../net/online.js';
+import { tierOf } from '../meta/rank.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -76,6 +77,20 @@ export class OnlinePage {
     const others = o.onlinePlayers().filter((p) => !p.sameTab).length;
     status.textContent = `${o.connected ? 'Connected' : 'Connecting...'} · ${others} other player${others === 1 ? '' : 's'} online`;
     body.appendChild(status);
+    const ranked = g.account.serverStats;
+    if (ranked) {
+      // Your rating per mode (Elo: everyone starts at 1000).
+      const rr = el('div', 'rating-row');
+      for (const m of MODES) {
+        const r = g.account.rating(m);
+        const t = tierOf(r);
+        const c = el('span', 'rating-chip');
+        c.style.setProperty('--tier', t.color);
+        c.append(el('small', '', m), el('b', '', String(r)), el('i', '', t.name));
+        rr.appendChild(c);
+      }
+      body.appendChild(rr);
+    }
 
     if (o.match) {
       this.renderMatchLobby(body);
@@ -106,6 +121,7 @@ export class OnlinePage {
     } else {
       fq.appendChild(this.btn(`Find a ${this.mode} match`, 'kick', () => o.startQueue(this.mode)));
     }
+    fq.appendChild(el('span', 'field-note', ranked ? 'Quick play is ranked: winning raises your rating, losing or leaving early lowers it.' : 'Quick play counts for your stats.'));
     body.appendChild(fq);
 
     // Private match.
@@ -139,7 +155,7 @@ export class OnlinePage {
     for (const m of list) {
       const card = el('div', 'match-card');
       const t = el('div', 'match-text');
-      t.append(el('b', '', `${m.host}'s ${m.mode}`), el('small', '', `${m.n}/${m.max} players · code ${m.code}`));
+      t.append(el('b', '', `${m.host}'s ${m.mode}`), el('small', '', `${m.practice ? 'Practice' : ranked ? 'Ranked' : 'Normal'} · ${m.n}/${m.max} players · code ${m.code}`));
       card.append(t, this.btn('Join', '', () => o.join(m.code)));
       fl.appendChild(card);
     }
@@ -153,7 +169,8 @@ export class OnlinePage {
     const code = el('div', 'lobby-code');
     code.append(el('small', '', 'Match code'), el('b', '', (o.code || '').toUpperCase()));
     head.appendChild(code);
-    head.appendChild(el('span', 'lobby-mode', `${o.mode} · ${o.role === 'host' ? 'you are the host' : 'waiting for the host to start'}`));
+    const kindName = o.practice ? 'Practice' : g.account.serverStats ? 'Ranked' : 'Normal';
+    head.appendChild(el('span', 'lobby-mode', `${o.mode} · ${kindName} · ${o.role === 'host' ? 'you are the host' : 'waiting for the host to start'}`));
     body.appendChild(head);
     if (o.started) {
       body.appendChild(el('p', 'page-note', 'The match is running.'));
@@ -175,11 +192,23 @@ export class OnlinePage {
       cols.appendChild(col);
     });
     body.appendChild(cols);
+    // Match type: the host picks; everyone sees it.
+    const fk = this.field('Match type');
+    if (o.role === 'host' && !o.auto) {
+      const seg = el('div', 'seg');
+      seg.appendChild(this.btn(g.account.serverStats ? 'Ranked' : 'Normal', o.practice ? '' : 'on', () => o.setPractice(false)));
+      seg.appendChild(this.btn('Practice', o.practice ? 'on' : '', () => o.setPractice(true)));
+      fk.appendChild(seg);
+    }
+    fk.appendChild(el('span', 'field-note', o.practice
+      ? 'Practice: nothing counts (no rating, stats, XP or quests). Unlimited boost is allowed (B).'
+      : g.account.serverStats ? 'Ranked: the result changes everyone\'s rating. Leaving early counts as a loss.' : 'Normal: the match counts for stats and quests.'));
+    body.appendChild(fk);
     const humans = teams[0].length + teams[1].length;
     const btns = el('div', 'online-row');
     if (o.role === 'host') {
-      const start = this.btn(humans >= 2 ? 'Start match' : 'Waiting for players...', 'kick', () => o.start());
-      start.disabled = humans < 2;
+      const start = this.btn(o.starting ? 'Starting...' : humans >= 2 ? 'Start match' : 'Waiting for players...', 'kick', () => o.start());
+      start.disabled = humans < 2 || !!o.starting;
       btns.appendChild(start);
     }
     btns.appendChild(this.btn('Leave', '', () => o.leave()));

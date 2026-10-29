@@ -5,7 +5,7 @@
 // allows 20 presence messages a second for the whole project) and Broadcast (fast messages). So the
 // fields that change every frame (car, s, ts, rtt, dm) go out as one broadcast each send, and the
 // rest (name, role, look, lobby info) as presence, sent at most twice a second.
-const FAST = new Set(['car', 's', 'ts', 'rtt', 'dm']);
+const FAST = new Set(['car', 's', 'ts', 'rtt', 'dm', 'qc']);
 
 function randomPeer() {
   return 'p' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
@@ -236,12 +236,15 @@ class SbRoom {
 }
 
 // The lobby room, with join(name) for match rooms, like claude.ai's room capability.
+// `uid`: the account id, or a function returning it (read again for every match room, since the
+// player may log in after the page loaded).
 export async function createSupabaseRoom(sb, uid) {
   const me = randomPeer();
-  const lobby = new SbRoom(sb, 'bb-lobby', me, uid);
+  const uidNow = () => (typeof uid === 'function' ? uid() : uid) || null;
+  const lobby = new SbRoom(sb, 'bb-lobby', me, uidNow());
   await lobby.open();
   lobby.join = async (name) => {
-    const r = new SbRoom(sb, `bb-m-${name}`, me, uid);
+    const r = new SbRoom(sb, `bb-m-${name}`, me, uidNow());
     await r.open();
     return r;
   };

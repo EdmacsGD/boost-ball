@@ -3,11 +3,14 @@ import { backendKind, supabase } from './backend.js';
 
 export const playersAvailable = () => backendKind() === 'supabase';
 
-const COLS = 'id,name,level,matches,wins,goals,playtime,icon,banner,title,updated_at';
+const COLS = 'id,name,level,matches,wins,goals,playtime,icon,banner,title,updated_at,elo_1v1,elo_2v2,elo_3v3';
 export const SORTS = {
   playtime: { label: 'Play time', col: 'playtime' },
   goals: { label: 'Goals', col: 'goals' },
   wins: { label: 'Wins', col: 'wins' },
+  elo_1v1: { label: 'Rank 1v1', col: 'elo_1v1', rating: '1v1' },
+  elo_2v2: { label: 'Rank 2v2', col: 'elo_2v2', rating: '2v2' },
+  elo_3v3: { label: 'Rank 3v3', col: 'elo_3v3', rating: '3v3' },
 };
 
 // Top players by a stat, optionally only names containing `search`.

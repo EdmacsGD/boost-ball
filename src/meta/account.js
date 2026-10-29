@@ -26,6 +26,7 @@ function freshData(name) {
     playtime: 0, // seconds played (matches, training, Sky Field)
     winsByMode: { '1v1': 0, '2v2': 0, '3v3': 0 },
     tot: { saves: 0, demos: 0, assists: 0, hattricks: 0 }, // lifetime match totals for achievement items
+    elo: { '1v1': 1000, '2v2': 1000, '3v3': 1000 }, // ranked rating per mode (website; set by the server)
     drops: WELCOME_DROPS,
     opened: 0,
     owned: [],
@@ -47,6 +48,7 @@ function clean(d) {
     drops: num(d.drops, WELCOME_DROPS), opened: num(d.opened),
     winsByMode: Object.fromEntries(Object.keys(f.winsByMode).map((m) => [m, num(d.winsByMode && d.winsByMode[m])])),
     tot: Object.fromEntries(Object.keys(f.tot).map((k) => [k, num(d.tot && d.tot[k])])),
+    elo: Object.fromEntries(Object.keys(f.elo).map((m) => [m, num(d.elo && d.elo[m], 1000)])),
     owned: Array.isArray(d.owned) ? d.owned.filter((k) => typeof k === 'string').slice(0, 500) : [],
     loadout: { ...DEFAULT_LOADOUT },
     quests: fillQuests(Array.isArray(d.quests) ? d.quests.filter((q) => q && typeof q.type === 'string').map((q) => ({ id: String(q.id || ''), type: q.type, goal: num(q.goal, 1) || 1, progress: num(q.progress), drops: num(q.drops, 1) || 1 })) : []),
@@ -130,23 +132,25 @@ export class Account {
           if (error) throw error;
           return { exists: !!row, data: () => (row ? row.data : null) };
         },
-        // The stats columns are what the Players page and leaderboard show to everyone.
         set: async (d) => {
           const lo = d.loadout || {};
           const { error } = await sb.from('profiles').upsert({
+            // Stats columns are filled in by the database from player_stats (sending them does nothing).
             id: u.id, name: String(d.name || '').slice(0, 16), data: d, updated_at: new Date().toISOString(),
-            level: 1 + Math.floor((d.xp || 0) / XP_PER_LEVEL), matches: d.matches || 0, wins: d.wins || 0, goals: d.goals || 0,
-            playtime: Math.floor(d.playtime || 0), icon: lo.icon || null, banner: lo.banner || null, title: lo.title || null,
+            icon: lo.icon || null, banner: lo.banner || null, title: lo.title || null,
           });
           if (error) throw error;
         },
       };
-      // A finished match for the match history (shown on the profile).
-      const logMatch = async (row) => {
-        const { error } = await sb.from('matches').insert({ ...row, player_id: u.id });
-        if (error) throw error;
+      // Stats, achievement items and ratings only change through these server functions, which
+      // check each result (see supabase/002_server_stats.sql). The profile row's stats are copies.
+      const rpc = async (fn, args) => {
+        const res = await withTimeout(sb.rpc(fn, args), 15000);
+        if (!res) throw new Error('timeout');
+        if (res.error) throw res.error;
+        return res.data;
       };
-      this.online = { id: u.id, ref, logMatch };
+      this.online = { id: u.id, ref, rpc, server: true };
       // Our own badge (owner, tester), if the admin gave us one.
       try {
         const { data: b } = await sb.from('badges').select('badge').eq('player_id', u.id).maybeSingle();
@@ -368,12 +372,25 @@ export class Account {
   // Seconds of play; saved every 30 s while playing (and at the end of every match).
   addPlaytime(dt) {
     if (!this.mode || !(dt > 0)) return;
-    this.data.playtime = (this.data.playtime || 0) + Math.min(dt, 0.25);
+    const step = Math.min(dt, 0.25);
+    this.data.playtime = (this.data.playtime || 0) + step;
+    this.playUnsent = (this.playUnsent || 0) + step;
     const now = Date.now();
     if (!this.lastPlaySave) this.lastPlaySave = now;
     if (now - this.lastPlaySave > 30000) {
       this.lastPlaySave = now;
-      this.checkUnlocks();
+      if (this.serverStats) {
+        // The server adds at most the real time since our last report.
+        const sec = Math.round(this.playUnsent);
+        this.playUnsent = 0;
+        this.online.rpc('bb_add_playtime', { p_seconds: sec }).then((total) => {
+          if (Number.isFinite(total)) this.data.playtime = total;
+          this.checkUnlocks();
+        }).catch(() => {});
+      } else {
+        this.playUnsent = 0;
+        this.checkUnlocks();
+      }
       this.save();
     }
   }
@@ -410,9 +427,63 @@ export class Account {
     return got;
   }
 
+  // ------------------------------------------------------------------ server-checked stats (website)
+  get serverStats() {
+    return this.mode === 'online' && !!(this.online && this.online.server);
+  }
+
+  rating(mode) {
+    return (this.data.elo && this.data.elo[mode]) || 1000;
+  }
+
+  // Stats from the server replace ours. New levels give drops here, like addXp.
+  applyServerStats(st) {
+    if (!st || typeof st !== 'object') return 0;
+    const d = this.data;
+    const n = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : 0);
+    const before = this.level();
+    Object.assign(d, { xp: n(st.xp), matches: n(st.matches), wins: n(st.wins), goals: n(st.goals), mvps: n(st.mvps), playtime: n(st.playtime) });
+    d.winsByMode = { '1v1': n(st.wins_1v1), '2v2': n(st.wins_2v2), '3v3': n(st.wins_3v3) };
+    d.tot = { saves: n(st.saves), demos: n(st.demos), assists: n(st.assists), hattricks: n(st.hattricks) };
+    d.elo = { '1v1': n(st.elo_1v1) || 1000, '2v2': n(st.elo_2v2) || 1000, '3v3': n(st.elo_3v3) || 1000 };
+    const gained = Math.max(0, this.level() - before);
+    if (gained) d.drops += gained;
+    this.checkUnlocks();
+    this.save();
+    this.changed();
+    return gained;
+  }
+
+  // A match against bots starts: the server notes the time (a result sooner than a match lasts is refused).
+  startMatch(mode) {
+    this.ticket = null;
+    if (!this.serverStats) return;
+    this.ticket = this.online.rpc('bb_start_match', { p_mode: mode }).catch(() => null);
+  }
+
+  // Ranked online match (host): register the players by account. Returns the match id.
+  rankedCreate(mode, players) {
+    return this.online.rpc('bb_online_create', { p_mode: mode, p_players: players });
+  }
+
+  rankedJoin(id) {
+    return this.online.rpc('bb_online_join', { p_match: id });
+  }
+
+  // Report the result, then wait (up to about 100 s) for the other players' reports.
+  async rankedReport(id, report) {
+    let r = await this.online.rpc('bb_online_report', { p_match: id, p: report });
+    for (let i = 0; i < 20 && r && !r.final; i++) {
+      await new Promise((res) => setTimeout(res, 5000));
+      r = await this.online.rpc('bb_online_result', { p_match: id });
+    }
+    return r;
+  }
+
   // End of a match (bots or online). Returns { xp, levels, quests }. `history`: details for the
   // online match history ({ mode, online, team, scoreUs, scoreThem, assists, saves, shots, demos, seconds }).
-  recordMatch({ won, draw, goals, mvp, score, history = null }) {
+  recordMatch({ won, draw, goals, mvp, score, history = null, ranked = null }) {
+    if (this.serverStats) return this.recordOnServer({ won, draw, goals, mvp, score, history, ranked });
     const d = this.data;
     d.matches += 1;
     if (won) d.wins += 1;
@@ -429,20 +500,46 @@ export class Account {
     const xp = score + (won ? 200 : draw ? 100 : 50);
     const levels = this.addXp(xp);
     const quests = [...this.event('matches', 1), ...(won ? this.event('wins', 1) : []), ...(mvp ? this.event('mvp', 1) : [])];
-    if (history && this.mode === 'online' && this.online && this.online.logMatch) {
-      const h = history;
-      const n = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
-      this.online.logMatch({
-        mode: ['1v1', '2v2', '3v3'].includes(h.mode) ? h.mode : '1v1', online: !!h.online, team: h.team ? 1 : 0,
-        won: !!won, draw: !!draw, mvp: !!mvp, score_us: n(h.scoreUs, 99), score_them: n(h.scoreThem, 99),
-        goals: n(goals, 99), assists: n(h.assists, 99), saves: n(h.saves, 99), shots: n(h.shots, 99), demos: n(h.demos, 99),
-        points: n(score, 100000), seconds: n(h.seconds, 7200),
-      }).catch(() => {});
-    }
     const unlocked = this.checkUnlocks();
     this.save();
     this.changed();
     return { xp, levels, quests, unlocked };
+  }
+
+  // Website account: quests count here, everything else is decided by the server. `server` resolves
+  // to { stats, levels, elo: [before, after] | null, void, error } once the server has the result.
+  recordOnServer({ won, draw, goals, mvp, score, history, ranked }) {
+    const xp = score + (won ? 200 : draw ? 100 : 50);
+    const quests = [...this.event('matches', 1), ...(won ? this.event('wins', 1) : []), ...(mvp ? this.event('mvp', 1) : [])];
+    const h = history || {};
+    const report = {
+      goals, assists: h.assists || 0, saves: h.saves || 0, shots: h.shots || 0, demos: h.demos || 0, score, mvp: !!mvp,
+      team: h.team ? 1 : 0, score_us: h.scoreUs || 0, score_them: h.scoreThem || 0,
+    };
+    let server;
+    if (ranked) {
+      // Score as blue - orange, so every player's report can be compared.
+      const blue = h.team ? report.score_them : report.score_us;
+      const orange = h.team ? report.score_us : report.score_them;
+      server = this.rankedReport(ranked, { ...report, score_b: blue, score_o: orange }).then((r) => {
+        const levels = this.applyServerStats(r && r.stats);
+        const elo = r && r.final && !r.void && Number.isFinite(r.elo_after) ? [r.elo_before, r.elo_after] : null;
+        return { levels, elo, void: !!(r && r.void), waiting: !!(r && !r.final) };
+      });
+    } else if (this.ticket) {
+      const ticket = this.ticket;
+      this.ticket = null;
+      server = ticket.then((t) => {
+        if (!t) throw new Error('no ticket');
+        return this.online.rpc('bb_finish_match', { p_ticket: t, p: report });
+      }).then((st) => ({ levels: this.applyServerStats(st) }));
+    } else {
+      server = Promise.reject(new Error('no ticket'));
+    }
+    server = server.catch((e) => ({ error: String((e && e.message) || e) }));
+    this.save();
+    this.changed();
+    return { xp, levels: 0, quests, unlocked: [], server };
   }
 
   // Opens one Sport Drop. Returns { item } or { item: null, xp } when everything is owned.

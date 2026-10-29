@@ -93,7 +93,15 @@ These never come from Sport Drops. Stats count in finished matches (bots or onli
 | Goal Hunter | Title | Score 250 goals |
 | Hat Trick Heroes | Anthem | Score 10 hat tricks |
 
-Reset (R / Back) only works in free play and the Sky Field.
+Reset (R / Back) only works in free play and the Sky Field. Unlimited boost (B) works in free play, the Sky Field and online practice matches.
+
+On the website, stats, achievement items and ratings are decided by the database (`supabase/002_server_stats.sql`): a match against bots is only saved if 285+ seconds passed since it started, per-match numbers are capped (goals can't be more than your team's score), achievement items you haven't earned are removed when your profile is saved, and nobody can write the stats tables directly.
+
+## Ranked, practice and quick chat
+
+- **Ranked** (website): quick play and normal online matches. Elo rating per mode, everyone starts at 1000, K = 32 (team average vs team average). Every player reports the final score; the score most reports agree on counts, a tie between different scores voids the match. Leaving early counts as a loss. Tiers: Bronze, Silver (900), Gold (1050), Platinum (1200), Diamond (1350), Champion (1500).
+- **Practice**: the host picks it in the match lobby. Nothing counts (no rating, stats, XP or quests), unlimited boost allowed.
+- **Quick chat** in online matches: 1 Nice shot!, 2 What a save!, 3 Great pass!, 4 Thanks!, 5 Sorry!, 6 gg (at most 3 messages per 5 s).
 
 ## Controls
 

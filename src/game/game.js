@@ -41,6 +41,7 @@ import { teamRole } from './roles.js';
 import { Online } from '../net/online.js';
 import { NetPlay } from '../net/netplay.js';
 import { bannerCard } from '../ui/playerCard.js';
+import { tierOf } from '../meta/rank.js';
 
 const TICK = 1 / CONFIG.game.tickRate;
 const BOT_NAMES = ['Comet', 'Volt', 'Nyx', 'Pike', 'Echo', 'Rook', 'Ember', 'Halo', 'Quill', 'Sable', 'Drift', 'Juno'];
@@ -327,7 +328,7 @@ export class Game {
       p.car.readState();
       p.prevPos.copy(p.car.pos);
       p.prevQuat.copy(p.car.quat);
-      p.car.infiniteBoost = p.isPlayer ? !!this.infiniteBoost : false;
+      p.car.infiniteBoost = p.isPlayer ? !!this.infiniteBoost && this.boostCheatAllowed() : false;
       if (p.bot) {
         p.bot.state = 'kickoff';
         p.bot.dodge = null;
@@ -388,6 +389,8 @@ export class Game {
 
   startKickoffCountdown() {
     this.audio.init();
+    // A new match against bots: the server notes when it started (results that come too soon are refused).
+    if (this.mode !== 'free' && !this.np) this.account.startMatch(this.mode);
     this.kickoffSetup();
     this.enterState('countdown');
   }
@@ -847,6 +850,29 @@ export class Game {
     box.hidden = false;
   }
 
+  // Website: the server checks the result; show what it says under the score.
+  showServerResult(rw, parts, server, mode, ranked) {
+    const line = (extra) => {
+      rw.textContent = [...parts, ...extra].join('  ·  ');
+    };
+    line([ranked ? 'RATING: WAITING FOR THE OTHER PLAYERS...' : 'SAVING RESULT...']);
+    server.then((r) => {
+      const extra = [];
+      if (r.error) parts = parts.filter((x) => !/ XP$/.test(x)); // no XP when the server did not take the result
+      if (r.error) extra.push(/too short/.test(r.error) ? 'RESULT NOT SAVED (MATCH TOO SHORT)' : 'RESULT NOT SAVED (NO CONNECTION)');
+      if (r.levels) extra.push(`LEVEL UP: +${r.levels} DROP${r.levels > 1 ? 'S' : ''}`);
+      if (ranked && !r.error) {
+        if (r.elo) {
+          const d = r.elo[1] - r.elo[0];
+          extra.push(`${mode} RATING ${r.elo[0]} > ${r.elo[1]} (${d >= 0 ? '+' : ''}${d}) ${tierOf(r.elo[1]).name.toUpperCase()}`);
+        } else if (r.void) extra.push('RANKED RESULT DID NOT COUNT (SCORES DID NOT MATCH)');
+        else if (r.waiting) extra.push('RATING UPDATES WHEN THE OTHER PLAYERS REPORT');
+      }
+      if (!extra.length) extra.push('RESULT SAVED');
+      line(extra);
+    });
+  }
+
   // ------------------------------------------------------------------ online
   // Build the cars for an online match from the host's slot list (same order on every page).
   setupNetMatch(slots, mode, isHost) {
@@ -926,6 +952,15 @@ export class Game {
     this.applyViewLook(false);
     this.infiniteBoost = false;
     this.np = new NetPlay(this, this.online, isHost);
+    this.np.practice = !!this.online.practice;
+    this.np.rankedId = !this.np.practice && this.account.serverStats && this.online.rid ? this.online.rid : null;
+    if (this.np.rankedId) {
+      const np = this.np;
+      this.account.rankedJoin(np.rankedId).catch(() => {
+        if (this.np === np) np.rankedId = null;
+        this.toast('Ranked: could not sign in to this match, it will not count');
+      });
+    }
     this.setupNetMatch(slots, mode, isHost);
     document.body.classList.add('online-match');
     if (isHost) {
@@ -935,7 +970,8 @@ export class Game {
       this.kickoffSetup();
       this.enterState('countdown');
     }
-    this.toast(isHost ? 'Online match: you are the host' : 'Online match started');
+    const kind = this.np.practice ? 'Practice match (nothing counts)' : this.np.rankedId ? 'Ranked match' : 'Online match';
+    this.toast(`${kind}${isHost ? ': you are the host' : ''}`);
   }
 
   netOutgoing() {
@@ -1254,13 +1290,23 @@ export class Game {
       this.audio.play('click');
     }
     if (inp.consumeAction('unlimited')) {
-      this.infiniteBoost = !this.infiniteBoost;
-      this.player.car.infiniteBoost = this.infiniteBoost;
-      this.hud.popup(this.infiniteBoost ? 'UNLIMITED BOOST ON' : 'UNLIMITED BOOST OFF');
-      this.audio.play('click');
+      if (!this.boostCheatAllowed()) {
+        if (this.state === 'play' || this.state === 'countdown') this.hud.popup('UNLIMITED BOOST: PRACTICE ONLY');
+      } else {
+        this.infiniteBoost = !this.infiniteBoost;
+        this.player.car.infiniteBoost = this.infiniteBoost;
+        this.hud.popup(this.infiniteBoost ? 'UNLIMITED BOOST ON' : 'UNLIMITED BOOST OFF');
+        this.audio.play('click');
+      }
     }
     if (this.mode === 'free' && this.state === 'play') {
       for (let k = 1; k <= 4; k++) if (inp.consumeAction(`practice${k}`)) this.practiceBall(k);
+    }
+    // Quick chat in online matches: number keys 1-6.
+    if (this.np && !this.paused) {
+      for (let k = 1; k <= 6; k++) {
+        if (inp.consume(`Digit${k}`) || inp.consume(`Numpad${k}`)) this.np.say(k - 1);
+      }
     }
     if ((inp.consumeAction('reset') || inp.consumePad('back')) && !this.np && (this.state === 'play' || this.state === 'goal')) {
       // Reset only in free play and the Sky Field. In a match it was a free teleport home (a cheap
@@ -1338,6 +1384,11 @@ export class Game {
     this.ballTrail?.clear?.();
     this.hud.popup(label);
     this.audio.play('click');
+  }
+
+  // Unlimited boost: free play, Sky Field and online practice matches only.
+  boostCheatAllowed() {
+    return this.mode === 'free' || !!(this.np && this.np.practice);
   }
 
   // One physics tick.
@@ -1771,7 +1822,8 @@ export class Game {
       const winners = this.players.filter((p) => p.team === w);
       const mvp = winners.sort((a, b) => b.stats.score - a.stats.score)[0];
       let reward = null;
-      if (this.mode !== 'free' && !this.recorded) {
+      const practice = !!(this.np && this.np.practice);
+      if (this.mode !== 'free' && !this.recorded && !practice) {
         this.recorded = true;
         const me = this.player;
         const draw = this.score[0] === this.score[1];
@@ -1781,6 +1833,7 @@ export class Game {
             mode: this.mode, online: !!this.np, team: me.team, scoreUs: this.score[me.team], scoreThem: this.score[1 - me.team],
             assists: me.stats.assists, saves: me.stats.saves, shots: me.stats.shots, demos: me.stats.demos, seconds: this.matchTime || 0,
           },
+          ranked: this.np ? this.np.rankedId : null,
         });
       }
       const rw = document.getElementById('resultReward');
@@ -1792,6 +1845,9 @@ export class Game {
           for (const q of reward.quests) parts.push(`QUEST DONE: ${q.text.toUpperCase()} (+${q.drops} DROP${q.drops > 1 ? 'S' : ''})`);
           for (const it of reward.unlocked || []) parts.push(`UNLOCKED: ${String(it.name).toUpperCase()}`);
           rw.textContent = parts.join('  ·  ');
+          if (reward.server) this.showServerResult(rw, parts, reward.server, this.mode, !!(this.np && this.np.rankedId));
+        } else if (practice) {
+          rw.textContent = 'PRACTICE MATCH: NOTHING COUNTED';
         }
       }
       const rows = [...this.players].sort((a, b) => a.team - b.team || b.stats.score - a.stats.score);

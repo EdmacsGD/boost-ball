@@ -43,6 +43,8 @@ export class Online {
     this.order = []; // host: human peers in join order
     this.want = new Map(); // host: peer -> wanted team
     this.started = false;
+    this.practice = false; // practice match: nothing counts (stats, rating, quests)
+    this.rid = null; // ranked match id on the server (website)
     this.createdAt = 0;
     this.inv = [];
     this.listeners = new Set();
@@ -79,7 +81,7 @@ export class Online {
         const sb = await supabase();
         const { data } = await sb.auth.getSession();
         this.uid = data && data.session ? data.session.user.id : null;
-        room = await createSupabaseRoom(sb, this.uid);
+        room = await createSupabaseRoom(sb, () => (this.game.account.online && this.game.account.online.id) || this.uid);
       }
       if (!room) return;
       this.attach(room);
@@ -117,7 +119,7 @@ export class Online {
     if (!this.room) return;
     const acc = this.game.account;
     const base = { bb: 1, name: acc.data.name, title: acc.loadout.title, icon: acc.loadout.icon, lvl: acc.level(), status: this.status };
-    const patch = { ...base, code: null, mode: null, n: null, max: null, open: null, inv: null, qm: null, qt: null, ...extra };
+    const patch = { ...base, code: null, mode: null, n: null, max: null, open: null, inv: null, qm: null, qt: null, pr: null, ...extra };
     // Send only real changes: our own presence change comes back as a peers update, and re-sending
     // from that handler would loop forever.
     const key = JSON.stringify(patch);
@@ -144,7 +146,7 @@ export class Online {
   openMatches() {
     return this.lobbyPeers
       .filter((p) => !p.sameTab && p.presence && p.presence.bb === 1 && p.presence.status === 'hosting' && p.presence.open && MODES.includes(p.presence.mode))
-      .map((p) => ({ peer: p.peer, code: cleanCode(p.presence.code), mode: p.presence.mode, n: Number(p.presence.n) || 1, max: Number(p.presence.max) || 2, host: cleanText(p.presence.name) || 'PLAYER', guest: p.guest }))
+      .map((p) => ({ peer: p.peer, code: cleanCode(p.presence.code), mode: p.presence.mode, n: Number(p.presence.n) || 1, max: Number(p.presence.max) || 2, host: cleanText(p.presence.name) || 'PLAYER', guest: p.guest, practice: !!p.presence.pr }))
       .filter((m) => m.code.length >= 4 && m.n < m.max);
   }
 
@@ -208,6 +210,8 @@ export class Online {
     if (!this.available) return false;
     await this.leave(true);
     this.mode = MODES.includes(mode) ? mode : '1v1';
+    this.practice = false;
+    this.rid = null;
     this.role = 'host';
     this.code = this.newCode();
     this.inv = inv;
@@ -231,6 +235,8 @@ export class Online {
     this.role = 'client';
     this.code = code;
     this.started = false;
+    this.practice = false;
+    this.rid = null;
     this.status = 'joining';
     this.changed();
     const ok = await this.enterRoom();
@@ -359,15 +365,23 @@ export class Online {
   updateHostLobby() {
     if (this.role !== 'host' || !this.match) return;
     const max = perTeamOf(this.mode) * 2;
-    this.lobbyPresence({ code: this.code, mode: this.mode, n: this.order.length, max, open: !this.auto && !this.started && this.order.length < max, inv: this.inv.length ? this.inv : null });
+    this.lobbyPresence({ code: this.code, mode: this.mode, n: this.order.length, max, open: !this.auto && !this.started && this.order.length < max, inv: this.inv.length ? this.inv : null, pr: this.practice ? 1 : null });
     if (!this.started) {
-      const m = { mode: this.mode, ph: 'lobby', teams: this.teams(), arena: this.game.settings.arena };
+      const m = { mode: this.mode, ph: 'lobby', teams: this.teams(), arena: this.game.settings.arena, practice: this.practice ? 1 : 0 };
       const key = JSON.stringify(m);
       if (key !== this.lastMatchKey) {
         this.lastMatchKey = key;
         this.match.presence({ m }).catch(() => {});
       }
     }
+  }
+
+  // Host, before the start: practice (nothing counts) or a normal / ranked match.
+  setPractice(on) {
+    if (this.role !== 'host' || this.started || this.auto) return;
+    this.practice = !!on;
+    this.updateHostLobby();
+    this.changed();
   }
 
   wantTeam(team) {
@@ -382,8 +396,8 @@ export class Online {
   }
 
   // Host: freeze the line-up and start. Slots: team 0 then team 1, humans first, bots fill.
-  start() {
-    if (this.role !== 'host' || this.started || !this.match) return;
+  async start() {
+    if (this.role !== 'host' || this.started || this.starting || !this.match) return;
     const per = perTeamOf(this.mode);
     const t = this.teams();
     const slots = [];
@@ -395,10 +409,33 @@ export class Online {
         else slots.push({ team, peer: null, bot: bot++ });
       }
     }
+    // Ranked (website): register the players by account so the server can check the result.
+    this.rid = null;
+    if (!this.practice && this.game.account.serverStats) {
+      const players = [];
+      for (const sl of slots) {
+        if (!sl.peer) continue;
+        const p = this.matchPeers.find((x) => x.peer === sl.peer);
+        if (p && p.by) players.push({ id: p.by, team: sl.team });
+      }
+      this.starting = true;
+      this.changed();
+      try {
+        this.rid = await this.game.account.rankedCreate(this.mode, players);
+      } catch (e) {
+        this.rid = null;
+      }
+      this.starting = false;
+      if (!this.match || this.started) return;
+      if (!this.rid) {
+        this.practice = true;
+        this.game.toast('Could not start a ranked match, so this one is practice');
+      }
+    }
     this.started = true;
     this.status = 'match';
     this.slotsWire = slots.map((s) => [s.team, s.peer || '', s.peer ? 0 : 1]);
-    this.match.presence({ m: { mode: this.mode, ph: 'game', arena: this.game.settings.arena, slots: this.slotsWire, seed: Math.floor(Math.random() * 1e9) } }).catch(() => {});
+    this.match.presence({ m: { mode: this.mode, ph: 'game', arena: this.game.settings.arena, slots: this.slotsWire, seed: Math.floor(Math.random() * 1e9), practice: this.practice ? 1 : 0, rid: this.rid } }).catch(() => {});
     this.updateHostLobby();
     this.game.startOnlineMatch(this.buildSlots(this.slotsWire), this.game.settings.arena, this.mode, true);
     this.changed();
@@ -413,6 +450,7 @@ export class Online {
     const m = pr && pr.m;
     if (!m || typeof m !== 'object') return;
     if (MODES.includes(m.mode)) this.mode = m.mode;
+    if (!this.started && m.ph === 'lobby') this.practice = !!m.practice;
     if (m.ph === 'game' && !this.started && Array.isArray(m.slots)) {
       const me = this.myMatchPeer;
       const wire = m.slots.filter((s) => Array.isArray(s)).slice(0, 6);
@@ -423,6 +461,8 @@ export class Online {
       }
       this.started = true;
       this.status = 'match';
+      this.practice = !!m.practice;
+      this.rid = typeof m.rid === 'string' && /^[0-9a-f-]{36}$/.test(m.rid) ? m.rid : null;
       clearTimeout(this.joinTimer);
       this.game.startOnlineMatch(this.buildSlots(wire), typeof m.arena === 'string' ? m.arena : 'aurora', this.mode, false);
     }
