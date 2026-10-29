@@ -111,6 +111,7 @@ export class Account {
 
   async detectSupabase() {
     this.signedIn = false;
+    this.badge = null;
     this.email = '';
     try {
       const sb = await supabase();
@@ -142,6 +143,13 @@ export class Account {
         if (error) throw error;
       };
       this.online = { id: u.id, ref, logMatch };
+      // Our own badge (owner, tester), if the admin gave us one.
+      try {
+        const { data: b } = await sb.from('badges').select('badge').eq('player_id', u.id).maybeSingle();
+        this.badge = b && b.badge ? b.badge : null;
+      } catch (e) {
+        this.badge = null;
+      }
       const snap = await withTimeout(ref.get(), 8000);
       if (snap && snap.exists) this.remote = clean(snap.data());
       return this.online;

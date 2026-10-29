@@ -783,7 +783,7 @@ export class Game {
     if (sp) {
       const lo = this.account.loadout;
       const look = sp.isPlayer
-        ? { name: sp.name, title: lo.title, icon: lo.icon, banner: lo.banner, level: this.account.level() }
+        ? { name: sp.name, title: lo.title, icon: lo.icon, banner: lo.banner, level: this.account.level(), badge: this.account.mode === 'online' ? this.account.badge : null }
         : sp.card || { name: sp.name, title: null, icon: 'ball', banner: 'default', level: null };
       const card = bannerCard({ ...look, sub: `${gi.speedKmh} KM/H${sp.card || sp.isPlayer ? '' : ' · BOT'}` }, `replay ${sp.team ? 'orange' : 'blue'}`);
       box.appendChild(card);

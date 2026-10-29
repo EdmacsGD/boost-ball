@@ -1,7 +1,7 @@
 // Home screen "Players" page: leaderboard (play time, goals, wins), search, and a profile view with
 // the player's match history. Website build only (the data lives in Supabase).
-import { playersAvailable, topPlayers, playerById, playerMatches, formatPlaytime, SORTS } from '../net/players.js';
-import { bannerCard } from './playerCard.js';
+import { playersAvailable, topPlayers, playerById, playerMatches, formatPlaytime, SORTS, loadBadges, badgeOf } from '../net/players.js';
+import { bannerCard, badgePill } from './playerCard.js';
 import { iconSvg } from './icons.js';
 import { item } from '../meta/items.js';
 
@@ -48,7 +48,7 @@ export class PlayersPage {
     this.loading = true;
     this.render();
     try {
-      const rows = await topPlayers(this.sort, this.search);
+      const [rows] = await Promise.all([topPlayers(this.sort, this.search), loadBadges()]);
       if (token !== this.loadToken) return;
       this.rows = rows;
       this.error = '';
@@ -65,7 +65,7 @@ export class PlayersPage {
     this.viewing = { loading: true };
     this.render();
     try {
-      const [profile, matches] = await Promise.all([playerById(id), playerMatches(id)]);
+      const [profile, matches] = await Promise.all([playerById(id), playerMatches(id), loadBadges()]);
       if (token !== this.loadToken) return;
       this.viewing = profile ? { profile, matches } : { error: 'That player was not found.' };
     } catch (e) {
@@ -151,7 +151,11 @@ export class PlayersPage {
       const ic = el('span', 'board-icon');
       ic.innerHTML = iconSvg(item('icon', r.icon) ? r.icon : 'ball');
       const who = el('span', 'board-who');
-      who.append(el('b', '', r.name || 'PLAYER'), el('small', '', `LVL ${r.level || 1} · ${(item('title', r.title) || { name: 'Rookie' }).name.toUpperCase()}`));
+      const nameLine = el('span', 'board-name');
+      nameLine.appendChild(el('b', '', r.name || 'PLAYER'));
+      const pill = badgePill(badgeOf(r.id));
+      if (pill) nameLine.appendChild(pill);
+      who.append(nameLine, el('small', '', `LVL ${r.level || 1} · ${(item('title', r.title) || { name: 'Rookie' }).name.toUpperCase()}`));
       const val = this.sort === 'playtime' ? formatPlaytime(r.playtime) : String(this.sort === 'goals' ? r.goals : r.wins);
       row.append(rank, ic, who, el('span', 'board-val', val));
       row.title = `Open ${r.name || 'PLAYER'}'s profile`;
@@ -178,7 +182,7 @@ export class PlayersPage {
       return;
     }
     const p = v.profile;
-    body.appendChild(bannerCard({ name: p.name, title: p.title, icon: p.icon, banner: p.banner, level: p.level }, 'big'));
+    body.appendChild(bannerCard({ name: p.name, title: p.title, icon: p.icon, banner: p.banner, level: p.level, badge: badgeOf(p.id) }, 'big'));
     const stats = el('div', 'pstats');
     const winRate = p.matches ? `${Math.round((p.wins / p.matches) * 100)}%` : '-';
     for (const [label, value] of [['Matches', p.matches], ['Wins', p.wins], ['Win rate', winRate], ['Goals', p.goals], ['Play time', formatPlaytime(p.playtime)]]) {

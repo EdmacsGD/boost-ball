@@ -472,6 +472,13 @@ export class HomeScreen {
     $('pcXp').style.width = `${((d.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100}%`;
     if (document.activeElement !== $('pcName')) $('pcName').value = d.name;
     $('pcTitle').textContent = itemName(item('title', lo.title)).toUpperCase();
+    const badge = this.game.account.mode === 'online' ? this.game.account.badge : null;
+    const pb = $('pcBadge');
+    pb.hidden = !badge;
+    if (badge) {
+      pb.className = `badge-pill ${badge}`;
+      pb.textContent = badge === 'owner' ? 'Owner' : 'Tester';
+    }
     $('pcIcon').innerHTML = iconSvg(lo.icon);
     $('playerCard').style.background = (item('banner', lo.banner) || item('banner', 'default')).css;
     $('pcMode').textContent = acc.mode === 'online' ? 'ONLINE' : 'GUEST';

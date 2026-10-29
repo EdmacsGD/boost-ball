@@ -15,14 +15,26 @@ export function titleText(id) {
   return (t ? t.name : 'Rookie').toUpperCase();
 }
 
-export function bannerCard({ name, title, icon, banner, level = null, sub = '' }, cls = '') {
+const BADGE_TEXT = { owner: 'Owner', tester: 'Tester' };
+
+// Small badge pill (owner, tester), or null.
+export function badgePill(badge) {
+  if (!BADGE_TEXT[badge]) return null;
+  return el('span', `badge-pill ${badge}`, BADGE_TEXT[badge]);
+}
+
+export function bannerCard({ name, title, icon, banner, level = null, sub = '', badge = null }, cls = '') {
   const card = el('div', `pcard ${cls}`.trim());
   const b = item('banner', banner) || item('banner', 'default');
   card.style.background = b.css;
   const ic = el('span', 'pcard-icon');
   ic.innerHTML = iconSvg(item('icon', icon) ? icon : 'ball'); // fixed SVG from icons.js, never user text
   const text = el('div', 'pcard-text');
-  text.append(el('b', 'pcard-name', String(name || 'PLAYER').slice(0, 16)), el('small', 'pcard-title', title === null ? '' : titleText(title)));
+  const nameRow = el('div', 'pcard-namerow');
+  nameRow.appendChild(el('b', 'pcard-name', String(name || 'PLAYER').slice(0, 16)));
+  const pill = badgePill(badge);
+  if (pill) nameRow.appendChild(pill);
+  text.append(nameRow, el('small', 'pcard-title', title === null ? '' : titleText(title)));
   if (sub) text.appendChild(el('small', 'pcard-sub', sub));
   card.append(ic, text);
   if (level !== null && level !== undefined) {

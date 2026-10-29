@@ -22,6 +22,24 @@ export async function topPlayers(sort = 'playtime', search = '', limit = 100) {
   return data || [];
 }
 
+// Badges (owner, tester) by player id. Only the project admin can hand them out (see the badges
+// table rules), so a badge cannot be copied by taking someone's name.
+export const BADGES = { owner: 'Owner', tester: 'Tester' };
+let badgeCache = null;
+export async function loadBadges(force = false) {
+  if (badgeCache && !force) return badgeCache;
+  try {
+    const sb = await supabase();
+    const { data, error } = await sb.from('badges').select('player_id,badge');
+    if (error) throw error;
+    badgeCache = new Map((data || []).filter((r) => BADGES[r.badge]).map((r) => [r.player_id, r.badge]));
+  } catch (e) {
+    badgeCache = badgeCache || new Map();
+  }
+  return badgeCache;
+}
+export const badgeOf = (id) => (badgeCache && id ? badgeCache.get(id) || null : null);
+
 export async function playerById(id) {
   const sb = await supabase();
   const { data, error } = await sb.from('profiles').select(COLS).eq('id', id).maybeSingle();

@@ -1190,3 +1190,14 @@ body.online-match #restartBtn { display: none; }
 .hist-stats { font-size: 12px; color: var(--ink); white-space: nowrap; }
 .hist-when { font-size: 11px; color: var(--muted); white-space: nowrap; }
 @media (max-width: 560px) { .hist-row { grid-template-columns: 26px 1fr auto; } .hist-when { display: none; } }
+
+/* Badges (owner, tester): only the project admin can give them out */
+.badge-pill { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 3px 7px 2px; font: 800 10px/1 var(--display); font-style: normal; letter-spacing: 0.18em; text-transform: uppercase; vertical-align: middle; white-space: nowrap; border-radius: 2px; }
+.badge-pill.owner { color: #1a0d00; background: linear-gradient(180deg, #ffe08a, #ffb020); box-shadow: 0 0 10px rgba(255, 190, 60, 0.55); }
+.badge-pill.owner::before { content: ""; width: 9px; height: 8px; background: currentColor; clip-path: polygon(0 100%, 0 25%, 25% 55%, 50% 0, 75% 55%, 100% 25%, 100% 100%); }
+.badge-pill.tester { color: #e8f6ff; background: linear-gradient(180deg, #3aa0ff, #1f62d0); }
+.pcard-namerow { display: flex; align-items: center; min-width: 0; }
+.pcard-namerow .pcard-name { min-width: 0; }
+.board-name { display: flex; align-items: center; min-width: 0; }
+.board-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-title .badge-pill { margin-left: 8px; }
