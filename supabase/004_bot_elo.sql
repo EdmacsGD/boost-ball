@@ -1,4 +1,3 @@
--- STATUS: not applied to the database yet (waiting for approval in Supabase).
 -- Bot matches change the rating too, at half weight (K = 16 instead of 32), against a fixed bot
 -- rating per difficulty: Easy 800, Medium 1000, Hard 1250. Elo math keeps farming slow: at 1200,
 -- a win against Easy bots gives +1, against Hard bots +9.

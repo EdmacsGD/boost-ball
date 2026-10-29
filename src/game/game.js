@@ -390,7 +390,7 @@ export class Game {
   startKickoffCountdown() {
     this.audio.init();
     // A new match against bots: the server notes when it started (results that come too soon are refused).
-    if (this.mode !== 'free' && !this.np) this.account.startMatch(this.mode);
+    if (this.mode !== 'free' && !this.np) this.account.startMatch(this.mode, this.difficulty);
     this.kickoffSetup();
     this.enterState('countdown');
   }
@@ -407,6 +407,12 @@ export class Game {
     document.querySelectorAll('#diffGroup button').forEach((b) => b.addEventListener('click', () => {
       this.audio.init();
       this.audio.play('click');
+      // Bot ratings depend on the difficulty, so a change in the middle of a bot match voids it.
+      const running = this.state !== 'home' && this.state !== 'ended' && this.mode !== 'free' && !this.np && !this.recorded;
+      if (running && b.dataset.diff !== this.difficulty && this.account.ticket) {
+        this.account.ticket = null;
+        this.toast('Difficulty changed: this match will not count');
+      }
       this.difficulty = b.dataset.diff;
       this.settings.difficulty = b.dataset.diff;
       saveSettings(this.settings);
@@ -861,12 +867,12 @@ export class Game {
       if (r.error) parts = parts.filter((x) => !/ XP$/.test(x)); // no XP when the server did not take the result
       if (r.error) extra.push(/too short/.test(r.error) ? 'RESULT NOT SAVED (MATCH TOO SHORT)' : 'RESULT NOT SAVED (NO CONNECTION)');
       if (r.levels) extra.push(`LEVEL UP: +${r.levels} DROP${r.levels > 1 ? 'S' : ''}`);
-      if (ranked && !r.error) {
+      if (!r.error) {
         if (r.elo) {
           const d = r.elo[1] - r.elo[0];
           extra.push(`${mode} RATING ${r.elo[0]} > ${r.elo[1]} (${d >= 0 ? '+' : ''}${d}) ${tierOf(r.elo[1]).name.toUpperCase()}`);
-        } else if (r.void) extra.push('RANKED RESULT DID NOT COUNT (SCORES DID NOT MATCH)');
-        else if (r.waiting) extra.push('RATING UPDATES WHEN THE OTHER PLAYERS REPORT');
+        } else if (ranked && r.void) extra.push('RANKED RESULT DID NOT COUNT (SCORES DID NOT MATCH)');
+        else if (ranked && r.waiting) extra.push('RATING UPDATES WHEN THE OTHER PLAYERS REPORT');
       }
       if (!extra.length) extra.push('RESULT SAVED');
       line(extra);

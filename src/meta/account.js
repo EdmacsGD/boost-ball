@@ -459,10 +459,12 @@ export class Account {
   }
 
   // A match against bots starts: the server notes the time (a result sooner than a match lasts is refused).
-  startMatch(mode) {
+  // `diff`: bot difficulty, which sets the bots' rating (Easy 800, Medium 1000, Hard 1250).
+  startMatch(mode, diff = 'medium') {
     this.ticket = null;
     if (!this.serverStats) return;
-    this.ticket = this.online.rpc('bb_start_match', { p_mode: mode }).catch(() => null);
+    const p_diff = ['easy', 'medium', 'hard'].includes(diff) ? diff : 'medium';
+    this.ticket = this.online.rpc('bb_start_match', { p_mode: mode, p_diff }).catch(() => null);
   }
 
   // Ranked online match (host): register the players by account. Returns the match id.
@@ -536,7 +538,10 @@ export class Account {
       server = ticket.then((t) => {
         if (!t) throw new Error('no ticket');
         return this.online.rpc('bb_finish_match', { p_ticket: t, p: report });
-      }).then((st) => ({ levels: this.applyServerStats(st) }));
+      }).then((st) => ({
+        levels: this.applyServerStats(st),
+        elo: st && Number.isFinite(st.elo_after) ? [st.elo_before, st.elo_after] : null,
+      }));
     } else {
       server = Promise.reject(new Error('no ticket'));
     }
