@@ -377,6 +377,7 @@ export const BALL_SKIN_MATERIAL = {
   eight: { emissive: [1, 1, 1], roughness: 0.12, metalness: 0.05, halo: 0xdde6ff },
   globe: { emissive: [1.0, 0.85, 0.5], roughness: 0.55, metalness: 0.0, halo: 0x8ac8ff },
   disco: { emissive: [1, 1, 1], roughness: 0.12, metalness: 1.0, halo: 0xffffff },
+  champion: { emissive: [1.0, 0.85, 0.45], roughness: 0.18, metalness: 0.85, halo: 0xffcf5a },
 };
 
 function hash3(x, y, z) {
@@ -530,6 +531,17 @@ export function makeBallTextures(skin = 'standard') {
           const spark = !gap && hash3(ti, tj, 9) > 0.93 ? 1 : 0;
           [er, eg, eb] = [spark, spark, spark];
           shade = false;
+          break;
+        }
+        case 'champion': {
+          // Gold panels, deep red pentagons with a gold medal in the middle, glowing gold seams.
+          if (bestPent) {
+            [r, g, b] = [120, 18, 30];
+            if (best > 0.9915 || (best > 0.982 && best < 0.985)) [r, g, b] = [250, 210, 110];
+          } else {
+            [r, g, b] = [226, 178, 70];
+          }
+          [er, eg, eb] = [line, line * 0.78, line * 0.35];
           break;
         }
         default:
@@ -785,6 +797,33 @@ function drawDecal(ctx, style, W, H, accent, dark, rand) {
         ctx.stroke();
       }
       ctx.shadowBlur = 0;
+      return true;
+    }
+    case 'hexcore': {
+      // Honeycomb in the accent color with glowing cells scattered through it.
+      const R = 22;
+      const hx = R * Math.sqrt(3);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = accent;
+      for (let row = -1; row * R * 1.5 < H + R; row++) {
+        for (let col = -1; col * hx < W + hx; col++) {
+          const cx = col * hx + (row % 2 ? hx / 2 : 0);
+          const cy = row * R * 1.5;
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) {
+            const a = Math.PI / 6 + (k * Math.PI) / 3;
+            ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+          }
+          ctx.closePath();
+          if (rand() < 0.12) {
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = accent;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+          ctx.stroke();
+        }
+      }
       return true;
     }
     case 'circuit': {

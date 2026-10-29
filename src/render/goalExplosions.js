@@ -626,6 +626,140 @@ function galaxy(fx, pos, tc) {
   });
 }
 
+// Northern lights: three waving curtains of light rise behind the goal and fade.
+function aurora(fx, pos, tc) {
+  const { pale } = palette(tc);
+  const cols = [new THREE.Color(0.25, 1, 0.55), new THREE.Color(0.3, 0.85, 1), new THREE.Color(0.7, 0.4, 1), tc];
+  const dir = fieldDir(pos);
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  fx.flash(pos, 18, 0.6, cols[0]);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 14, 1.0, cols[1], 0.7, 0.9);
+  for (let c = 0; c < 3; c++) {
+    fx.later(c * 0.22, () => {
+      const color = cols[(c + 1) % cols.length];
+      const back = 1.0 + c * 1.4; // in front of the goal so the net does not hide it
+      const n = Math.round(220 * fx.quality.particles) + 30;
+      for (let i = 0; i < n; i++) {
+        const u = (i / n) * 2 - 1;
+        const x = pos.x + side.x * u * 9;
+        const z = pos.z + side.z * u * 9 + dir.z * back + Math.sin(u * 5 + c * 2) * 0.9;
+        const y = pos.y + rnd(-0.5, 0.5);
+        const up = rnd(6, 13) * (1 - Math.abs(u) * 0.45);
+        fx.glow.spawn(x, y, z, 0, up, 0, rnd(1.6, 2.6), rnd(0.6, 1.1), 0.25, Math.random() < 0.2 ? WHITE : color, i % 3 ? cols[3] : pale, 0.7, 0.7, -0.5);
+      }
+    });
+  }
+  burst(fx, pos, 160, 3, 12, 1.4, 0.3, 0.05, () => pick(cols), WHITE, { lift: 0.9, drag: 1.6, grav: 1 });
+  fx.shake = Math.max(fx.shake, 0.6);
+}
+
+// Solar eclipse: a dark disc slides over a blazing corona, a diamond-ring flash, then the blast.
+// Achievement item (150 saves).
+function eclipse(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const dir = fieldDir(pos);
+  const center = pos.clone().add(v.set(0, 2.2, 0)).addScaledVector(dir, 0.5);
+  const sun = new THREE.Color(1, 0.85, 0.5);
+  const R = 2.4;
+  const hold = 0.9;
+  // Corona: particles circling the rim, plus slow rays pushed outward.
+  const n = Math.round(420 * fx.quality.particles) + 40;
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = R * rnd(1.0, 1.25);
+    const ox = Math.cos(a) * r;
+    const oy = Math.sin(a) * r;
+    const px = center.x + side.x * ox;
+    const pz = center.z + side.z * ox;
+    const out = rnd(0.2, 1.6);
+    fx.glow.spawn(px, center.y + oy, pz, side.x * Math.cos(a) * out, Math.sin(a) * out, side.z * Math.cos(a) * out, rnd(hold * 0.8, hold * 1.3), rnd(0.25, 0.6), 0.1, Math.random() < 0.5 ? sun : pale, tc, 1, 0.6, 0);
+  }
+  fx.flash(center, 22, hold, sun);
+  fx.ring(center, dir, R * 0.95, R * 1.4, hold, sun, 0.9, 0.86);
+  // The dark disc, facing the field, slides in from the side and stays.
+  const geo = new THREE.CircleGeometry(R, 48);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x020203, side: THREE.DoubleSide, toneMapped: false });
+  const disc = new THREE.Mesh(geo, mat);
+  disc.lookAt(dir);
+  disc.position.copy(center).addScaledVector(dir, 0.3).addScaledVector(side, R * 1.6);
+  const target = center.clone().addScaledVector(dir, 0.3);
+  fx.temp(disc, hold + 0.12, (dt, age) => {
+    const t = Math.min(1, age / (hold * 0.7));
+    disc.position.lerpVectors(v.copy(center).addScaledVector(dir, 0.3).addScaledVector(side, R * 1.6), target, 1 - (1 - t) ** 3);
+  });
+  fx.later(hold + 0.2, () => {
+    geo.dispose();
+    mat.dispose();
+  });
+  // Diamond ring: one bright point on the rim just before the blast.
+  fx.later(hold * 0.75, () => {
+    const p = center.clone().add(v.set(0, R * 0.95, 0));
+    fx.flash(p, 9, 0.35, WHITE);
+    fx.flash(p, 4, 0.5, sun);
+  });
+  fx.later(hold, () => {
+    fx.flash(center, 40, 0.5, WHITE);
+    fx.fireball(center, tc, sun, 1, 22, 0.6, 'shell', 0);
+    fx.fireball(center, sun, WHITE, 0.6, 6, 0.5, 'plasma', 0);
+    fx.ring(center, dir, R, 28, 0.9, sun, 1, 0.95);
+    fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 22, 0.8, tc, 0.9, 0.93);
+    streakBurst(fx, center, 300, 20, 55, 0.7, () => (Math.random() < 0.5 ? sun : hot));
+    burst(fx, center, 260, 6, 26, 1.4, 0.35, 0.06, () => (Math.random() < 0.4 ? WHITE : sun), tc, { grav: 2 });
+    smokeBurst(fx, pos, 50, 2, 6, 2.5, 1.5, 5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.4);
+    fx.shake = Math.max(fx.shake, 1.7);
+  });
+}
+
+// Thunderdome: a cage of lightning bolts slams down in a ring around the goal, then the dome
+// above it bursts. Achievement item (100 demolitions).
+function thunderdome(fx, pos, tc) {
+  const { hot, pale } = palette(tc);
+  const ground = pos.y > 1 ? pos.y - 1 : 0.1;
+  const bolt = (from, to, size = 0.55) => {
+    let prev = from.clone();
+    const steps = 10;
+    for (let s = 1; s <= steps; s++) {
+      const p = from.clone().lerp(to, s / steps);
+      if (s < steps) p.add(v.set(rnd(-0.6, 0.6), rnd(-0.3, 0.3), rnd(-0.6, 0.6)));
+      for (let d = 0; d < 6; d++) {
+        const q = prev.clone().lerp(p, d / 6);
+        fx.glow.spawn(q.x, q.y, q.z, 0, 0, 0, rnd(0.18, 0.3), size, 0.25, WHITE, pale, 1, 0, 0);
+      }
+      prev = p;
+    }
+    fx.flash(to, 7, 0.2, pale);
+    burst(fx, to, 20, 3, 9, 0.4, 0.2, 0.03, WHITE, tc, { lift: 0.8, grav: 6 });
+  };
+  const top = pos.clone().add(v.set(0, 7, 0));
+  const N = 8;
+  const R = 5.5;
+  for (let i = 0; i < N; i++) {
+    fx.later(i * 0.06, () => {
+      const a = (i / N) * Math.PI * 2;
+      const foot = new THREE.Vector3(pos.x + Math.cos(a) * R, ground, pos.z + Math.sin(a) * R);
+      bolt(top, foot);
+      fx.later(0.12, () => bolt(top, foot, 0.4));
+    });
+  }
+  fx.flash(top, 14, 0.6, pale);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, R, R + 0.4, 0.8, pale, 1, 0.9);
+  // The cage collapses into the middle and the dome blows.
+  fx.later(0.65, () => {
+    fx.flash(pos, 36, 0.45, WHITE);
+    fx.fireball(pos, tc, hot, 1, 20, 0.55, 'shell', 0);
+    fx.fireball(pos, pale, WHITE, 0.5, 6, 0.45, 'plasma', 0.5);
+    fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 26, 0.8, tc, 1, 0.94);
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2;
+      bolt(pos.clone(), pos.clone().add(v.set(Math.cos(a) * 7, rnd(2, 6), Math.sin(a) * 7)), 0.45);
+    }
+    streakBurst(fx, pos, 260, 18, 50, 0.6, () => (Math.random() < 0.5 ? WHITE : hot));
+    smokeBurst(fx, pos, 70, 2, 8, 2.6, 1.5, 5.5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.5);
+    fx.shake = Math.max(fx.shake, 2);
+  });
+}
+
 export const GOAL_EXPLOSIONS = [
   { id: 'classic', name: 'Classic', blurb: 'Fireball, shock ring and embers.', fn: classic },
   { id: 'fireworks', name: 'Fireworks', blurb: 'Rockets that burst over the goal.', fn: fireworks },
@@ -648,6 +782,9 @@ export const GOAL_EXPLOSIONS = [
   { id: 'heartbeat', name: 'Heartbeat', blurb: 'Two heart-shaped pulses.', fn: heartbeat },
   { id: 'phoenix', name: 'Phoenix', blurb: 'A fire bird spreads its wings.', fn: phoenix },
   { id: 'galaxy', name: 'Galaxy', blurb: 'A spinning spiral of stars, then a flash.', fn: galaxy },
+  { id: 'aurora', name: 'Aurora', blurb: 'Curtains of northern lights rise and wave.', fn: aurora },
+  { id: 'eclipse', name: 'Eclipse', blurb: 'A dark moon covers a blazing sun, then it blows.', fn: eclipse },
+  { id: 'thunderdome', name: 'Thunderdome', blurb: 'A cage of lightning slams down around the goal.', fn: thunderdome },
 ];
 
 export const EXPLOSION_IDS = GOAL_EXPLOSIONS.map((e) => e.id);

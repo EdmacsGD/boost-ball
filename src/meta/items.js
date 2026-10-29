@@ -1,12 +1,17 @@
-// Every cosmetic item in the game. Starter items everyone owns; the rest come from Sport Drops.
+// Every cosmetic item in the game. Starter items everyone owns; most of the rest come from Sport Drops.
 // Rarity decides how often a drop gives an item. All designs and names are original.
+// Achievement items (`unlock`) never drop: you earn them by reaching a lifetime stat in matches.
 
 export const RARITY = {
   common: { name: 'Common', color: '#9fb2c8', weight: 55 },
   rare: { name: 'Rare', color: '#4aa3ff', weight: 28 },
   epic: { name: 'Epic', color: '#b46bff', weight: 13 },
   legendary: { name: 'Legendary', color: '#ffb020', weight: 4 },
+  exclusive: { name: 'Achievement', color: '#ff4f6d', weight: 0 },
 };
+
+// Lifetime stats that achievement items need. `stat` is read by Account.stat().
+const U = (stat, goal, text) => ({ unlock: { stat, goal, text } });
 
 export const CATEGORIES = [
   { id: 'car', name: 'Cars', slot: 'car' },
@@ -26,7 +31,7 @@ const STARTER_CARS = ['strider', 'bulldog', 'viper', 'hornet', 'manta', 'comet',
 const STARTER_EXPLOSIONS = ['classic', 'fireworks', 'supernova', 'shockwave', 'inferno', 'frost', 'lightning', 'blackhole', 'confetti', 'geyser', 'rainbow', 'voxel', 'starburst', 'meteor', 'vortex'];
 
 const list = [];
-const add = (cat, id, name, rarity, data = {}, starter = false) => list.push({ cat, id, name, rarity, starter, ...data });
+const add = (cat, id, name, rarity, data = {}, starter = false) => list.push({ cat, id, name, rarity: data.unlock ? 'exclusive' : rarity, starter, ...data });
 
 // Cars: id matches the design id in carDesigns.js.
 for (const id of STARTER_CARS) add('car', id, id, 'common', {}, true);
@@ -36,6 +41,12 @@ add('car', 'brick', 'Brick', 'rare');
 add('car', 'stingray', 'Stingray', 'epic');
 add('car', 'tempest', 'Tempest', 'epic');
 add('car', 'orbit', 'Orbit', 'legendary');
+add('car', 'boxer', 'Boxer', 'common');
+add('car', 'buzz', 'Buzz', 'rare');
+add('car', 'lancer', 'Lancer', 'epic');
+add('car', 'titan', 'Titan', '', U('wins1v1', 50, 'Win 50 1v1 matches'));
+add('car', 'phantom', 'Phantom', '', U('goals', 500, 'Score 500 goals in matches'));
+add('car', 'monarch', 'Monarch', '', U('wins', 100, 'Win 100 matches'));
 
 // Goal explosions: id matches goalExplosions.js.
 for (const id of STARTER_EXPLOSIONS) add('explosion', id, id, 'common', {}, true);
@@ -45,6 +56,9 @@ add('explosion', 'cometshower', 'Comet Shower', 'rare');
 add('explosion', 'heartbeat', 'Heartbeat', 'rare');
 add('explosion', 'phoenix', 'Phoenix', 'epic');
 add('explosion', 'galaxy', 'Galaxy', 'legendary');
+add('explosion', 'aurora', 'Aurora', 'epic');
+add('explosion', 'eclipse', 'Eclipse', '', U('saves', 150, 'Make 150 saves in matches'));
+add('explosion', 'thunderdome', 'Thunderdome', '', U('demos', 100, 'Demolish 100 cars in matches'));
 
 // Boosts: flame colors (hot core, middle, tail) and particle colors.
 add('boost', 'standard', 'Standard', 'common', { hot: 0xfff2d8, mid: 0xff8c26, tail: 0xe62e0d, spark: 0xffbf59 }, true);
@@ -56,6 +70,7 @@ add('boost', 'plasma', 'Plasma', 'rare', { hot: 0xfff0fb, mid: 0xff4fd8, tail: 0
 add('boost', 'gold', 'Gold Rush', 'epic', { hot: 0xffffff, mid: 0xffd04a, tail: 0xb87a10, spark: 0xffe28a });
 add('boost', 'shadow', 'Shadow', 'epic', { hot: 0xd8c8ff, mid: 0x4a1a8a, tail: 0x0a0414, spark: 0x8a5cff, dark: true });
 add('boost', 'prism', 'Prism', 'legendary', { hot: 0xffffff, mid: 0xff4040, tail: 0x4040ff, spark: 0xffffff, rainbow: true });
+add('boost', 'afterburner', 'Afterburner', '', { hot: 0xffffff, mid: 0x5ad8ff, tail: 0xff5a1a, spark: 0xffe0a0, ...U('hours', 10, 'Play for 10 hours') });
 
 // Ball skins (textures.js makeBallTextures).
 add('ball', 'standard', 'Standard', 'common', {}, true);
@@ -66,6 +81,7 @@ add('ball', 'globe', 'Globe', 'rare');
 add('ball', 'lava', 'Lava', 'epic');
 add('ball', 'golden', 'Golden', 'epic');
 add('ball', 'disco', 'Disco', 'legendary');
+add('ball', 'champion', 'Champion', '', U('mvps', 50, 'Be the MVP 50 times'));
 
 // Paint colors: the body shade for each team (blue team, orange team). Glow parts keep the team color.
 add('paint', 'team', 'Team', 'common', { colors: null }, true);
@@ -75,6 +91,7 @@ add('paint', 'teal', 'Teal', 'rare', { colors: [0x0fa3a3, 0xff9a1a] });
 add('paint', 'royal', 'Royal', 'rare', { colors: [0x5a2ad6, 0xd61a3c] });
 add('paint', 'frost', 'Frost', 'epic', { colors: [0xcfe6ff, 0xffd9c2] });
 add('paint', 'shadow', 'Shadow', 'epic', { colors: [0x10182c, 0x2a1408] });
+add('paint', 'molten', 'Molten', '', { colors: [0x1a0a3a, 0x3a0a04], ...U('wins2v2', 25, 'Win 25 2v2 matches') });
 
 // Paint finishes: material settings plus an optional texture pattern.
 add('finish', 'gloss', 'Gloss', 'common', { mat: { roughness: 0.32, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.06 } }, true);
@@ -84,6 +101,7 @@ add('finish', 'carbon', 'Carbon Weave', 'rare', { mat: { roughness: 0.38, metaln
 add('finish', 'pearl', 'Pearl', 'rare', { mat: { roughness: 0.28, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 1, iridescenceIOR: 1.6 } });
 add('finish', 'glitter', 'Glitter', 'epic', { mat: { roughness: 0.3, metalness: 0.65, clearcoat: 1, clearcoatRoughness: 0.08 }, pattern: 'glitter' });
 add('finish', 'chrome', 'Chrome', 'legendary', { mat: { roughness: 0.06, metalness: 1, clearcoat: 1, clearcoatRoughness: 0.03 } });
+add('finish', 'spectrum', 'Spectrum Chrome', '', { mat: { roughness: 0.08, metalness: 1, clearcoat: 1, clearcoatRoughness: 0.03, iridescence: 1, iridescenceIOR: 1.9 }, ...U('wins3v3', 25, 'Win 25 3v3 matches') });
 
 // Decals: livery styles drawn in the accent color (textures.js makeLiveryTexture).
 add('decal', 'default', 'Default', 'common', {}, true);
@@ -94,6 +112,7 @@ add('decal', 'flames', 'Flames', 'rare');
 add('decal', 'tiger', 'Tiger', 'rare');
 add('decal', 'lightning', 'Lightning', 'epic');
 add('decal', 'circuit', 'Circuit', 'epic');
+add('decal', 'hexcore', 'Hex Core', '', U('assists', 100, 'Get 100 assists in matches'));
 
 // Player icons (drawn as SVG, see icons.js).
 add('icon', 'ball', 'Ball', 'common', {}, true);
@@ -104,6 +123,7 @@ add('icon', 'rocket', 'Rocket', 'rare');
 add('icon', 'shield', 'Shield', 'rare');
 add('icon', 'wings', 'Wings', 'epic');
 add('icon', 'crown', 'Crown', 'legendary');
+add('icon', 'trophy', 'Trophy', '', U('level', 20, 'Reach level 20'));
 
 // Banners (CSS backgrounds for the player card).
 add('banner', 'default', 'Default', 'common', { css: 'linear-gradient(90deg, rgba(8, 13, 24, 0.92), rgba(8, 13, 24, 0.72))' }, true);
@@ -114,6 +134,7 @@ add('banner', 'aurora', 'Aurora', 'rare', { css: 'linear-gradient(100deg, #06121
 add('banner', 'grid', 'Neon Grid', 'epic', { css: 'linear-gradient(rgba(255, 79, 216, 0.35) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(95, 240, 255, 0.35) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(180deg, #14061f, #2a0a3a)' });
 add('banner', 'lava', 'Lava', 'epic', { css: 'radial-gradient(circle at 20% 80%, #ffb020 0, transparent 30%), radial-gradient(circle at 75% 30%, #ff4a1a 0, transparent 35%), linear-gradient(90deg, #2a0804, #5a1206)' });
 add('banner', 'galaxy', 'Galaxy', 'legendary', { css: 'radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 60% 70%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 20%, #fff, transparent), radial-gradient(1px 1px at 40% 85%, #fff, transparent), radial-gradient(ellipse at 70% 50%, rgba(180, 80, 255, 0.55), transparent 60%), linear-gradient(90deg, #05030f, #160a3a)' });
+add('banner', 'halloffame', 'Hall of Fame', '', { css: 'repeating-linear-gradient(90deg, rgba(255, 210, 120, 0.18) 0 2px, transparent 2px 22px), radial-gradient(ellipse at 50% 120%, rgba(255, 200, 80, 0.55), transparent 60%), linear-gradient(90deg, #1a1204, #3a2608 50%, #1a1204)', ...U('matches', 250, 'Play 250 matches') });
 
 // Titles: text shown under your name.
 add('title', 'rookie', 'Rookie', 'common', {}, true);
@@ -124,6 +145,8 @@ add('title', 'flipwizard', 'Flip Wizard', 'rare');
 add('title', 'nightdriver', 'Night Driver', 'rare');
 add('title', 'aerialace', 'Aerial Ace', 'epic');
 add('title', 'legend', 'Legend', 'legendary');
+add('title', 'champion', 'Champion', '', U('wins', 50, 'Win 50 matches'));
+add('title', 'goalhunter', 'Goal Hunter', '', U('goals', 250, 'Score 250 goals in matches'));
 
 // Anthems: the tune that plays when you score (audio/anthems.js). Uploaded songs are not items;
 // they live in the browser and are equipped as 'custom:<id>'.
@@ -137,6 +160,7 @@ add('anthem', 'victory', 'Victory Lap', 'rare');
 add('anthem', 'midnight', 'Midnight Run', 'epic');
 add('anthem', 'overdrive', 'Overdrive', 'epic');
 add('anthem', 'golden', 'Golden Hour', 'legendary');
+add('anthem', 'hattrick', 'Hat Trick Heroes', '', U('hattricks', 10, 'Score 10 hat tricks'));
 
 export const ITEMS = list;
 
@@ -146,7 +170,10 @@ const byKey = new Map(list.map((it) => [key(it.cat, it.id), it]));
 export const item = (cat, id) => byKey.get(key(cat, id)) || null;
 export const itemsIn = (cat) => list.filter((it) => it.cat === cat);
 export const isCustomAnthem = (id) => typeof id === 'string' && /^custom:[a-z0-9]{1,24}$/.test(id);
-export const DROP_ITEMS = list.filter((it) => !it.starter);
+export const DROP_ITEMS = list.filter((it) => !it.starter && !it.unlock);
+export const UNLOCK_ITEMS = list.filter((it) => it.unlock);
+// Bots and random picks use only items anyone can get, so achievement items stay special.
+export const isExclusive = (cat, id) => !!(item(cat, id) || {}).unlock;
 
 export const DEFAULT_LOADOUT = {
   car: 'strider', accent: 'white', paint: 'team', finish: 'gloss', decal: 'default',

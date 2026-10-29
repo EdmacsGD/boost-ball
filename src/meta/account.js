@@ -5,7 +5,7 @@
 //   Only works when the game is opened from its claude.ai link by someone signed in who may save
 //   there (the owner, or people given edit access). The claude.ai sign-in is the login.
 // - guest: this browser's local storage. Works everywhere, offline file included.
-import { DEFAULT_LOADOUT, CATEGORIES, item, key, rollDrop, isCustomAnthem } from './items.js';
+import { UNLOCK_ITEMS, DEFAULT_LOADOUT, CATEGORIES, item, key, rollDrop, isCustomAnthem } from './items.js';
 import { fillQuests, newQuest, questInfo, questText } from './quests.js';
 import { backendKind, supabase } from '../net/backend.js';
 
@@ -24,6 +24,8 @@ function freshData(name) {
     goals: 0,
     mvps: 0,
     playtime: 0, // seconds played (matches, training, Sky Field)
+    winsByMode: { '1v1': 0, '2v2': 0, '3v3': 0 },
+    tot: { saves: 0, demos: 0, assists: 0, hattricks: 0 }, // lifetime match totals for achievement items
     drops: WELCOME_DROPS,
     opened: 0,
     owned: [],
@@ -43,6 +45,8 @@ function clean(d) {
     created: num(d.created, f.created),
     xp: num(d.xp), matches: num(d.matches), wins: num(d.wins), goals: num(d.goals), mvps: num(d.mvps), playtime: num(d.playtime),
     drops: num(d.drops, WELCOME_DROPS), opened: num(d.opened),
+    winsByMode: Object.fromEntries(Object.keys(f.winsByMode).map((m) => [m, num(d.winsByMode && d.winsByMode[m])])),
+    tot: Object.fromEntries(Object.keys(f.tot).map((k) => [k, num(d.tot && d.tot[k])])),
     owned: Array.isArray(d.owned) ? d.owned.filter((k) => typeof k === 'string').slice(0, 500) : [],
     loadout: { ...DEFAULT_LOADOUT },
     quests: fillQuests(Array.isArray(d.quests) ? d.quests.filter((q) => q && typeof q.type === 'string').map((q) => ({ id: String(q.id || ''), type: q.type, goal: num(q.goal, 1) || 1, progress: num(q.progress), drops: num(q.drops, 1) || 1 })) : []),
@@ -369,8 +373,41 @@ export class Account {
     if (!this.lastPlaySave) this.lastPlaySave = now;
     if (now - this.lastPlaySave > 30000) {
       this.lastPlaySave = now;
+      this.checkUnlocks();
       this.save();
     }
+  }
+
+  // Lifetime stat used by achievement items (items.js `unlock.stat`).
+  stat(name) {
+    const d = this.data;
+    switch (name) {
+      case 'wins1v1': return d.winsByMode['1v1'] || 0;
+      case 'wins2v2': return d.winsByMode['2v2'] || 0;
+      case 'wins3v3': return d.winsByMode['3v3'] || 0;
+      case 'hours': return Math.floor((d.playtime || 0) / 3600);
+      case 'level': return this.level();
+      case 'goals': case 'wins': case 'matches': case 'mvps': return d[name] || 0;
+      default: return (d.tot && d.tot[name]) || 0;
+    }
+  }
+
+  // Gives every achievement item whose goal is reached. Returns the new ones and tells onUnlock.
+  checkUnlocks() {
+    if (!this.mode) return [];
+    const got = [];
+    for (const it of UNLOCK_ITEMS) {
+      const k = key(it.cat, it.id);
+      if (this.data.owned.includes(k) || this.stat(it.unlock.stat) < it.unlock.goal) continue;
+      this.data.owned.push(k);
+      got.push(it);
+    }
+    if (got.length) {
+      this.save();
+      this.changed();
+      if (this.onUnlock) this.onUnlock(got);
+    }
+    return got;
   }
 
   // End of a match (bots or online). Returns { xp, levels, quests }. `history`: details for the
@@ -381,6 +418,14 @@ export class Account {
     if (won) d.wins += 1;
     d.goals += goals;
     if (mvp) d.mvps += 1;
+    if (history) {
+      const n = (v) => Math.max(0, Math.min(99, Math.round(Number(v) || 0)));
+      if (won && d.winsByMode[history.mode] !== undefined) d.winsByMode[history.mode] += 1;
+      d.tot.saves += n(history.saves);
+      d.tot.demos += n(history.demos);
+      d.tot.assists += n(history.assists);
+      if (goals >= 3) d.tot.hattricks += 1;
+    }
     const xp = score + (won ? 200 : draw ? 100 : 50);
     const levels = this.addXp(xp);
     const quests = [...this.event('matches', 1), ...(won ? this.event('wins', 1) : []), ...(mvp ? this.event('mvp', 1) : [])];
@@ -394,9 +439,10 @@ export class Account {
         points: n(score, 100000), seconds: n(h.seconds, 7200),
       }).catch(() => {});
     }
+    const unlocked = this.checkUnlocks();
     this.save();
     this.changed();
-    return { xp, levels, quests };
+    return { xp, levels, quests, unlocked };
   }
 
   // Opens one Sport Drop. Returns { item } or { item: null, xp } when everything is owned.

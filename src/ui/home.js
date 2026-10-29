@@ -3,7 +3,7 @@
 import { CONFIG } from '../config.js';
 import { DESIGNS, CAR_LIST } from '../render/carDesigns.js';
 import { GOAL_EXPLOSIONS } from '../render/goalExplosions.js';
-import { ITEMS, RARITY, CATEGORIES, item, itemsIn, key } from '../meta/items.js';
+import { ITEMS, RARITY, CATEGORIES, UNLOCK_ITEMS, item, itemsIn, key } from '../meta/items.js';
 import { questText, questInfo } from '../meta/quests.js';
 import { XP_PER_LEVEL } from '../meta/account.js';
 import { iconSvg } from './icons.js';
@@ -37,6 +37,7 @@ const BALL_SWATCH = {
   lava: 'radial-gradient(circle at 35% 30%, #ff9a3a, #5a1a0a 45%, #1a0804 75%)',
   golden: 'radial-gradient(circle at 35% 30%, #fff1b8, #e8ba56 45%, #5c3e16)',
   disco: 'repeating-conic-gradient(#ddd 0 10deg, #777 0 20deg)',
+  champion: 'radial-gradient(circle at 35% 30%, #fff6d0 0 8%, transparent 9%), repeating-conic-gradient(#f4c64a 0 30deg, #8a1f2a 0 60deg)',
 };
 
 export function itemName(it) {
@@ -70,6 +71,7 @@ export function itemSwatch(it, team = 0) {
         gloss: 'linear-gradient(135deg, #2a5fbf, #8ab6ff 45%, #2a5fbf 55%)', matte: '#2f4a78', metallic: 'linear-gradient(135deg, #24467e, #b6cff2 50%, #24467e)',
         carbon: 'repeating-linear-gradient(45deg, #1a1c22 0 4px, #2c3038 4px 8px)', pearl: 'linear-gradient(135deg, #e8f0ff, #ffd8f0 40%, #d8fff4 70%, #e8f0ff)',
         glitter: 'radial-gradient(#fff 1px, transparent 1.5px) 0 0 / 6px 6px, #3a5aa8', chrome: 'linear-gradient(180deg, #f4f7fb, #6c7684 48%, #e4e9ef 52%, #8c96a4)',
+        spectrum: 'linear-gradient(135deg, #ff6ad5, #c774e8 25%, #8ad0ff 50%, #94ffb0 75%, #ffe27a)',
       }[it.id];
       el.style.background = f || '#555';
       break;
@@ -266,10 +268,18 @@ export class HomeScreen {
         const n = document.createElement('b');
         n.textContent = cat === 'title' ? itemName(it).toUpperCase() : itemName(it);
         const sm = document.createElement('small');
-        sm.textContent = own ? itemBlurb(it) || (it.starter ? 'Starter' : RARITY[it.rarity].name) : `${RARITY[it.rarity].name} · from drops`;
+        const un = it.unlock;
+        const prog = un ? `${Math.min(un.goal, acc.stat(un.stat))}/${un.goal}` : '';
+        sm.textContent = own ? itemBlurb(it) || (it.starter ? 'Starter' : RARITY[it.rarity].name) : un ? `${un.text} · ${prog}` : `${RARITY[it.rarity].name} · from drops`;
         t.append(n, sm);
+        if (un && !own) {
+          const bar = document.createElement('i');
+          bar.className = 'unlock-bar';
+          bar.style.setProperty('--p', `${Math.min(1, acc.stat(un.stat) / un.goal) * 100}%`);
+          t.appendChild(bar);
+        }
         b.appendChild(t);
-        b.title = own ? itemName(it) : `${itemName(it)}: get it from Sport Drops`;
+        b.title = own ? itemName(it) : un ? `${itemName(it)}: ${un.text} (${prog}). Never in drops.` : `${itemName(it)}: get it from Sport Drops`;
         b.addEventListener('click', this.click(() => {
           if (!own) return;
           this.game.equip(slot, it.id);
@@ -375,7 +385,7 @@ export class HomeScreen {
     const col = $('collection');
     col.textContent = '';
     for (const c of CATEGORIES) {
-      const items = itemsIn(c.id).filter((it) => !it.starter);
+      const items = itemsIn(c.id).filter((it) => !it.starter && !it.unlock);
       const owned = items.filter((it) => acc.data.owned.includes(key(c.id, it.id))).length;
       const row = document.createElement('div');
       row.className = 'col-row';
@@ -390,6 +400,31 @@ export class HomeScreen {
       v.textContent = `${owned}/${items.length}`;
       row.append(n, bar, v);
       col.appendChild(row);
+    }
+    // Achievement items: earned from lifetime match stats, listed with progress.
+    const ach = $('achievements');
+    ach.textContent = '';
+    for (const it of UNLOCK_ITEMS) {
+      const un = it.unlock;
+      const have = acc.owns(it.cat, it.id);
+      const val = Math.min(un.goal, acc.stat(un.stat));
+      const row = document.createElement('div');
+      row.className = `ach-row${have ? ' done' : ''}`;
+      const n = document.createElement('span');
+      const nb = document.createElement('b');
+      nb.textContent = it.cat === 'title' ? itemName(it).toUpperCase() : itemName(it);
+      const ns = document.createElement('small');
+      ns.textContent = `${CATEGORIES.find((c) => c.id === it.cat).name.replace(/s$/, '')} · ${un.text}`;
+      n.append(nb, ns);
+      const bar = document.createElement('div');
+      bar.className = 'pc-xp';
+      const fill = document.createElement('i');
+      fill.style.width = `${(val / un.goal) * 100}%`;
+      bar.appendChild(fill);
+      const v = document.createElement('b');
+      v.textContent = have ? 'DONE' : `${val}/${un.goal}`;
+      row.append(n, bar, v);
+      ach.appendChild(row);
     }
   }
 

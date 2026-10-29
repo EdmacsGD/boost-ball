@@ -20,8 +20,12 @@ import { AudioEngine } from '../audio/audio.js';
 import { HUD } from '../ui/hud.js';
 import { setupBindings } from '../ui/bindings.js';
 import { EXPLOSION_IDS } from '../render/goalExplosions.js';
+
+// Bots only use items anyone can get, so achievement items stay special.
+const BOT_CARS = CAR_IDS.filter((id) => !isExclusive('car', id));
+const BOT_EXPLOSIONS = EXPLOSION_IDS.filter((id) => !isExclusive('explosion', id));
 import { Account } from '../meta/account.js';
-import { item, itemsIn } from '../meta/items.js';
+import { item, itemsIn, isExclusive } from '../meta/items.js';
 import { LoginScreen } from '../ui/login.js';
 import { PadNav } from '../ui/padnav.js';
 
@@ -251,9 +255,9 @@ export class Game {
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
     const lo = this.account.loadout;
     const playerCar = DESIGNS[lo.car] && this.account.owns('car', lo.car) ? lo.car : 'strider';
-    const boosts = itemsIn('boost');
+    const boosts = itemsIn('boost').filter((it) => !it.unlock);
     // Bots drive a shuffled mix of the other cars, each with a random accent.
-    const pool = CAR_IDS.filter((id) => id !== playerCar).sort(() => Math.random() - 0.5);
+    const pool = CAR_IDS.filter((id) => id !== playerCar && !isExclusive('car', id)).sort(() => Math.random() - 0.5);
     const botCar = (i) => pool[i % pool.length];
     const botAccent = () => CONFIG.accents[Math.floor(Math.random() * CONFIG.accents.length)].hex;
     this.addPlayer(0, this.account.data.name, true, 7, playerCar, this.accentHex(), this.cosmetics(lo, 0));
@@ -311,7 +315,7 @@ export class Game {
       scrapeTimer: 0, wasSupersonic: false,
     };
     // Goal explosion: yours from the garage, a random one for each bot.
-    p.explosion = isPlayer ? this.account.loadout.explosion : EXPLOSION_IDS[Math.floor(Math.random() * EXPLOSION_IDS.length)];
+    p.explosion = isPlayer ? this.account.loadout.explosion : BOT_EXPLOSIONS[Math.floor(Math.random() * BOT_EXPLOSIONS.length)];
     this.players.push(p);
     return p;
   }
@@ -634,6 +638,17 @@ export class Game {
 
   // After logging in or picking guest: rebuild the cars with the account's items.
   onLogin() {
+    // Achievement items: a message when one is earned (end of a match, play time, or right at login
+    // for stats reached before these items existed).
+    this.account.onUnlock = (items) => {
+      for (const it of items) {
+        const text = `UNLOCKED: ${String(it.name).toUpperCase()}`;
+        if (this.state === 'play' || this.state === 'goal') this.hud.popup(text);
+        else this.toast(`${text} (${it.unlock.text})`);
+      }
+      this.audio.play('padBig');
+    };
+    this.account.checkUnlocks();
     this.setupMatch(this.settings.mode, this.settings.difficulty);
     if (this.state === 'home') {
       this.previewCar();
@@ -806,7 +821,7 @@ export class Game {
     this.difficulty = 'medium';
     const lo = this.account.loadout;
     const myCar = DESIGNS[lo.car] && this.account.owns('car', lo.car) ? lo.car : 'strider';
-    const boosts = itemsIn('boost');
+    const boosts = itemsIn('boost').filter((it) => !it.unlock);
     let botN = 0;
     let me = null;
     for (const sl of slots) {
@@ -833,7 +848,7 @@ export class Game {
       } else {
         // Bot: the host drives it; everyone uses the same name and car for it.
         const name = BOT_NAMES[(botN * 5 + 3) % BOT_NAMES.length];
-        const carId = CAR_IDS[(botN * 7 + 2) % CAR_IDS.length];
+        const carId = BOT_CARS[(botN * 7 + 2) % BOT_CARS.length];
         botN++;
         p = this.addPlayer(sl.team, name, false, number, carId, 0xffffff, { boost: boosts[botN % boosts.length] });
         p.isBotSlot = true;
@@ -1207,16 +1222,12 @@ export class Game {
       for (let k = 1; k <= 4; k++) if (inp.consumeAction(`practice${k}`)) this.practiceBall(k);
     }
     if ((inp.consumeAction('reset') || inp.consumePad('back')) && !this.np && (this.state === 'play' || this.state === 'goal')) {
+      // Reset only in free play and the Sky Field. In a match it was a free teleport home (a cheap
+      // save), so matches have no reset at all.
       if (this.mode === 'free') {
         this.kickoffSetup();
         this.enterState('play');
         this.sim.freezeCars = false;
-      } else {
-        this.sim.respawnCar(this.player.car);
-        this.player.car.infiniteBoost = !!this.infiniteBoost;
-        this.player.prevPos.copy(this.player.car.pos);
-        this.player.prevQuat.copy(this.player.car.quat);
-        this.sim.pw.syncQueries();
       }
     }
     if (this.state === 'replay' && !(this.np && this.np.client) && this.stateTime > 0.4 && (inp.consume('Space') || inp.consumeAction('jump') || inp.consume('Enter') || inp.consumePad('a'))) {
@@ -1738,6 +1749,7 @@ export class Game {
           const parts = [`+${reward.xp} XP`];
           if (reward.levels) parts.push(`LEVEL UP: +${reward.levels} DROP${reward.levels > 1 ? 'S' : ''}`);
           for (const q of reward.quests) parts.push(`QUEST DONE: ${q.text.toUpperCase()} (+${q.drops} DROP${q.drops > 1 ? 'S' : ''})`);
+          for (const it of reward.unlocked || []) parts.push(`UNLOCKED: ${String(it.name).toUpperCase()}`);
           rw.textContent = parts.join('  ·  ');
         }
       }

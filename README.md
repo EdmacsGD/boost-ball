@@ -71,6 +71,30 @@ npm test         # physics checks against reference numbers
   level on walls, lets high balls ride up the frame and swings under the car for them, and eases in
   and out when toggled. Settings: FOV, distance, height, angle, stiffness, transition speed.
 
+## Achievement items
+
+These never come from Sport Drops. Stats count in finished matches (bots or online), not free play.
+
+| Item | Type | How to get it |
+| --- | --- | --- |
+| Titan | Car | Win 50 1v1 matches |
+| Phantom | Car | Score 500 goals |
+| Monarch | Car | Win 100 matches |
+| Eclipse | Goal explosion | Make 150 saves |
+| Thunderdome | Goal explosion | Demolish 100 cars |
+| Afterburner | Boost | Play for 10 hours |
+| Champion | Ball | Be the MVP 50 times |
+| Molten | Paint | Win 25 2v2 matches |
+| Spectrum Chrome | Finish | Win 25 3v3 matches |
+| Hex Core | Decal | Get 100 assists |
+| Trophy | Icon | Reach level 20 |
+| Hall of Fame | Banner | Play 250 matches |
+| Champion | Title | Win 50 matches |
+| Goal Hunter | Title | Score 250 goals |
+| Hat Trick Heroes | Anthem | Score 10 hat tricks |
+
+Reset (R / Back) only works in free play and the Sky Field.
+
 ## Controls
 
 Every keyboard and mouse control can be changed in Controls: click a box, then press a key or mouse

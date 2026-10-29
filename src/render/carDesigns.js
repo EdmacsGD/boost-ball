@@ -865,6 +865,313 @@ export const DESIGNS = {
       k.cyl(0.05, 0.05, 0.02, [-0.6, 0.02, 0], 'glow', { axis: 'x' });
     },
   },
+  // ------------------------------------------------------------------ drop cars added later
+  // 17. Boxer (standard): boxy retro sedan with square lamps and chrome bumpers.
+  boxer: {
+    name: 'Boxer',
+    hitbox: 'standard',
+    blurb: 'Boxy retro sedan with square headlamps, chrome bumpers and a light bar.',
+    span: [-0.6, 0.8, 0.37],
+    livery: 'single',
+    baseShade: 0.85,
+    wheels: { front: { r: 0.145, w: 0.14, z: 0.36 }, back: { r: 0.155, w: 0.15, z: 0.365 }, rim: 'cap', rimMat: 'chrome', sidewall: 0.36 },
+    build(k) {
+      k.shell([
+        { x: 0.79, w: 0.31, yb: -0.06, yt: 0.07, n: 9 },
+        { x: 0.75, w: 0.335, yb: -0.07, yt: 0.1, n: 9, tb: 0.04 },
+        { x: 0.35, w: 0.34, yb: -0.075, yt: 0.11, n: 9, tb: 0.05 },
+        { x: -0.4, w: 0.34, yb: -0.075, yt: 0.12, n: 9, tb: 0.05 },
+        { x: -0.56, w: 0.335, yb: -0.065, yt: 0.12, n: 9, tb: 0.04 },
+        { x: -0.59, w: 0.31, yb: -0.05, yt: 0.1, n: 8 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      // Square cabin with a flat roof.
+      k.shell([
+        { x: 0.3, w: 0.3, yb: 0.1, yt: 0.115, n: 8, tb: 0.15 },
+        { x: 0.17, w: 0.31, yb: 0.1, yt: 0.29, n: 8, tb: 0.2 },
+        { x: -0.25, w: 0.31, yb: 0.1, yt: 0.3, n: 8, tb: 0.2 },
+        { x: -0.36, w: 0.3, yb: 0.11, yt: 0.17, n: 8, tb: 0.15 },
+      ], { mat: 'glass', ring: 40 });
+      k.rbox([0.4, 0.016, 0.6], [-0.04, 0.302, 0], 'paintPlain', { r: 0.008 });
+      k.rbox([0.06, 0.03, 0.4], [-0.02, 0.325, 0], 'black', { r: 0.008 });
+      k.sym((s) => {
+        k.rbox([0.024, 0.016, 0.07], [-0.02, 0.33, s * 0.12], 'tail', { r: 0.004 });
+        k.rbox([0.024, 0.016, 0.07], [-0.02, 0.33, s * 0.05], 'glow', { r: 0.004 });
+        // Square headlamps in a black grille, tall tail lamps.
+        k.rbox([0.012, 0.055, 0.07], [0.797, 0.02, s * 0.235], 'head', { r: 0.006 });
+        k.rbox([0.012, 0.055, 0.04], [0.797, 0.02, s * 0.15], 'head', { r: 0.006 });
+        k.rbox([0.012, 0.08, 0.05], [-0.597, 0.04, s * 0.27], 'tail', { r: 0.006 });
+        k.rbox([0.012, 0.03, 0.05], [-0.597, -0.03, s * 0.27], 'amber', { r: 0.004 });
+        k.box([1.2, 0.012, 0.006], [0.1, 0.03, s * 0.342], 'chrome');
+        k.box([0.012, 0.16, 0.006], [-0.06, 0.2, s * 0.312], 'paintPlain');
+        k.rbox([0.03, 0.03, 0.05], [0.22, 0.14, s * 0.33], 'chrome', { r: 0.008 });
+        k.nozzle([-0.62, -0.04, s * 0.12], 0.045);
+      });
+      k.rbox([0.012, 0.06, 0.2], [0.797, 0.02, 0], 'black', { r: 0.006 });
+      for (const y of [0.0, 0.025, 0.05]) k.box([0.006, 0.008, 0.18], [0.803, y, 0], 'chrome');
+      k.rbox([0.04, 0.035, 0.7], [0.81, -0.055, 0], 'chrome', { r: 0.012 });
+      k.rbox([0.04, 0.035, 0.7], [-0.6, -0.045, 0], 'chrome', { r: 0.012 });
+      k.rbox([0.014, 0.022, 0.12], [0.36, 0.125, 0], 'chrome', { r: 0.004 });
+    },
+  },
+
+  // 18. Buzz (flat): racing go-kart with side pods, a bare engine and a driver in a helmet.
+  buzz: {
+    name: 'Buzz',
+    hitbox: 'flat',
+    blurb: 'Oversized racing kart. Side pods, a bare engine and nothing to hide behind.',
+    span: [-0.6, 0.8, 0.44],
+    livery: 'twin',
+    wheels: { front: { r: 0.13, w: 0.14, z: 0.36 }, back: { r: 0.17, w: 0.22, z: 0.36 }, rim: 'star', rimMat: 'rimWhite', sidewall: 0.3, arms: true, armFrom: { front: 0.12, back: 0.16 } },
+    build(k) {
+      // Low tray chassis.
+      k.shell([
+        { x: 0.78, w: 0.12, yb: -0.04, yt: 0.0, n: 3 },
+        { x: 0.66, w: 0.2, yb: -0.05, yt: 0.03, n: 3.5, tb: 0.3 },
+        { x: 0.4, w: 0.18, yb: -0.05, yt: 0.04, n: 4, tb: 0.3 },
+        { x: 0.0, w: 0.2, yb: -0.05, yt: 0.05, n: 4, tb: 0.3 },
+        { x: -0.4, w: 0.2, yb: -0.05, yt: 0.05, n: 4, tb: 0.3 },
+        { x: -0.56, w: 0.16, yb: -0.04, yt: 0.04, n: 3.5 },
+      ], { ring: 44, twoTone: { y: -0.03, dark: 0.12 } });
+      // Nose cone.
+      k.shell([
+        { x: 0.82, w: 0.2, yb: -0.03, yt: 0.03, n: 3 },
+        { x: 0.74, w: 0.3, yb: -0.035, yt: 0.07, n: 3.5, tb: 0.3 },
+        { x: 0.6, w: 0.24, yb: -0.03, yt: 0.09, n: 3.5, tb: 0.4 },
+        { x: 0.5, w: 0.12, yb: -0.02, yt: 0.06, n: 3 },
+      ], { mat: 'paintPlain', ring: 40 });
+      k.sym((s) => {
+        // Side pods between the wheels.
+        k.shell(L([
+          { x: 0.3, w: 0.04, yb: -0.04, yt: 0.03, n: 3, zc: 0.3 },
+          { x: 0.18, w: 0.09, yb: -0.05, yt: 0.07, n: 4, zc: 0.32 },
+          { x: -0.08, w: 0.1, yb: -0.05, yt: 0.08, n: 4, zc: 0.32 },
+          { x: -0.16, w: 0.04, yb: -0.04, yt: 0.04, n: 3, zc: 0.3 },
+        ], s));
+        k.box([0.3, 0.008, 0.008], [0.05, 0.06, s * 0.42], 'glow');
+        k.box([0.012, 0.02, 0.06], [0.82, 0.0, s * 0.12], 'head', [0, s * 0.4, 0]);
+        k.rod([0.48, 0.0, s * 0.18], [0.48, 0.0, s * 0.3], 0.012, 'darkMetal');
+        k.nozzle([-0.6, 0.06, s * 0.06], 0.04);
+      });
+      // Seat, driver with a helmet, steering wheel.
+      k.rbox([0.14, 0.03, 0.16], [-0.12, 0.07, 0], 'black', { r: 0.012 });
+      k.rbox([0.04, 0.14, 0.16], [-0.2, 0.13, 0], 'black', { r: 0.015, rot: [0, 0, 0.2] });
+      k.rbox([0.12, 0.1, 0.13], [-0.1, 0.16, 0], 'darkMetal', { r: 0.03 });
+      k.sphere(0.075, [-0.1, 0.29, 0], 'paintPlain', { seg: 24 });
+      k.rbox([0.012, 0.03, 0.1], [-0.03, 0.3, 0], 'glass', { r: 0.008 });
+      k.rod([0.05, 0.08, 0], [0.1, 0.17, 0], 0.01, 'black');
+      const sw = k.add(new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.009, 8, 20), k.mats.black));
+      sw.rotation.set(0, Math.PI / 2, 0.5);
+      sw.position.set(0.04, 0.2, 0);
+      // Bare engine on the back with a pipe.
+      k.rbox([0.14, 0.1, 0.12], [-0.4, 0.11, 0.08], 'darkMetal', { r: 0.015 });
+      for (let i = 0; i < 4; i++) k.box([0.1, 0.006, 0.13], [-0.4, 0.17 + i * 0.012, 0.08], 'nozzle');
+      k.tube([[-0.38, 0.12, -0.0], [-0.46, 0.14, -0.08], [-0.58, 0.16, -0.1]], 0.018, 'chrome');
+      k.wing(0.1, 0.016, 0.5, [-0.56, 0.12, 0], 'carbon', { rotZ: -0.15 });
+      k.rbox([0.03, 0.012, 0.2], [-0.62, 0.06, 0], 'tail', { r: 0.004 });
+    },
+  },
+
+  // 19. Lancer (long): endurance prototype with a shark fin and a wide rear wing.
+  lancer: {
+    name: 'Lancer',
+    hitbox: 'long',
+    blurb: 'Endurance prototype with a closed bubble cockpit, a shark fin and covered wheels.',
+    span: [-0.66, 0.82, 0.37],
+    livery: 'twin',
+    wheels: { front: { r: 0.14, w: 0.13, z: 0.34 }, back: { r: 0.155, w: 0.17, z: 0.35 }, rim: 'disc', rimMat: 'rimBlack', sidewall: 0.3 },
+    build(k) {
+      k.shell([
+        { x: 0.82, w: 0.16, yb: -0.07, yt: -0.04, n: 2.6 },
+        { x: 0.74, w: 0.3, yb: -0.085, yt: 0.02, n: 3.2, tb: 0.3 },
+        { x: 0.55, w: 0.33, yb: -0.09, yt: 0.07, n: 3.6, tb: 0.4 },
+        { x: 0.2, w: 0.32, yb: -0.09, yt: 0.06, n: 3.6, tb: 0.5 },
+        { x: -0.2, w: 0.33, yb: -0.09, yt: 0.08, n: 3.6, tb: 0.45 },
+        { x: -0.5, w: 0.34, yb: -0.08, yt: 0.1, n: 4, tb: 0.35 },
+        { x: -0.66, w: 0.32, yb: -0.06, yt: 0.09, n: 4 },
+      ], { ring: 56, steps: 7, twoTone: { y: -0.05, dark: 0.1 } });
+      // Teardrop cockpit.
+      k.shell([
+        { x: 0.38, w: 0.05, yb: 0.04, yt: 0.07, n: 2.2, tb: 0.5 },
+        { x: 0.24, w: 0.12, yb: 0.04, yt: 0.19, n: 2.5, tb: 0.55 },
+        { x: 0.04, w: 0.14, yb: 0.04, yt: 0.22, n: 2.6, tb: 0.55 },
+        { x: -0.14, w: 0.11, yb: 0.04, yt: 0.18, n: 2.5, tb: 0.55 },
+        { x: -0.28, w: 0.05, yb: 0.05, yt: 0.1, n: 2.2 },
+      ], { mat: 'glass', ring: 40 });
+      // Shark fin from the roof to the wing.
+      k.plate([[0, 0], [0.04, 0.09], [-0.42, 0.15], [-0.46, 0.0]], 0.012, [-0.12, 0.13, 0], 'paintPlain', { bevel: 0.003 });
+      k.box([0.36, 0.008, 0.014], [-0.36, 0.27, 0], 'glow', [0, 0, -0.12]);
+      k.wing(0.14, 0.022, 0.74, [-0.6, 0.24, 0], 'carbon', { rotZ: -0.1 });
+      k.box([0.012, 0.012, 0.7], [-0.672, 0.25, 0], 'tail');
+      k.sym((s) => {
+        // Fender humps over all four wheels.
+        k.shell(L([
+          { x: 0.7, w: 0.03, yb: -0.06, yt: 0.03, n: 3, zc: 0.3 },
+          { x: 0.6, w: 0.07, yb: -0.06, yt: 0.13, n: 3.5, zc: 0.31 },
+          { x: 0.47, w: 0.075, yb: -0.06, yt: 0.155, n: 3.6, zc: 0.31 },
+          { x: 0.33, w: 0.06, yb: -0.06, yt: 0.12, n: 3.5, zc: 0.31 },
+          { x: 0.24, w: 0.02, yb: -0.06, yt: 0.04, n: 3, zc: 0.3 },
+        ], s));
+        k.shell(L([
+          { x: -0.12, w: 0.02, yb: -0.06, yt: 0.06, n: 3, zc: 0.3 },
+          { x: -0.24, w: 0.07, yb: -0.06, yt: 0.15, n: 3.5, zc: 0.31 },
+          { x: -0.4, w: 0.085, yb: -0.06, yt: 0.18, n: 3.6, zc: 0.32 },
+          { x: -0.56, w: 0.075, yb: -0.06, yt: 0.15, n: 3.5, zc: 0.31 },
+          { x: -0.66, w: 0.05, yb: -0.05, yt: 0.1, n: 3, zc: 0.3 },
+        ], s));
+        k.plate([[0, 0], [0.0, 0.16], [-0.1, 0.16], [-0.12, 0]], 0.012, [-0.53, 0.12, s * 0.37], 'carbon', { bevel: 0.003 });
+        k.box([0.02, 0.012, 0.09], [0.7, 0.07, s * 0.27], 'head', [0, s * 0.3, -0.2]);
+        k.box([0.012, 0.03, 0.04], [-0.67, 0.06, s * 0.3], 'tail');
+        k.box([0.5, 0.006, 0.006], [0.1, -0.03, s * 0.33], 'glow');
+        k.nozzle([-0.68, -0.02, s * 0.1], 0.045);
+      });
+      k.rbox([0.06, 0.012, 0.5], [0.79, -0.08, 0], 'carbon', { r: 0.004 });
+      k.box([0.12, 0.04, 0.44], [-0.64, -0.07, 0], 'carbon', [0, 0, -0.25]);
+    },
+  },
+
+  // ------------------------------------------------------------------ achievement cars (never in drops)
+  // 20. Titan (standard): armored gladiator in black metal and gold. Win 50 1v1 matches.
+  titan: {
+    name: 'Titan',
+    hitbox: 'standard',
+    blurb: 'Armored gladiator with a crest, a glowing visor and gold trim. For 1v1 champions.',
+    span: [-0.6, 0.82, 0.39],
+    livery: 'single',
+    baseShade: 0.7,
+    wheels: { front: { r: 0.145, w: 0.15, z: 0.37 }, back: { r: 0.165, w: 0.18, z: 0.38 }, rim: 'turbine', rimMat: 'rimGold', sidewall: 0.38 },
+    build(k) {
+      k.shell([
+        { x: 0.8, w: 0.22, yb: -0.06, yt: 0.02, n: 4 },
+        { x: 0.72, w: 0.32, yb: -0.08, yt: 0.09, n: 5, tb: 0.15 },
+        { x: 0.45, w: 0.35, yb: -0.09, yt: 0.13, n: 5.5, tb: 0.25 },
+        { x: 0.1, w: 0.35, yb: -0.09, yt: 0.15, n: 5.5, tb: 0.3 },
+        { x: -0.3, w: 0.35, yb: -0.09, yt: 0.16, n: 5.5, tb: 0.3 },
+        { x: -0.52, w: 0.33, yb: -0.07, yt: 0.15, n: 5, tb: 0.25 },
+        { x: -0.6, w: 0.28, yb: -0.04, yt: 0.12, n: 4 },
+      ], { ring: 48, twoTone: { y: -0.02, dark: 0.16 } });
+      // Low helmet cabin with a glowing visor slit.
+      k.shell([
+        { x: 0.22, w: 0.18, yb: 0.12, yt: 0.14, n: 4, tb: 0.4 },
+        { x: 0.1, w: 0.24, yb: 0.12, yt: 0.26, n: 4.5, tb: 0.45 },
+        { x: -0.15, w: 0.25, yb: 0.13, yt: 0.29, n: 4.5, tb: 0.45 },
+        { x: -0.36, w: 0.2, yb: 0.14, yt: 0.2, n: 4, tb: 0.4 },
+      ], { mat: 'darkMetal', ring: 40 });
+      k.rbox([0.012, 0.03, 0.34], [0.165, 0.22, 0], 'glow', { r: 0.006, rot: [0, 0, 0.55] });
+      // Crest down the middle of the roof.
+      k.plate([[0, 0], [0.06, 0.06], [-0.1, 0.1], [-0.38, 0.05], [-0.42, 0]], 0.02, [0.06, 0.27, 0], 'rimGold', { bevel: 0.004 });
+      // Ram plate on the nose.
+      k.rbox([0.05, 0.1, 0.62], [0.82, -0.03, 0], 'darkMetal', { r: 0.02, rot: [0, 0, 0.35] });
+      k.box([0.012, 0.012, 0.6], [0.85, 0.02, 0], 'rimGold');
+      k.sym((s) => {
+        // Layered armor plates on the flanks.
+        for (let i = 0; i < 3; i++) k.rbox([0.22, 0.06, 0.02], [0.35 - i * 0.3, 0.07, s * (0.352 - i * 0.004)], 'darkMetal', { r: 0.01, rot: [s * 0.15, 0, 0] });
+        k.box([0.9, 0.01, 0.006], [0.0, 0.11, s * 0.355], 'rimGold');
+        k.box([0.02, 0.016, 0.13], [0.79, 0.04, s * 0.18], 'head', [0, s * 0.35, 0]);
+        k.box([0.012, 0.04, 0.12], [-0.605, 0.06, s * 0.17], 'tail');
+        // Shoulder spikes.
+        k.cyl(0.0, 0.03, 0.08, [-0.42, 0.2, s * 0.25], 'rimGold', { rot: [s * -0.5, 0, 0] });
+        k.cyl(0.0, 0.025, 0.07, [0.4, 0.15, s * 0.28], 'rimGold', { rot: [s * -0.6, 0, 0.3] });
+        k.nozzle([-0.63, 0.02, s * 0.1], 0.055);
+      });
+      k.wing(0.12, 0.02, 0.66, [-0.56, 0.26, 0], 'darkMetal', { rotZ: -0.15 });
+      k.box([0.012, 0.012, 0.62], [-0.625, 0.27, 0], 'rimGold');
+      k.sym((s) => k.box([0.12, 0.12, 0.016], [-0.5, 0.2, s * 0.3], 'darkMetal', [0, 0, 0.35]));
+    },
+  },
+
+  // 21. Phantom (flat): faceted stealth wedge with glowing edges. Score 500 goals.
+  phantom: {
+    name: 'Phantom',
+    hitbox: 'flat',
+    blurb: 'Faceted stealth wedge with glowing edges and a slit canopy. For 500-goal scorers.',
+    span: [-0.62, 0.82, 0.46],
+    livery: 'twin',
+    baseShade: 0.55,
+    wheels: { front: { r: 0.13, w: 0.13, z: 0.33 }, back: { r: 0.17, w: 0.2, z: 0.3 }, rim: 'turbine', rimMat: 'rimBlack', sidewall: 0.28 },
+    build(k) {
+      // Sharp, low body: low n gives the faceted diamond section.
+      k.shell([
+        { x: 0.82, w: 0.03, yb: 0.0, yt: 0.01, n: 1.4 },
+        { x: 0.66, w: 0.24, yb: -0.01, yt: 0.05, n: 1.6, tb: 0.5 },
+        { x: 0.4, w: 0.42, yb: 0.0, yt: 0.09, n: 1.7, tb: 0.6 },
+        { x: 0.05, w: 0.47, yb: 0.01, yt: 0.12, n: 1.8, tb: 0.65 },
+        { x: -0.3, w: 0.46, yb: 0.02, yt: 0.12, n: 1.8, tb: 0.65 },
+        { x: -0.52, w: 0.4, yb: 0.03, yt: 0.1, n: 1.7, tb: 0.6 },
+        { x: -0.62, w: 0.3, yb: 0.035, yt: 0.07, n: 1.6 },
+      ], { ring: 8, steps: 3 });
+      k.shell([
+        { x: 0.6, w: 0.06, yb: -0.02, yt: 0.03, n: 2 },
+        { x: 0.3, w: 0.17, yb: -0.07, yt: 0.04, n: 2 },
+        { x: -0.3, w: 0.18, yb: -0.07, yt: 0.05, n: 2 },
+        { x: -0.58, w: 0.12, yb: -0.04, yt: 0.05, n: 2 },
+      ], { mat: 'carbon', ring: 8, steps: 3 });
+      // Slit canopy.
+      k.shell([
+        { x: 0.32, w: 0.04, yb: 0.08, yt: 0.1, n: 1.6 },
+        { x: 0.18, w: 0.11, yb: 0.08, yt: 0.17, n: 1.7 },
+        { x: -0.06, w: 0.12, yb: 0.09, yt: 0.18, n: 1.7 },
+        { x: -0.24, w: 0.05, yb: 0.1, yt: 0.12, n: 1.6 },
+      ], { mat: 'glass', ring: 8, steps: 3 });
+      k.sym((s) => {
+        // Glowing leading edges and twin tail blades.
+        k.tube([[0.8, 0.012, 0.02], [0.6, 0.03, 0.26], [0.38, 0.05, 0.42], [0.05, 0.065, 0.47], [-0.3, 0.07, 0.46], [-0.6, 0.055, 0.31]].map((p) => [p[0], p[1], p[2] * s]), 0.006, 'glow', { seg: 48 });
+        k.plate([[0, 0], [-0.08, 0.2], [-0.16, 0.2], [-0.14, 0]], 0.012, [-0.42, 0.1, s * 0.2], 'carbon', { rot: [s * -0.35, 0, 0], bevel: 0.003 });
+        k.box([0.08, 0.006, 0.05], [0.6, 0.045, s * 0.2], 'head', [0, s * 0.7, 0]);
+        k.box([0.012, 0.012, 0.16], [-0.62, 0.06, s * 0.16], 'tail');
+        k.nozzle([-0.62, 0.05, s * 0.07], 0.04);
+      });
+      k.box([0.5, 0.006, 0.01], [-0.1, 0.125, 0], 'glow');
+    },
+  },
+
+  // 22. Monarch (hybrid): royal grand coupe with gold grille and a crown ornament. Win 100 matches.
+  monarch: {
+    name: 'Monarch',
+    hitbox: 'hybrid',
+    blurb: 'Royal grand coupe with a gold grille, white-wall tires and a crown on the hood. For 100-win players.',
+    span: [-0.58, 0.82, 0.37],
+    livery: 'single',
+    wheels: { front: { r: 0.15, w: 0.14, z: 0.35 }, back: { r: 0.155, w: 0.15, z: 0.355 }, rim: 'mesh', rimMat: 'rimGold', whitewall: true, sidewall: 0.36 },
+    build(k) {
+      k.shell([
+        { x: 0.8, w: 0.27, yb: -0.05, yt: 0.07, n: 5 },
+        { x: 0.74, w: 0.31, yb: -0.06, yt: 0.12, n: 5.5, tb: 0.08 },
+        { x: 0.45, w: 0.33, yb: -0.065, yt: 0.15, n: 6, tb: 0.12 },
+        { x: 0.1, w: 0.34, yb: -0.065, yt: 0.16, n: 6, tb: 0.14 },
+        { x: -0.3, w: 0.34, yb: -0.06, yt: 0.17, n: 6, tb: 0.14 },
+        { x: -0.5, w: 0.32, yb: -0.05, yt: 0.16, n: 5.5, tb: 0.12 },
+        { x: -0.575, w: 0.28, yb: -0.03, yt: 0.13, n: 5 },
+      ], { ring: 48, twoTone: { y: 0.0, dark: 0.14 } });
+      k.shell([
+        { x: 0.22, w: 0.26, yb: 0.15, yt: 0.16, n: 4.5, tb: 0.3 },
+        { x: 0.1, w: 0.28, yb: 0.15, yt: 0.29, n: 5, tb: 0.35 },
+        { x: -0.2, w: 0.28, yb: 0.16, yt: 0.3, n: 5, tb: 0.35 },
+        { x: -0.38, w: 0.26, yb: 0.16, yt: 0.18, n: 4.5, tb: 0.3 },
+      ], { mat: 'glass', ring: 40 });
+      k.rbox([0.32, 0.014, 0.5], [-0.05, 0.302, 0], 'paintPlain', { r: 0.008 });
+      // Tall gold grille with vertical bars.
+      k.rbox([0.02, 0.13, 0.22], [0.8, 0.04, 0], 'rimGold', { r: 0.01 });
+      for (let i = -3; i <= 3; i++) k.box([0.008, 0.11, 0.008], [0.812, 0.04, i * 0.028], 'black');
+      // Crown ornament on the hood.
+      k.cyl(0.035, 0.035, 0.02, [0.62, 0.17, 0], 'rimGold');
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        k.cyl(0.0, 0.009, 0.035, [0.62 + Math.cos(a) * 0.03, 0.195, Math.sin(a) * 0.03], 'rimGold');
+      }
+      k.sphere(0.012, [0.62, 0.2, 0], 'tail');
+      k.sym((s) => {
+        k.cyl(0.032, 0.032, 0.014, [0.8, 0.05, s * 0.2], 'rimGold', { axis: 'x' });
+        k.cyl(0.024, 0.024, 0.01, [0.808, 0.05, s * 0.2], 'head', { axis: 'x' });
+        k.box([1.1, 0.01, 0.006], [0.1, 0.12, s * 0.335], 'rimGold');
+        k.box([0.012, 0.05, 0.14], [-0.578, 0.08, s * 0.18], 'tail');
+        k.cyl(0.012, 0.012, 0.3, [0.0, -0.07, s * 0.34], 'rimGold', { axis: 'x' });
+        k.nozzle([-0.6, -0.01, s * 0.12], 0.05, { mat: 'rimGold' });
+        k.plate([[0, 0], [-0.06, 0.08], [-0.12, 0.08], [-0.1, 0]], 0.01, [-0.45, 0.16, s * 0.26], 'paintPlain', { bevel: 0.003 });
+      });
+      k.rbox([0.04, 0.03, 0.66], [0.81, -0.055, 0], 'rimGold', { r: 0.01 });
+      k.rbox([0.04, 0.03, 0.62], [-0.585, -0.04, 0], 'rimGold', { r: 0.01 });
+    },
+  },
 };
 
 export const CAR_IDS = Object.keys(DESIGNS);

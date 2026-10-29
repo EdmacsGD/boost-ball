@@ -69,6 +69,12 @@ export const ANTHEMS = [
     melody: ['8 - - - - - 5 - 8 - 10 - 12 - - -', '12 - - - 11 - 10 - 9 - - - 7 - 5 -', '6 - - - 8 - 10 - 13 - - - 12 - 10 -', '11 - - - 10 - - - 8 - - - 6 - 7 -'],
     drums: { k: '', s: '', h: '' }, bassRow: 'x.......x.......', roll: true,
   },
+  {
+    id: 'hattrick', name: 'Hat Trick Heroes', blurb: 'Stadium stomp, brass and a big finish', bpm: 126, root: 57, scale: 'major', chords: [1, 1, 4, 5], end: 8,
+    lead: 'brass', pad: 'strings', bass: 'saw', timpani: 'x.......x.......',
+    melody: ['1 - 1 - 1 - . . 3 - 3 - 5 - - -', '5 - 5 - 5 - . . 6 - 5 - 3 - - -', '4 - 4 - 6 - . . 8 - 8 - 10 - - -', '9 - - - 8 - - - 7 - - - 8 - - -'],
+    drums: { k: 'x...x...x...x...', s: '....x.......x.x.', h: '..x...x...x...x.' }, bassRow: 'x...x...x...x.o.', fill: true,
+  },
 ];
 
 export const anthemSpec = (id) => ANTHEMS.find((a) => a.id === id) || null;

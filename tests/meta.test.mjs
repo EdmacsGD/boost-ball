@@ -3,7 +3,7 @@ const store = new Map();
 globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
 
 const { Account } = await import('../src/meta/account.js');
-const { ITEMS, DROP_ITEMS, RARITY, CATEGORIES, rollDrop, key } = await import('../src/meta/items.js');
+const { ITEMS, DROP_ITEMS, UNLOCK_ITEMS, RARITY, CATEGORIES, rollDrop, key, item } = await import('../src/meta/items.js');
 
 const results = [];
 const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail });
@@ -24,7 +24,7 @@ check('catalog: unique keys', new Set(ITEMS.map((it) => key(it.cat, it.id))).siz
   }
   const total = Object.values(RARITY).reduce((s, r) => s + r.weight, 0);
   let worst = 0;
-  for (const [r, def] of Object.entries(RARITY)) worst = Math.max(worst, Math.abs(counts[r] / 20000 - def.weight / total));
+  for (const [r, def] of Object.entries(RARITY)) worst = Math.max(worst, Math.abs((counts[r] || 0) / 20000 - def.weight / total));
   check('drops: rarity odds match weights (within 1.5%)', worst < 0.015, `max diff ${(worst * 100).toFixed(2)}%`);
 }
 
@@ -88,6 +88,41 @@ check('catalog: unique keys', new Set(ITEMS.map((it) => key(it.cat, it.id))).siz
   const r = a.recordMatch({ won: true, draw: false, goals: 2, mvp: true, score: 1100 });
   check('levels: 1300 XP = 2 levels = 2 drops (plus quest drops)', r.levels === 2 && a.data.drops >= d0 + 2 && a.level() === 3, `levels ${r.levels} drops ${a.data.drops - d0}`);
   check('record: match counted', a.data.matches === 1 && a.data.wins === 1 && a.data.goals === 2 && a.data.mvps === 1);
+}
+
+// Achievement items: never in drops, earned from lifetime match stats.
+{
+  check('unlock: none of them drop', UNLOCK_ITEMS.length >= 10 && UNLOCK_ITEMS.every((it) => !DROP_ITEMS.includes(it) && !it.starter));
+  store.clear();
+  const a = new Account();
+  a.useGuest();
+  a.data.drops = 9999;
+  let dropped = false;
+  for (let i = 0; i < DROP_ITEMS.length + 5; i++) {
+    const r = a.openDrop();
+    if (r.item && r.item.unlock) dropped = true;
+  }
+  check('unlock: opening every drop never gives one', !dropped && !a.owns('car', 'titan'));
+  const got = [];
+  a.onUnlock = (items) => got.push(...items.map((it) => it.id));
+  for (let i = 0; i < 49; i++) a.recordMatch({ won: true, draw: false, goals: 1, mvp: false, score: 100, history: { mode: '1v1', saves: 0, demos: 0, assists: 0 } });
+  check('unlock: Titan locked at 49 1v1 wins', !a.owns('car', 'titan') && a.stat('wins1v1') === 49);
+  a.recordMatch({ won: true, draw: false, goals: 3, mvp: false, score: 100, history: { mode: '1v1', saves: 2, demos: 1, assists: 1 } });
+  check('unlock: Titan at 50 1v1 wins', a.owns('car', 'titan') && got.includes('titan') && a.stat('hattricks') === 1 && a.stat('saves') === 2);
+  check('unlock: Champion title at 50 wins', a.owns('title', 'champion'));
+  a.recordMatch({ won: true, draw: false, goals: 0, mvp: false, score: 100, history: { mode: '2v2' } });
+  check('unlock: 2v2 wins counted apart', a.stat('wins2v2') === 1 && a.stat('wins1v1') === 50);
+  a.data.goals = 499;
+  a.recordMatch({ won: false, draw: false, goals: 1, mvp: false, score: 10, history: { mode: '3v3' } });
+  check('unlock: Phantom at 500 goals', a.owns('car', 'phantom'));
+  check('unlock: equip works once owned', a.equip('car', 'phantom') && a.loadout.car === 'phantom');
+  check('unlock: locked item cannot be equipped', !a.equip('explosion', 'eclipse'));
+  // Stats survive a save and reload.
+  a.flush();
+  const b = new Account();
+  b.useGuest();
+  check('unlock: stats saved', b.stat('wins1v1') === 50 && b.stat('hattricks') === 1 && b.owns('car', 'titan'));
+  check('unlock: every item has a valid stat', UNLOCK_ITEMS.every((it) => Number.isFinite(b.stat(it.unlock.stat)) && it.unlock.goal > 0 && item(it.cat, it.id) === it));
 }
 
 // Bad saved data is cleaned.
