@@ -25,7 +25,7 @@ import { EXPLOSION_IDS } from '../render/goalExplosions.js';
 const BOT_CARS = CAR_IDS.filter((id) => !isExclusive('car', id));
 const BOT_EXPLOSIONS = EXPLOSION_IDS.filter((id) => !isExclusive('explosion', id));
 import { Account } from '../meta/account.js';
-import { item, itemsIn, isExclusive } from '../meta/items.js';
+import { item, itemsIn, isExclusive, CATEGORIES } from '../meta/items.js';
 import { LoginScreen } from '../ui/login.js';
 import { PadNav } from '../ui/padnav.js';
 
@@ -582,8 +582,8 @@ export class Game {
   }
 
   // The showroom car for the home screen, in the chosen car, accent and preview team.
-  previewCar() {
-    const lo = this.account.loadout;
+  // Showroom car from a loadout (yours, or yours with one locked item swapped in for a preview).
+  previewCar(lo = this.account.loadout) {
     const d = DESIGNS[lo.car] || DESIGNS.strider;
     const look = this.cosmetics(lo, this.previewTeam);
     const model = new CarModel(d, { team: this.previewTeam, number: 7, accent: this.accentHex(), hitbox: CONFIG.hitboxes[d.hitbox], paint: look.paint, finish: look.finish, decal: look.decal });
@@ -724,6 +724,27 @@ export class Game {
     }
     if (slot === 'explosion' && this.player) this.player.explosion = id;
     this.home.refresh();
+  }
+
+  // Try a locked item without owning it: the garage shows it on your car (or plays it), but it is
+  // never equipped. endPreview puts your own loadout back.
+  previewItem(it) {
+    if (!it || this.state !== 'home') return;
+    const slot = CATEGORIES.find((c) => c.id === it.cat)?.slot;
+    const lo = { ...this.account.loadout, [slot]: it.id };
+    this.previewing = it;
+    if (['car', 'paint', 'finish', 'decal', 'boost'].includes(it.cat)) this.previewCar(lo);
+    if (it.cat === 'boost') this.showroom.setBoost(it);
+    if (it.cat === 'ball') this.showroom.setBall(it.id);
+    if (it.cat === 'explosion') this.previewExplosion(it.id);
+    if (it.cat === 'anthem') this.previewAnthem(it.id);
+  }
+
+  endPreview() {
+    if (!this.previewing) return;
+    this.previewing = null;
+    this.previewCar();
+    if (this.home.page === 'garage') this.onGarageTab(this.home.gtab);
   }
 
   openDrop() {

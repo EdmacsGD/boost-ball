@@ -911,8 +911,17 @@ button.tile:hover { transform: translateX(-6px); border-color: rgba(255, 255, 25
 .item-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rar); }
 .item-card:hover { border-color: rgba(255, 255, 255, 0.35); }
 .item-card.on { border-color: var(--gold); background: rgba(255, 209, 102, 0.12); }
-.item-card.locked { cursor: default; opacity: 0.45; filter: grayscale(0.7); }
-.item-card.locked:hover { border-color: var(--line); }
+.item-card.locked { cursor: pointer; opacity: 0.5; filter: grayscale(0.7); }
+.item-card.locked:hover { border-color: rgba(255, 255, 255, 0.35); opacity: 0.75; }
+.item-card.locked.peek { opacity: 1; filter: none; border-color: var(--rar); background: rgba(255, 255, 255, 0.06); }
+.peek-bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--rar); border-left-width: 4px; background: rgba(8, 13, 24, 0.75); flex-wrap: wrap; }
+.peek-bar > .swatchy { flex: none; }
+.peek-bar .peek-card { flex: 1 1 220px; min-width: 0; }
+.peek-text { display: grid; gap: 2px; flex: 1 1 160px; min-width: 0; }
+.peek-text small { font-size: 9px; letter-spacing: 0.16em; color: var(--rar); font-weight: 800; }
+.peek-text b { font-size: 15px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.peek-text span { font-size: 11px; color: var(--muted); }
+.peek-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .item-card.locked::after { content: "LOCKED"; position: absolute; right: 6px; top: 5px; font-size: 8px; letter-spacing: 0.16em; color: var(--muted); }
 .item-text { display: grid; gap: 2px; min-width: 0; }
 .item-text b { font-size: 12px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -920,6 +929,7 @@ button.tile:hover { transform: translateX(-6px); border-color: rgba(255, 255, 25
 .unlock-bar { display: block; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--rar) var(--p), rgba(255, 255, 255, 0.12) var(--p)); }
 .item-card.locked[data-rarity="exclusive"] { opacity: 0.7; filter: grayscale(0.35); }
 .item-card.locked[data-rarity="exclusive"]::after { content: "ACHIEVEMENT"; color: var(--rar); }
+.item-card.locked[data-rarity="exclusive"] .item-text { padding-top: 8px; }
 .swatchy { width: 26px; height: 26px; flex: none; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.2); background-size: cover; }
 .swatchy.round { border-radius: 50%; }
 .swatchy.icon { border: 0; color: #fff; background: none; }

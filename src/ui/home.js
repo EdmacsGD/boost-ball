@@ -7,6 +7,7 @@ import { ITEMS, RARITY, CATEGORIES, UNLOCK_ITEMS, item, itemsIn, key } from '../
 import { questText, questInfo } from '../meta/quests.js';
 import { XP_PER_LEVEL } from '../meta/account.js';
 import { iconSvg } from './icons.js';
+import { bannerCard } from './playerCard.js';
 import { anthemSpec } from '../audio/anthems.js';
 import { eqSwatch } from './anthemEditor.js';
 import { OnlinePage } from './onlinePage.js';
@@ -139,13 +140,15 @@ export class HomeScreen {
 
     // Garage tabs.
     document.querySelectorAll('#garageTabs button').forEach((b) => b.addEventListener('click', click(() => {
+      this.stopPreview(false);
       this.gtab = b.dataset.gtab;
       this.renderGarage();
       game.onGarageTab(this.gtab);
     })));
     document.querySelectorAll('#teamPreview button').forEach((b) => b.addEventListener('click', click(() => {
       game.previewTeam = Number(b.dataset.team);
-      game.previewCar();
+      if (this.peek && ['car', 'paint', 'finish', 'decal', 'boost'].includes(this.peek.cat)) game.previewItem(this.peek);
+      else game.previewCar();
       this.refresh();
     })));
 
@@ -211,8 +214,17 @@ export class HomeScreen {
     this.el.hidden = true;
   }
 
+  // Locked item being previewed in the garage (seen, not owned).
+  stopPreview(render = true) {
+    if (!this.peek) return;
+    this.peek = null;
+    this.game.endPreview();
+    if (render) this.renderGarage();
+  }
+
   setPage(name) {
     const was = this.page;
+    if (name !== 'garage') this.stopPreview(false);
     this.page = name;
     document.querySelectorAll('#homeNav button').forEach((b) => b.classList.toggle('on', b.dataset.page === name));
     this.el.querySelectorAll('.home-page').forEach((p) => { p.hidden = p.dataset.page !== name; });
@@ -231,12 +243,61 @@ export class HomeScreen {
   }
 
   // ------------------------------------------------------------------ garage
+  // Bar over the item list while a locked item is previewed: what it is and how to get it.
+  peekBar(it) {
+    const acc = this.game.account;
+    const bar = document.createElement('div');
+    bar.className = 'peek-bar';
+    bar.style.setProperty('--rar', RARITY[it.rarity].color);
+    if (['icon', 'banner', 'title'].includes(it.cat)) {
+      // Player items: your card with this item swapped in.
+      const lo = { ...acc.loadout, [it.cat]: it.id };
+      bar.appendChild(bannerCard({ name: acc.data.name, title: lo.title, icon: lo.icon, banner: lo.banner, level: acc.level() }, 'peek-card'));
+    } else {
+      const sw = itemSwatch(it, this.game.previewTeam);
+      if (sw) bar.appendChild(sw);
+    }
+    const t = document.createElement('div');
+    t.className = 'peek-text';
+    const top = document.createElement('small');
+    top.textContent = `PREVIEW · ${RARITY[it.rarity].name.toUpperCase()} · LOCKED`;
+    const n = document.createElement('b');
+    n.textContent = it.cat === 'title' ? itemName(it).toUpperCase() : itemName(it);
+    const how = document.createElement('span');
+    if (it.unlock) {
+      const v = Math.min(it.unlock.goal, acc.stat(it.unlock.stat));
+      how.textContent = `${it.unlock.text}: ${v}/${it.unlock.goal}. Never in Sport Drops.`;
+    } else {
+      how.textContent = 'Get it from Sport Drops.';
+    }
+    t.append(top, n, how);
+    const again = ['explosion', 'anthem'].includes(it.cat) ? document.createElement('button') : null;
+    if (again) {
+      again.type = 'button';
+      again.className = 'small-btn';
+      again.textContent = it.cat === 'anthem' ? 'Play again' : 'Show again';
+      again.addEventListener('click', this.click(() => this.game.previewItem(it)));
+    }
+    const stop = document.createElement('button');
+    stop.type = 'button';
+    stop.className = 'small-btn';
+    stop.textContent = 'Back to mine';
+    stop.addEventListener('click', this.click(() => this.stopPreview()));
+    const btns = document.createElement('div');
+    btns.className = 'peek-btns';
+    if (again) btns.appendChild(again);
+    btns.appendChild(stop);
+    bar.append(t, btns);
+    return bar;
+  }
+
   renderGarage() {
     const acc = this.game.account;
     const lo = acc.loadout;
     document.querySelectorAll('#garageTabs button').forEach((b) => b.classList.toggle('on', b.dataset.gtab === this.gtab));
     const body = $('garageBody');
     body.textContent = '';
+    if (this.peek) body.appendChild(this.peekBar(this.peek));
     const section = (label, cat) => {
       const f = document.createElement('div');
       f.className = 'field';
@@ -260,6 +321,7 @@ export class HomeScreen {
         b.dataset.rarity = it.rarity;
         b.style.setProperty('--rar', RARITY[it.rarity].color);
         if (!own) b.classList.add('locked');
+        if (this.peek === it) b.classList.add('peek');
         if (lo[slot] === it.id) b.classList.add('on');
         const sw = itemSwatch(it, this.game.previewTeam);
         if (sw) b.appendChild(sw);
@@ -279,9 +341,16 @@ export class HomeScreen {
           t.appendChild(bar);
         }
         b.appendChild(t);
-        b.title = own ? itemName(it) : un ? `${itemName(it)}: ${un.text} (${prog}). Never in drops.` : `${itemName(it)}: get it from Sport Drops`;
+        b.title = own ? itemName(it) : `Preview ${itemName(it)}`;
         b.addEventListener('click', this.click(() => {
-          if (!own) return;
+          if (!own) {
+            // Locked: show it, but do not equip it.
+            this.peek = it;
+            this.game.previewItem(it);
+            this.renderGarage();
+            return;
+          }
+          this.stopPreview(false);
           this.game.equip(slot, it.id);
           if (cat === 'explosion') this.game.previewExplosion(it.id);
           if (cat === 'anthem') this.game.previewAnthem(it.id);
