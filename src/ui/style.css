@@ -1263,3 +1263,7 @@ body.online-match #restartBtn { display: none; }
 .chat-log b.blue { color: #7db6ff; }
 .chat-log b.orange { color: #ffae6a; }
 .chat-log span { color: #fff; }
+
+/* Free camera: hide the HUD except the controls hint. */
+body.free-cam #hud > *:not(#hint) { visibility: hidden; }
+body.free-cam #hint { visibility: visible; left: 50%; right: auto; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100vw - 32px); text-align: center; color: #fff; background: rgba(8, 13, 24, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); padding: 8px 14px; font-size: 12px; }

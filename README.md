@@ -71,6 +71,12 @@ npm test         # physics checks against reference numbers
   level on walls, lets high balls ride up the frame and swings under the car for them, and eases in
   and out when toggled. Settings: FOV, distance, height, angle, stiffness, transition speed.
 
+## Arenas
+
+Aurora Arena, Solstice Park, Neon District, Frostbite Bowl, Dune Canyon, Sky Haven (floating islands), Harbor Lights (city and bridge at sunset) and Highland Ridge (hills, forests, peaks). The scenery around each bowl (mountain ranges, forests, floating islands, cloud banks, skylines, a bridge, wind turbines, flying traffic) is built in `src/render/scenery.js` from a few merged or instanced meshes per arena.
+
+**Free camera** (free play and Sky Field): V or R3 toggles it. WASD / left stick to move, mouse or right stick to look, Space / X (A / B) up and down, Shift (right trigger) faster.
+
 ## Achievement items
 
 These never come from Sport Drops. Stats count in finished matches (bots or online), not free play.

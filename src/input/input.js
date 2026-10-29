@@ -21,6 +21,7 @@ export const ACTIONS = [
   { id: 'rollRight', label: 'Air roll right', keys: ['KeyE', ''], pad: 'RB' },
   { id: 'ballCam', label: 'Ball cam', keys: ['KeyC', ''], pad: 'Y' },
   { id: 'unlimited', label: 'Unlimited boost', keys: ['KeyB', ''], pad: '' },
+  { id: 'freeCam', label: 'Free camera (free play)', keys: ['KeyV', ''], pad: 'R3' },
   { id: 'reset', label: 'Reset (free play only)', keys: ['KeyR', ''], pad: 'Back' },
   { id: 'pause', label: 'Pause (Esc always works)', keys: ['KeyP', ''], pad: 'Start' },
   { id: 'fullscreen', label: 'Fullscreen', keys: ['KeyF', ''], pad: '' },

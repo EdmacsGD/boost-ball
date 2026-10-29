@@ -1,4 +1,4 @@
-// Visual themes for the five arenas. The field, walls and goals have the same shape everywhere
+// Visual themes for the arenas. The field, walls and goals have the same shape everywhere
 // (same physics); a theme only changes light, sky, surface, colors and the scenery around the bowl.
 // Colors are hex numbers or linear RGB triples (0..1) where noted.
 
@@ -19,6 +19,14 @@ export const THEMES = {
     sky: { type: 0 },
     city: 'night',
     props: [],
+    haze: 0x0b1226,
+    scenery: [
+      { kind: 'ranges', layers: [
+        { r: 330, depth: 140, h: [95, 175], rock: 0x141a26, top: 0x2a3446, snowLine: 0.55, freqs: [2, 3, 5, 9, 17, 29] },
+        { r: 560, depth: 300, h: [190, 300], rock: 0x111727, top: 0x1d2638, snowLine: 0.6, hazeMul: 0.7 },
+      ] },
+      { kind: 'trees', layer: 0, count: 420, kind2: 'pine', color: 0x16302a, scale: [9, 16], f: [0.02, 0.75] },
+    ],
     ribbon: [['AURORA ARENA', '#9fe8ff'], ['BOOST BALL', '#ffffff'], ['NORTHERN LIGHTS', '#7dffb9']],
   },
 
@@ -38,6 +46,16 @@ export const THEMES = {
     sky: { type: 1, top: [0.06, 0.2, 0.62], horizon: [0.45, 0.62, 0.85], sun: [-0.45, 0.7, 0.35], sunColor: [1.0, 0.92, 0.75] },
     city: null,
     props: ['balloons'],
+    haze: 0xb9d3ee,
+    scenery: [
+      { kind: 'ranges', layers: [
+        { r: 300, depth: 150, h: [70, 125], rock: 0x4f7a3a, top: 0x6f9a48, freqs: [2, 3, 4, 7, 11] , jag: 4 },
+        { r: 520, depth: 300, h: [160, 250], rock: 0x5c6e7c, top: 0x7c90a0, snowLine: 0.75, hazeMul: 0.7 },
+      ] },
+      { kind: 'trees', layer: 0, count: 380, kind2: 'round', color: 0x3f7f34, scale: [8, 14], f: [0.05, 0.85] },
+      { kind: 'turbines', layer: 0, count: 7, from: 2.2, span: 1.6 },
+      { kind: 'clouds', count: 34, r: [430, 640], y: [150, 260], size: [80, 160], color: 0xffffff, shade: 0xc4d2e6, opacity: 0.85 },
+    ],
     ribbon: [['SOLSTICE PARK', '#ffd166'], ['BOOST BALL', '#ffffff'], ['SUMMER CUP', '#7fd6ff']],
   },
 
@@ -57,6 +75,11 @@ export const THEMES = {
     sky: { type: 3, top: [0.01, 0.0, 0.03], horizon: [0.45, 0.04, 0.35], sun: [0, 0.12, 1], sunColor: [1.0, 0.45, 0.2] },
     city: 'neon',
     props: ['towers'],
+    haze: 0x24103a,
+    scenery: [
+      { kind: 'skyline', count: 60, r: [300, 460], h: [120, 320], w: [16, 34], neon: true, beacons: true },
+      { kind: 'traffic', lanes: 7, perLane: 36, r: [150, 280], y: [70, 160] },
+    ],
     ribbon: [['NEON DISTRICT', '#ff6fd8'], ['BOOST BALL', '#ffffff'], ['NIGHT LEAGUE', '#5ff0ff']],
   },
 
@@ -75,7 +98,15 @@ export const THEMES = {
     roof: { color: 0x4a525e, lamp: 4, glow: 0.3 },
     sky: { type: 4, top: [0.45, 0.52, 0.62], horizon: [0.72, 0.76, 0.82] },
     city: null,
-    props: ['mountains', 'snow'],
+    props: ['snow'],
+    haze: 0xb4c2d6,
+    scenery: [
+      { kind: 'ranges', layers: [
+        { r: 330, depth: 200, h: [120, 210], rock: 0x3e4854, top: 0x8a96a6, snowLine: 0.35, freqs: [2, 3, 5, 9, 15, 27] },
+        { r: 600, depth: 300, h: [250, 380], rock: 0x46505e, top: 0x6c7684, snowLine: 0.5, hazeMul: 0.5 },
+      ] },
+      { kind: 'trees', layer: 0, count: 340, kind2: 'pine', color: 0x2a4638, snow: true, scale: [10, 18], f: [0.02, 0.6] },
+    ],
     ribbon: [['FROSTBITE BOWL', '#bfe6ff'], ['BOOST BALL', '#ffffff'], ['WINTER CLASSIC', '#9fd0ff']],
   },
 
@@ -95,7 +126,97 @@ export const THEMES = {
     sky: { type: 2, top: [0.18, 0.12, 0.38], horizon: [1.0, 0.5, 0.22], sun: [-0.85, 0.12, 0.45], sunColor: [1.0, 0.6, 0.3] },
     city: null,
     props: ['canyon'],
+    haze: 0xd79a6a,
+    scenery: [
+      { kind: 'ranges', layers: [
+        { r: 420, depth: 150, h: [110, 190], rock: 0x8a3e22, top: 0xc0683a, flat: 0.55, freqs: [3, 5, 8, 13], jag: 3 },
+        { r: 640, depth: 160, h: [150, 240], rock: 0x9a5a3e, top: 0xc78a5e, flat: 0.6, hazeMul: 0.8 },
+      ] },
+      { kind: 'clouds', count: 18, r: [500, 650], y: [190, 280], size: [120, 220], color: 0xffc89a, shade: 0x8a5a7a, opacity: 0.55, spin: 0.002 },
+    ],
     ribbon: [['DUNE CANYON', '#ffcf7a'], ['BOOST BALL', '#ffffff'], ['SUNSET SERIES', '#ff9a5a']],
+  },
+
+  skyhaven: {
+    exposure: 0.82,
+    bloom: { strength: 0.22, threshold: 1.1 },
+    fog: { color: 0xbcd6f2, density: 0.0016 },
+    hemi: { sky: 0xd8e8ff, ground: 0x6d8fb0, intensity: 1.1 },
+    key: { color: 0xfff2dc, intensity: 3.3, pos: [-30, 66, 20] },
+    fill: { color: 0xcfe0ff, intensity: 0.9, pos: [30, 34, -30] },
+    env: { top: [0.38, 0.6, 0.98], horizon: [0.86, 0.9, 0.96], ground: [0.6, 0.7, 0.82], panels: 3, teamGlow: 0.15, sun: [-0.4, 0.75, 0.3] },
+    turf: { style: 'grass', base: [38, 104, 46], stripe: [10, 20, 8], patch: [12, 22, 8], grain: [8, 14, 6], lines: 'rgba(252, 252, 248, 0.92)', wash: 0.1, rampColor: 0xdfe8d8 },
+    walls: { mid: [0.85, 0.95, 1.0], glow: 0.5 },
+    rim: [0.95, 0.98, 1.0],
+    stands: { concrete: 0xc9d2de, seatBlue: 0x2f6fd6, seatOrange: 0xe0782e, seatMid: 0xeef2f7, crowd: 1 },
+    roof: { color: 0xe3e8ef, lamp: 1.3, glow: 0.06 },
+    sky: { type: 1, top: [0.1, 0.32, 0.78], horizon: [0.62, 0.78, 0.95], sun: [-0.4, 0.75, 0.3], sunColor: [1.0, 0.95, 0.82] },
+    city: null,
+    props: [],
+    haze: 0xc6dcf4,
+    scenery: [
+      { kind: 'islands', count: 18, r: [210, 470], y: [70, 240], size: [14, 40] },
+      { kind: 'islands', count: 10, r: [520, 700], y: [140, 320], size: [30, 60] },
+      { kind: 'clouds', count: 46, r: [380, 650], y: [20, 140], size: [110, 220], color: 0xffffff, shade: 0xb8cce6, opacity: 0.95, spin: 0.003 },
+      { kind: 'clouds', count: 22, r: [520, 700], y: [230, 330], size: [90, 160], color: 0xffffff, shade: 0xd0dcec, opacity: 0.7, spin: -0.002 },
+    ],
+    ribbon: [['SKY HAVEN', '#9fd8ff'], ['BOOST BALL', '#ffffff'], ['CLOUD CUP', '#ffe08a']],
+  },
+
+  harbor: {
+    exposure: 0.85,
+    bloom: { strength: 0.35, threshold: 1.0 },
+    fog: { color: 0x7a5068, density: 0.0022 },
+    hemi: { sky: 0xffc2a0, ground: 0x3a2c3c, intensity: 0.7 },
+    key: { color: 0xffa868, intensity: 2.6, pos: [-60, 28, 40] },
+    fill: { color: 0x7a7cff, intensity: 0.6, pos: [30, 40, -30] },
+    env: { top: [0.25, 0.18, 0.4], horizon: [0.95, 0.5, 0.35], ground: [0.12, 0.1, 0.14], panels: 6, teamGlow: 0.35, sun: [-0.8, 0.16, 0.5] },
+    turf: { style: 'grass', base: [30, 78, 40], stripe: [9, 18, 6], patch: [10, 20, 8], grain: [8, 14, 6], lines: 'rgba(250, 244, 236, 0.9)', wash: 0.16, rampColor: 0xc8c0b8 },
+    walls: { mid: [1.0, 0.8, 0.75], glow: 0.9 },
+    rim: [1.0, 0.75, 0.6],
+    stands: { concrete: 0x3c3440, seatBlue: 0x24508c, seatOrange: 0xb4501e, seatMid: 0x5a5260, crowd: 1 },
+    roof: { color: 0x2c2630, lamp: 4, glow: 0.3, lampColor: [1.0, 0.9, 0.78] },
+    sky: { type: 2, top: [0.16, 0.12, 0.34], horizon: [1.0, 0.52, 0.32], sun: [-0.8, 0.1, 0.5], sunColor: [1.0, 0.62, 0.32] },
+    city: null,
+    props: [],
+    haze: 0x9a6070,
+    scenery: [
+      { kind: 'skyline', count: 70, r: [230, 430], h: [70, 300], w: [14, 32], neon: false, warm: true, beacons: true },
+      { kind: 'bridge', angle: 2.4, r: 470, length: 640, deckY: 48, towerH: 170, color: 0xc0402c },
+      { kind: 'traffic', lanes: 4, perLane: 30, r: [190, 300], y: [90, 170], colors: [0xffe2b0, 0xff7a5a, 0xffffff] },
+      { kind: 'clouds', count: 22, r: [520, 680], y: [180, 290], size: [140, 240], color: 0xffb08a, shade: 0x6a4a72, opacity: 0.6, spin: 0.0015 },
+    ],
+    ribbon: [['HARBOR LIGHTS', '#ffb46a'], ['BOOST BALL', '#ffffff'], ['CITY DERBY', '#ff7a8a']],
+  },
+
+  highlands: {
+    exposure: 0.85,
+    bloom: { strength: 0.22, threshold: 1.1 },
+    fog: { color: 0xa8bccc, density: 0.002 },
+    hemi: { sky: 0xd4e2f0, ground: 0x4a6038, intensity: 1.0 },
+    key: { color: 0xfff0d6, intensity: 3.0, pos: [40, 50, -30] },
+    fill: { color: 0xc8d8f0, intensity: 0.8, pos: [-30, 30, 30] },
+    env: { top: [0.32, 0.5, 0.82], horizon: [0.75, 0.8, 0.85], ground: [0.25, 0.32, 0.2], panels: 3, teamGlow: 0.15, sun: [0.5, 0.55, -0.4] },
+    turf: { style: 'grass', base: [36, 88, 34], stripe: [10, 20, 8], patch: [12, 22, 8], grain: [8, 14, 6], lines: 'rgba(250, 252, 246, 0.92)', wash: 0.12, rampColor: 0xd0dcc4 },
+    walls: { mid: [0.85, 0.95, 0.9], glow: 0.55 },
+    rim: [0.9, 1.0, 0.95],
+    stands: { concrete: 0x6e6a62, seatBlue: 0x2a5aa8, seatOrange: 0xc4622a, seatMid: 0xb8b4aa, crowd: 1 },
+    roof: { color: 0x8a8478, lamp: 1.6, glow: 0.1 },
+    sky: { type: 1, top: [0.12, 0.3, 0.66], horizon: [0.62, 0.72, 0.84], sun: [0.5, 0.55, -0.4], sunColor: [1.0, 0.94, 0.8] },
+    city: null,
+    props: [],
+    haze: 0xa9bfd2,
+    scenery: [
+      { kind: 'ranges', layers: [
+        { r: 280, depth: 140, h: [80, 140], rock: 0x3e6a32, top: 0x5c8a40, freqs: [2, 3, 5, 8, 13], jag: 5 },
+        { r: 500, depth: 280, h: [190, 290], rock: 0x45503e, top: 0x66705e, snowLine: 0.75, hazeMul: 0.7 },
+        { r: 720, depth: 320, h: [300, 430], rock: 0x58616e, top: 0x8a94a2, snowLine: 0.55, hazeMul: 0.6 },
+      ] },
+      { kind: 'trees', layer: 0, count: 520, kind2: 'pine', color: 0x24502e, scale: [9, 15], f: [0.02, 0.8] },
+      { kind: 'turbines', layer: 0, count: 6, from: 4.0, span: 1.2 },
+      { kind: 'clouds', count: 26, r: [520, 690], y: [230, 330], size: [100, 180], color: 0xffffff, shade: 0xbac8da, opacity: 0.75 },
+    ],
+    ribbon: [['HIGHLAND RIDGE', '#9fe8a0'], ['BOOST BALL', '#ffffff'], ['MOUNTAIN OPEN', '#ffd27a']],
   },
 };
 

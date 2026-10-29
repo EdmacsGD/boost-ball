@@ -2,6 +2,7 @@
 // (render/arenaThemes.js). Original design.
 import * as THREE from 'three';
 import { mergeTree, pinnedFrom } from './mergeMeshes.js';
+import { buildRanges, buildTrees, buildIslands, buildClouds, buildTurbines, buildBridge, buildTraffic } from './scenery.js';
 import { CONFIG } from '../config.js';
 import { UU, mulberry32 } from '../util/math.js';
 import { makeTurfTexture, makeGrassTile, makeGrassNormal, makeHexNetTexture, makeRibbonTexture, makeGlowTexture } from './textures.js';
@@ -1233,6 +1234,35 @@ export class Stadium {
     if (props.includes('mountains')) this.buildMountains();
     if (props.includes('snow')) this.buildSnowfall();
     if (props.includes('canyon')) this.buildCanyon();
+    this.buildScenery(this.theme.scenery || []);
+  }
+
+  // Theme scenery list: [{ kind, ...options }] (see scenery.js). Ranges come first so trees and
+  // turbines can stand on their slopes.
+  buildScenery(list) {
+    const haze = this.theme.haze ?? this.theme.fog.color;
+    let slope = null;
+    const onSlope = (layer, f0, f1) => (i, rand) => {
+      if (!slope) return null;
+      const a = rand() * Math.PI * 2;
+      return slope(layer, a, f0 + rand() * (f1 - f0));
+    };
+    for (const it of list) {
+      if (it.kind === 'ranges') slope = buildRanges(this, it.layers, haze);
+      else if (it.kind === 'trees') buildTrees(this, { ...it, kind: it.kind2 || 'pine', hazeColor: haze, place: onSlope(it.layer ?? 0, it.f?.[0] ?? 0.05, it.f?.[1] ?? 0.9) });
+      else if (it.kind === 'turbines') {
+        const spots = [];
+        for (let i = 0; i < it.count; i++) {
+          const p = slope && slope(it.layer ?? 0, it.from + (i / it.count) * it.span, 1.6);
+          if (p) spots.push(p);
+        }
+        buildTurbines(this, { spots, color: it.color });
+      } else if (it.kind === 'islands') buildIslands(this, { ...it, hazeColor: haze });
+      else if (it.kind === 'clouds') buildClouds(this, it);
+      else if (it.kind === 'bridge') buildBridge(this, it);
+      else if (it.kind === 'traffic') buildTraffic(this, it);
+      else if (it.kind === 'skyline') this.buildTowers(it);
+    }
   }
 
   // Hot-air balloons drifting slowly around the stadium (day arena).
@@ -1284,8 +1314,10 @@ export class Stadium {
   }
 
   // Neon skyline: towers with lit windows and glowing roof edges around the arena.
-  buildTowers() {
+  // opts (skyline): { count, r: [min, max], h: [min, max], w: [min, max], neon (roof edges), warm (window colors), beacons }
+  buildTowers(opts = {}) {
     const rand = this.rand;
+    const O = { count: 46, r: [125, 245], h: [45, 215], w: [12, 30], neon: true, warm: false, beacons: false, ...opts };
     const pos = [];
     const seed = [];
     const idx = [];
@@ -1302,11 +1334,11 @@ export class Stadium {
       }
       tops.push([cx, h, cz, w, d]);
     };
-    for (let i = 0; i < 46; i++) {
-      const a = (i / 46) * Math.PI * 2 + rand() * 0.08;
-      const r = 125 + rand() * 120;
-      const w = 12 + rand() * 18;
-      const h = 45 + rand() * rand() * 170;
+    for (let i = 0; i < O.count; i++) {
+      const a = (i / O.count) * Math.PI * 2 + rand() * 0.08;
+      const r = O.r[0] + rand() * (O.r[1] - O.r[0]);
+      const w = O.w[0] + rand() * (O.w[1] - O.w[0]);
+      const h = O.h[0] + rand() * rand() * (O.h[1] - O.h[0]);
       box(Math.cos(a) * r, Math.sin(a) * r * 1.2, w, w * (0.7 + rand() * 0.6), h, rand());
     }
     const g = new THREE.BufferGeometry();
@@ -1327,14 +1359,34 @@ export class Stadium {
           float win = step(0.18, f.x) * step(f.x, 0.82) * step(0.25, f.y) * step(f.y, 0.75);
           float r = hash12(cell + vSeed * 91.0);
           float lit = step(0.62, r) * win;
+          #ifdef WARM
+          vec3 wc = r > 0.9 ? vec3(1.0, 0.95, 0.85) : vec3(1.0, 0.72, 0.42);
+          vec3 c = vec3(0.05, 0.045, 0.06) + wc * lit * 1.2;
+          #else
           vec3 wc = r > 0.92 ? vec3(1.0, 0.3, 0.8) : r > 0.84 ? vec3(0.3, 0.9, 1.0) : vec3(1.0, 0.82, 0.55);
           vec3 c = vec3(0.025, 0.02, 0.045) + wc * lit * 1.4;
+          #endif
           gl_FragColor = vec4(c, 1.0);
           ${OUT_F}
         }`,
     });
+    if (O.warm) {
+      mat.defines = { ...(mat.defines || {}), WARM: '' };
+      mat.needsUpdate = true;
+    }
     const towers = new THREE.Mesh(g, mat);
     this.group.add(towers);
+    if (O.beacons) {
+      // Red aircraft lights on the tall ones, blinking together.
+      const bm = new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.1, 0.05).multiplyScalar(3), toneMapped: false });
+      for (const [x, h, z] of tops) if (h > O.h[0] + (O.h[1] - O.h[0]) * 0.45) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), bm);
+        b.position.set(x, h + 1.5, z);
+        this.group.add(b);
+      }
+      this.updaters.push((dt, time) => { bm.color.setRGB(1, 0.1, 0.05).multiplyScalar(Math.sin(time * 2.4) > 0.3 ? 3 : 0.25); });
+    }
+    if (!O.neon) return;
     // Neon edges on the roofs, alternating magenta and cyan.
     const neonA = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.25, 0.75).multiplyScalar(2.2), toneMapped: false });
     const neonB = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.2, 0.9, 1.0).multiplyScalar(2.2), toneMapped: false });

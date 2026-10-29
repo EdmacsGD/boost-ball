@@ -256,6 +256,9 @@ export const CONFIG = {
     { id: 'neon', name: 'Neon District', blurb: 'Rooftop arena in a city that never sleeps.', swatch: ['#12051f', '#ff3fb4', '#29e3ff'] },
     { id: 'frost', name: 'Frostbite Bowl', blurb: 'Snow falling on a mountain stadium.', swatch: ['#5f7896', '#dfe8f3', '#ffffff'] },
     { id: 'dune', name: 'Dune Canyon', blurb: 'Desert arena in red rock at sunset.', swatch: ['#7a2f1a', '#ff8a3d', '#ffcf7a'] },
+    { id: 'skyhaven', name: 'Sky Haven', blurb: 'Floating islands above a sea of clouds.', swatch: ['#3a7ad8', '#ffffff', '#5aa83c'] },
+    { id: 'harbor', name: 'Harbor Lights', blurb: 'City stadium by the bay at sunset, a red bridge behind.', swatch: ['#2a1e3c', '#ff8a4a', '#ffd9a0'] },
+    { id: 'highlands', name: 'Highland Ridge', blurb: 'Green hills, pine forests and snowy peaks.', swatch: ['#3e6a32', '#a9bfd2', '#e6edf4'] },
   ],
 
   // Accent colors for stripes, trim and calipers (the body is always the team color).

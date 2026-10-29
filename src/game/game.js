@@ -41,6 +41,7 @@ import { teamRole } from './roles.js';
 import { Online } from '../net/online.js';
 import { NetPlay } from '../net/netplay.js';
 import { bannerCard } from '../ui/playerCard.js';
+import { FreeCam } from './freeCam.js';
 import { tierOf } from '../meta/rank.js';
 
 const TICK = 1 / CONFIG.game.tickRate;
@@ -150,6 +151,7 @@ export class Game {
     });
     this.applyCameraSettings();
     this.cameraRig.ballCam = this.settings.ballCam;
+    this.freeCam = new FreeCam(this);
 
     this.input = new Input(window);
     this.input.setBindings(this.settings.bindings);
@@ -557,7 +559,7 @@ export class Game {
     if (stepping) {
       // Player input.
       const pc = this.player.car.controls;
-      if (this.paused) pc.reset();
+      if (this.paused || this.freeCam.active) pc.reset(); // free camera: the car waits
       else this.input.read(pc);
       this.acc += dt;
       let steps = 0;
@@ -1303,6 +1305,7 @@ export class Game {
       this.cameraRig.ballCam = !this.cameraRig.ballCam;
       this.audio.play('click');
     }
+    if (inp.consumeAction('freeCam') || (this.mode === 'free' && !this.np && inp.consumePad('r3'))) this.freeCam.toggle();
     if (inp.consumeAction('unlimited')) {
       if (!this.boostCheatAllowed()) {
         if (this.state === 'play' || this.state === 'countdown') this.hud.popup('UNLIMITED BOOST: PRACTICE ONLY');
@@ -2057,6 +2060,7 @@ export class Game {
       rig.apply(0);
       return;
     }
+    if (this.freeCam.active && this.freeCam.update(dt, rig)) return;
     if (this.explPreview && this.state === 'home') {
       const ep = this.explPreview;
       ep.t += dt;
