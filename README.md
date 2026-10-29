@@ -80,6 +80,7 @@ These never come from Sport Drops. Stats count in finished matches (bots or onli
 | Titan | Car | Win 50 1v1 matches |
 | Phantom | Car | Score 500 goals |
 | Monarch | Car | Win 100 matches |
+| Hotshot | Car | Be #1 on any Players leaderboard (website); you keep it after dropping to #2 |
 | Eclipse | Goal explosion | Make 150 saves |
 | Thunderdome | Goal explosion | Demolish 100 cars |
 | Afterburner | Boost | Play for 10 hours |

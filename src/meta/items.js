@@ -47,6 +47,7 @@ add('car', 'lancer', 'Lancer', 'epic');
 add('car', 'titan', 'Titan', '', U('wins1v1', 50, 'Win 50 1v1 matches'));
 add('car', 'phantom', 'Phantom', '', U('goals', 500, 'Score 500 goals in matches'));
 add('car', 'monarch', 'Monarch', '', U('wins', 100, 'Win 100 matches'));
+add('car', 'hotshot', 'Hotshot', '', U('top1', 1, 'Be #1 on a Players leaderboard (website)'));
 
 // Goal explosions: id matches goalExplosions.js.
 for (const id of STARTER_EXPLOSIONS) add('explosion', id, id, 'common', {}, true);

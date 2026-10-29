@@ -27,6 +27,7 @@ function freshData(name) {
     winsByMode: { '1v1': 0, '2v2': 0, '3v3': 0 },
     tot: { saves: 0, demos: 0, assists: 0, hattricks: 0 }, // lifetime match totals for achievement items
     elo: { '1v1': 1000, '2v2': 1000, '3v3': 1000 }, // ranked rating per mode (website; set by the server)
+    top1: 0, // 1 once this player has been #1 on a leaderboard (website; set by the server, never taken back)
     drops: WELCOME_DROPS,
     opened: 0,
     owned: [],
@@ -49,6 +50,7 @@ function clean(d) {
     winsByMode: Object.fromEntries(Object.keys(f.winsByMode).map((m) => [m, num(d.winsByMode && d.winsByMode[m])])),
     tot: Object.fromEntries(Object.keys(f.tot).map((k) => [k, num(d.tot && d.tot[k])])),
     elo: Object.fromEntries(Object.keys(f.elo).map((m) => [m, num(d.elo && d.elo[m], 1000)])),
+    top1: d.top1 ? 1 : 0,
     owned: Array.isArray(d.owned) ? d.owned.filter((k) => typeof k === 'string').slice(0, 500) : [],
     loadout: { ...DEFAULT_LOADOUT },
     quests: fillQuests(Array.isArray(d.quests) ? d.quests.filter((q) => q && typeof q.type === 'string').map((q) => ({ id: String(q.id || ''), type: q.type, goal: num(q.goal, 1) || 1, progress: num(q.progress), drops: num(q.drops, 1) || 1 })) : []),
@@ -405,6 +407,7 @@ export class Account {
       case 'hours': return Math.floor((d.playtime || 0) / 3600);
       case 'level': return this.level();
       case 'goals': case 'wins': case 'matches': case 'mvps': return d[name] || 0;
+      case 'top1': return d.top1 ? 1 : 0;
       default: return (d.tot && d.tot[name]) || 0;
     }
   }
@@ -446,6 +449,7 @@ export class Account {
     d.winsByMode = { '1v1': n(st.wins_1v1), '2v2': n(st.wins_2v2), '3v3': n(st.wins_3v3) };
     d.tot = { saves: n(st.saves), demos: n(st.demos), assists: n(st.assists), hattricks: n(st.hattricks) };
     d.elo = { '1v1': n(st.elo_1v1) || 1000, '2v2': n(st.elo_2v2) || 1000, '3v3': n(st.elo_3v3) || 1000 };
+    d.top1 = st.top1 ? 1 : 0;
     const gained = Math.max(0, this.level() - before);
     if (gained) d.drops += gained;
     this.checkUnlocks();
