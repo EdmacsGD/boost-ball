@@ -426,21 +426,22 @@ export class Online {
       clearTimeout(this.joinTimer);
       this.game.startOnlineMatch(this.buildSlots(wire), typeof m.arena === 'string' ? m.arena : 'aurora', this.mode, false);
     }
-    if (this.started && pr.s) this.game.onHostSnapshot(pr.s, at);
+    if (this.started && pr.s) this.game.onHostSnapshot(pr.s, at, pr.ts);
   }
 
   // Every frame: send our part about 30 times a second.
   update(dt) {
     if (!this.match || !this.started) return;
+    // Read every player's car from their presence each frame (unchanged ones are skipped), so a new
+    // update is used as soon as it arrives instead of waiting for our next send.
+    for (const p of this.matchPeers) {
+      if (p.sameTab || !p.presence) continue;
+      if (p.presence.car) this.game.onPeerCar(p.peer, p.presence, p.updatedAt);
+    }
     this.sendAcc += dt;
     if (this.sendAcc < 1 / (this.room.sendHz || SEND_HZ)) return;
     this.sendAcc = 0;
     const patch = this.game.netOutgoing();
     if (patch) this.match.presence(patch).catch(() => {});
-    // Clients: read every player's car from their presence.
-    for (const p of this.matchPeers) {
-      if (p.sameTab || !p.presence) continue;
-      if (p.presence.car) this.game.onPeerCar(p.peer, p.presence, p.updatedAt);
-    }
   }
 }

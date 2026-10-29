@@ -942,8 +942,8 @@ export class Game {
     return this.np ? this.np.outgoing() : null;
   }
 
-  onHostSnapshot(s, at) {
-    if (this.np && this.np.client) this.np.hostSnapshot(s, at);
+  onHostSnapshot(s, at, ts) {
+    if (this.np && this.np.client) this.np.hostSnapshot(s, at, ts);
   }
 
   onPeerCar(peer, presence, at) {
@@ -1860,6 +1860,7 @@ export class Game {
       } else {
         p.renderPos.lerpVectors(p.prevPos, car.pos, alpha);
         p.renderQuat.slerpQuaternions(p.prevQuat, car.quat, alpha);
+        if (this.np) this.np.smoothVisual(p, dt);
         susp = car.wheels.map((w) => w.suspensionLength);
       }
       p.model.root.visible = !demoed && this.state !== 'home';

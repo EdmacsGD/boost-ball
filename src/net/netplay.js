@@ -16,6 +16,11 @@ const v0 = new THREE.Vector3();
 const v1 = new THREE.Vector3();
 const q0 = new THREE.Quaternion();
 const q1 = new THREE.Quaternion();
+const qi = new THREE.Quaternion();
+// Visual smoothing: when a new update moves a remote car, the model eases from where it was drawn
+// to the new spot over about this many seconds (the physics body jumps at once, for collisions).
+const SMOOTH = 0.1;
+const SNAP_DIST = 3; // farther than this (kickoff, respawn, demo) the model jumps too
 
 export class NetPlay {
   constructor(game, online, isHost) {
@@ -34,6 +39,20 @@ export class NetPlay {
     this.demos = 0; // times our car was demolished (shared so others can show it)
     this.demoBy = -1;
     this.dmSeen = new Map(); // peer -> demo count seen
+    this.clockOff = new Map(); // sender -> smallest (arrival - send time) seen, in ms
+  }
+
+  // Local time a message was sent, from the sender's time stamp. Arrival times jitter by tens of ms
+  // (a car at 20 m/s moves 0.6 m in 30 ms), the sender's stamp does not. The smallest arrival minus
+  // stamp seen is the clock difference plus the fastest trip; it may creep up slowly for clock drift.
+  sentAt(key, at, ts) {
+    if (!Number.isFinite(ts) || !Number.isFinite(at)) return at;
+    const off = at - ts;
+    let o = this.clockOff.get(key);
+    if (o === undefined || off < o) o = off;
+    else o += Math.min(off - o, 200) * 0.01;
+    this.clockOff.set(key, o);
+    return ts + o;
   }
 
   get client() {
@@ -84,6 +103,7 @@ export class NetPlay {
     if (!s) return;
     p.net = s;
     p.netAt = at;
+    p.netT = this.sentAt(peer, at, Number(pr.ts));
     p.netLead = Math.min(0.25, (Number(pr.rtt) || 120) / 2000);
     if (this.isHost && Number.isFinite(pr.ts)) this.ack[peer] = pr.ts;
     // Their car was demolished: credit the attacker (host keeps the stats).
@@ -102,7 +122,7 @@ export class NetPlay {
   }
 
   // Client: the host's share (ball, bots, phase, score, clock, stats).
-  hostSnapshot(s, at) {
+  hostSnapshot(s, at, ts) {
     if (!s || typeof s !== 'object' || at === this.lastSnapAt) return;
     this.lastSnapAt = at;
     const g = this.game;
@@ -121,6 +141,7 @@ export class NetPlay {
         if (st) {
           p.net = st;
           p.netAt = at;
+          p.netT = this.sentAt('host', at, Number(ts));
           p.netLead = this.oneWay();
         }
       }
@@ -225,7 +246,20 @@ export class NetPlay {
   drive(p, now) {
     const car = p.car;
     const s = p.net;
-    const age = Math.min(0.3, Math.max(0, (Date.now() - p.netAt) / 1000) + (p.netLead || 0));
+    const age = Math.min(0.35, Math.max(0, (Date.now() - (p.netT || p.netAt)) / 1000) + (p.netLead || 0));
+    // A new update: remember where the model was, to ease it over (see SMOOTH).
+    const fresh = p.drivenAt !== p.netAt;
+    if (fresh) {
+      p.drivenAt = p.netAt;
+      if (!p.visErr) {
+        p.visErr = new THREE.Vector3();
+        p.visErrQ = new THREE.Quaternion();
+        p.visOld = new THREE.Vector3();
+        p.visOldQ = new THREE.Quaternion();
+      }
+      p.visOld.copy(car.pos).add(p.visErr);
+      p.visOldQ.copy(p.visErrQ).multiply(car.quat);
+    }
     if (s.demoed) {
       if (!car.isDemoed) {
         car.demolish();
@@ -255,6 +289,16 @@ export class NetPlay {
     car.body.setLinvel({ x: s.v[0], y: vy, z: s.v[2] }, true);
     car.body.setAngvel({ x: s.w[0], y: s.w[1], z: s.w[2] }, true);
     car.readState();
+    if (fresh) {
+      // Offset = old drawn pose minus new physics pose; it fades out in smoothVisual().
+      p.visErr.copy(p.visOld).sub(car.pos);
+      if (p.visErr.length() > SNAP_DIST) {
+        p.visErr.set(0, 0, 0);
+        p.visErrQ.identity();
+      } else {
+        p.visErrQ.copy(p.visOldQ).multiply(qi.copy(car.quat).invert());
+      }
+    }
     const c = car.controls;
     c.reset();
     c.throttle = s.throttle;
@@ -297,6 +341,17 @@ export class NetPlay {
     } else if (!mine && err > 0.02) {
       set(ball.pos.clone().lerp(tp, 0.35), ball.vel.clone().lerp(tv, 0.6));
     }
+  }
+
+  // Every rendered frame: draw remote cars at physics pose + a fading offset, so an update that moves
+  // a car eases it there instead of making it jump.
+  smoothVisual(p, dt) {
+    if (!p.visErr || !p.car.netDriven) return;
+    const k = Math.exp(-dt / SMOOTH);
+    p.visErr.multiplyScalar(k);
+    p.visErrQ.slerp(qi.identity(), 1 - k);
+    p.renderPos.add(p.visErr);
+    p.renderQuat.premultiply(p.visErrQ);
   }
 
   myTouch() {
