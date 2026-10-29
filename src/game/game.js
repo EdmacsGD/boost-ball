@@ -2128,7 +2128,7 @@ export class Game {
 
   updateHud(dt) {
     const car = this.player.car;
-    this.hud.setClock(this.mode === 'free' ? 0 : this.clock, this.overtime);
+    if (this.state !== 'theater') this.hud.setClock(this.mode === 'free' ? 0 : this.clock, this.overtime);
     if (this.mode === 'free') {
       let text = 'FREE';
       if (this.endlessOn) {
