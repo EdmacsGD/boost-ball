@@ -812,18 +812,38 @@ export class Game {
     const gi = this.goalInfo;
     if (!on || !gi) return;
     const sp = gi.scorer;
-    const label = document.createElement('span');
-    label.className = 'replay-card-label';
-    label.textContent = sp ? 'Goal by' : `${CONFIG.teams[gi.team].name} goal`;
-    box.appendChild(label);
+    const tc = CONFIG.teams[gi.team];
+    box.className = `replay-card ${gi.team ? 'orange' : 'blue'}`;
+    const el = (tag, cls, text) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    };
+    // Header: "GOAL" in the team color and the score after it.
+    const head = el('div', 'replay-head');
+    head.append(el('span', 'replay-goal', 'GOAL'), el('span', 'replay-by', sp ? 'scored by' : `${tc.name} team`));
+    head.appendChild(el('span', 'replay-score', `${this.score[0]} - ${this.score[1]}`));
+    box.appendChild(head);
     if (sp) {
       const lo = this.account.loadout;
       const look = sp.isPlayer
         ? { name: sp.name, title: lo.title, icon: lo.icon, banner: lo.banner, level: this.account.level(), badge: this.account.mode === 'online' ? this.account.badge : null }
         : sp.card || { name: sp.name, title: null, icon: 'ball', banner: 'default', level: null };
-      const card = bannerCard({ ...look, sub: `${gi.speedKmh} KM/H${sp.card || sp.isPlayer ? '' : ' · BOT'}` }, `replay ${sp.team ? 'orange' : 'blue'}`);
-      box.appendChild(card);
+      box.appendChild(bannerCard(look, 'goal-card'));
     }
+    // Facts under the banner.
+    const chips = el('div', 'replay-chips');
+    const chip = (big, small) => {
+      const c = el('span', 'replay-chip');
+      c.append(el('b', '', big), el('small', '', small));
+      chips.appendChild(c);
+    };
+    chip(String(gi.speedKmh), 'KM/H');
+    if (sp && gi.goalsBy) chip(String(gi.goalsBy), gi.goalsBy === 3 ? 'HAT TRICK' : gi.goalsBy === 1 ? 'GOAL THIS MATCH' : 'GOALS THIS MATCH');
+    if (gi.assist) chip(gi.assist.name, 'ASSIST');
+    if (sp && !sp.isPlayer && !sp.card) chip('BOT', 'PLAYER');
+    box.appendChild(chips);
     box.hidden = false;
   }
 
@@ -1642,7 +1662,7 @@ export class Game {
     }
     ball.body.setEnabled(false);
     this.ballHidden = true;
-    this.goalInfo = { team, time: this.simTime, pos: explodePos, scorer: sp, speedKmh, explosion };
+    this.goalInfo = { team, time: this.simTime, pos: explodePos, scorer: sp, assist: ap, speedKmh, explosion, goalsBy: sp ? sp.stats.goals : 0 };
     this.stadium.drawJumbo({ banner: 'GOAL' });
     if (this.overtime || this.mode === 'free') this.matchOver = this.overtime;
     this.enterState('goal');
