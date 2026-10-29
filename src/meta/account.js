@@ -532,7 +532,7 @@ export class Account {
         const elo = r && r.final && !r.void && Number.isFinite(r.elo_after) ? [r.elo_before, r.elo_after] : null;
         return { levels, elo, void: !!(r && r.void), waiting: !!(r && !r.final) };
       });
-    } else if (this.ticket) {
+    } else if (this.ticket && !h.online) {
       const ticket = this.ticket;
       this.ticket = null;
       server = ticket.then((t) => {
@@ -543,7 +543,7 @@ export class Account {
         elo: st && Number.isFinite(st.elo_after) ? [st.elo_before, st.elo_after] : null,
       }));
     } else {
-      server = Promise.reject(new Error('no ticket'));
+      server = Promise.reject(new Error(h.online ? 'not ranked' : 'no ticket'));
     }
     server = server.catch((e) => ({ error: String((e && e.message) || e) }));
     this.save();

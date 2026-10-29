@@ -783,6 +783,7 @@ export class Game {
   // Quest progress for the player; shows a popup for each finished quest.
   quest(type, n = 1) {
     if (this.state !== 'play' && this.state !== 'goal') return;
+    if (this.np && this.np.practice) return; // practice matches count nothing
     const done = this.account.event(type, n, { free: this.mode === 'free' });
     for (const q of done) {
       this.hud.popup(`QUEST DONE: ${q.text.toUpperCase()}`);
@@ -865,7 +866,10 @@ export class Game {
     server.then((r) => {
       const extra = [];
       if (r.error) parts = parts.filter((x) => !/ XP$/.test(x)); // no XP when the server did not take the result
-      if (r.error) extra.push(/too short/.test(r.error) ? 'RESULT NOT SAVED (MATCH TOO SHORT)' : 'RESULT NOT SAVED (NO CONNECTION)');
+      if (r.error) {
+        const why = /too short/.test(r.error) ? 'MATCH TOO SHORT' : /not ranked/.test(r.error) ? 'RANKED SIGN-IN FAILED' : 'NO CONNECTION';
+        extra.push(`RESULT NOT SAVED (${why})`);
+      }
       if (r.levels) extra.push(`LEVEL UP: +${r.levels} DROP${r.levels > 1 ? 'S' : ''}`);
       if (!r.error) {
         if (r.elo) {
@@ -958,6 +962,7 @@ export class Game {
     this.applyViewLook(false);
     this.infiniteBoost = false;
     this.np = new NetPlay(this, this.online, isHost);
+    this.account.ticket = null; // an unfinished bot match must not be saved with this match's result
     this.np.practice = !!this.online.practice;
     this.np.rankedId = !this.np.practice && this.account.serverStats && this.online.rid ? this.online.rid : null;
     if (this.np.rankedId) {
