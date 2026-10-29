@@ -2,6 +2,7 @@
 // build its body. Local frame matches the physics: +x forward, +y up, +z right, origin at the car's
 // center point (about 17 cm above the ground at rest). All sizes in meters.
 import * as THREE from 'three';
+import { mergeChildren } from './mergeMeshes.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
@@ -233,6 +234,10 @@ export class CarModel {
     design.build(this);
     this.buildWheels(design.wheels);
     this.buildUnderglow();
+    // Fewer draw calls: a car is built from up to ~300 small meshes. Meshes that move together and
+    // share a material become one mesh (body parts; each wheel's spinning parts).
+    mergeChildren(this.body);
+    for (const w of this.wheelVis) mergeChildren(w.spin);
     this.body.traverse((o) => {
       if (o.isMesh && !o.material.isMeshBasicMaterial) o.castShadow = true;
     });

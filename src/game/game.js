@@ -44,6 +44,7 @@ import { bannerCard } from '../ui/playerCard.js';
 import { tierOf } from '../meta/rank.js';
 
 const TICK = 1 / CONFIG.game.tickRate;
+const MAX_TICKS_PER_FRAME = 5;
 const BOT_NAMES = ['Comet', 'Volt', 'Nyx', 'Pike', 'Echo', 'Rook', 'Ember', 'Halo', 'Quill', 'Sable', 'Drift', 'Juno'];
 const v0 = new THREE.Vector3();
 const WHITE = new THREE.Color(1, 1, 1);
@@ -560,12 +561,14 @@ export class Game {
       else this.input.read(pc);
       this.acc += dt;
       let steps = 0;
-      while (this.acc >= TICK && steps < 8) {
+      // At most 5 physics ticks per frame (enough for full speed down to 24 fps). More would make a
+      // slow frame slower still: on a weak laptop one hitch turned into several seconds of lag.
+      while (this.acc >= TICK && steps < MAX_TICKS_PER_FRAME) {
         this.tick();
         this.acc -= TICK;
         steps++;
       }
-      if (steps === 8) this.acc = 0;
+      if (steps === MAX_TICKS_PER_FRAME) this.acc = 0;
     }
     this.updateState(dt);
     this.online.update(dt);

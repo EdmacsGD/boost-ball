@@ -16,6 +16,12 @@ export const QUALITY = {
   medium: { maxPixelRatio: 1.25, renderScale: 1, shadows: true, shadowSize: 1024, bloom: true, fxaa: true, msaa: 0, crowd: 0.75, particles: 0.8, envMap: true, aurora: true, lightShafts: false, city: true },
   high: { maxPixelRatio: 2, renderScale: 1, shadows: true, shadowSize: 2048, bloom: true, fxaa: false, msaa: 4, crowd: 1.0, particles: 1.0, envMap: true, aurora: true, lightShafts: true, city: true },
 };
+// Glow around bright things (medium and high only). A wide, strong glow washed the whole picture
+// out (about 70% brighter than low quality on the default arena), so it is kept tight: lights and
+// boost flames glow, the rest of the scene keeps the same brightness as the low settings.
+const BLOOM_SCALE = 0.5;
+const BLOOM_RADIUS = 0.2;
+
 const STEP_DOWN = { high: 'medium', medium: 'low', low: 'lowest' };
 
 // Rough guess from the GPU name and core count; "auto" starts lower on likely-weak laptops.
@@ -90,7 +96,7 @@ export class Renderer {
     composer.addPass(this.renderPass);
     if (q.bloom) {
       const b = this.bloomSettings || { strength: 0.55, threshold: 0.82 };
-      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), b.strength, 0.55, b.threshold);
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), b.strength * BLOOM_SCALE, BLOOM_RADIUS, b.threshold);
       composer.addPass(this.bloomPass);
     } else {
       this.bloomPass = null;
@@ -146,10 +152,20 @@ export class Renderer {
     const median = sorted[Math.floor(sorted.length / 2)];
     this.frameTimes.length = 0;
     // Big steps when far too slow so a weak laptop reaches a playable rate within a few seconds.
+    // Going up waits for 4 fast windows in a row: every size change reallocates the render targets,
+    // which is itself a small hitch, so the scale should not bounce up and down.
     let scale = this.dynamicScale;
     if (median > 1 / 30) scale = Math.max(0.55, scale - 0.2);
     else if (median > 1 / 50) scale = Math.max(0.55, scale - 0.1);
-    else if (median < 1 / 58 && scale < 1) scale = Math.min(1, scale + 0.05);
+    if (median < 1 / 58 && scale < 1) {
+      this.fastWindows = (this.fastWindows || 0) + 1;
+      if (this.fastWindows >= 4) {
+        this.fastWindows = 0;
+        scale = Math.min(1, scale + 0.1);
+      }
+    } else {
+      this.fastWindows = 0;
+    }
     if (scale !== this.dynamicScale) {
       this.dynamicScale = scale;
       this.resize();
@@ -166,7 +182,7 @@ export class Renderer {
   setBloom(strength, threshold) {
     this.bloomSettings = { strength, threshold };
     if (this.bloomPass) {
-      this.bloomPass.strength = strength;
+      this.bloomPass.strength = strength * BLOOM_SCALE;
       this.bloomPass.threshold = threshold;
     }
   }

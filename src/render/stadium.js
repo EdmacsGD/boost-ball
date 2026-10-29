@@ -1,6 +1,7 @@
 // Arena: field, walls, goals, stands with crowd, roof lights, sky and scenery, styled by a theme
 // (render/arenaThemes.js). Original design.
 import * as THREE from 'three';
+import { mergeTree, pinnedFrom } from './mergeMeshes.js';
 import { CONFIG } from '../config.js';
 import { UU, mulberry32 } from '../util/math.js';
 import { makeTurfTexture, makeGrassTile, makeGrassNormal, makeHexNetTexture, makeRibbonTexture, makeGlowTexture } from './textures.js';
@@ -80,6 +81,9 @@ export class Stadium {
     this.buildJumbotron();
     this.buildSky();
     this.buildProps();
+    // Merge static parts that share a material (hundreds of light and trim meshes) into a few
+    // meshes. Anything the stadium keeps a reference to (animated or toggled) is left alone.
+    this.merged = mergeTree(this.group, pinnedFrom(this));
   }
 
   // Free GPU memory when switching arenas.
