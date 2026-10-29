@@ -1176,62 +1176,73 @@ export const DESIGNS = {
   hotshot: {
     name: 'Hotshot',
     hitbox: 'hybrid',
-    blurb: 'Boxy 80s hot hatch: round lamps, a red-trimmed grille and black arches. For players who reached #1.',
+    blurb: 'Boxy early-80s hot hatch: round lamps, a red-trimmed grille, thin pillars and black trim. For players who reached #1.',
     span: [-0.56, 0.8, 0.36],
-    livery: 'single',
+    livery: 'plain', // no big stripes: a thin pinstripe in the accent color instead
     baseShade: 0.86,
-    wheels: { front: { r: 0.145, w: 0.13, z: 0.345 }, back: { r: 0.145, w: 0.13, z: 0.345 }, rim: 'star', rimMat: 'rimSilver', sidewall: 0.4 },
+    wheels: { front: { r: 0.14, w: 0.11, z: 0.34 }, back: { r: 0.14, w: 0.11, z: 0.34 }, rim: 'star', rimMat: 'rimSilver', sidewall: 0.46 },
     build(k) {
       const red = new THREE.MeshStandardMaterial({ color: 0xd8141e, roughness: 0.4, metalness: 0.1 });
       // Lower body: flat sides, square nose, a crease at the beltline.
       k.shell([
-        { x: 0.795, w: 0.3, yb: -0.05, yt: 0.07, n: 9 },
-        { x: 0.775, w: 0.325, yb: -0.06, yt: 0.105, n: 10, tb: 0.04 },
-        { x: 0.55, w: 0.33, yb: -0.065, yt: 0.125, n: 10, tb: 0.05 },
-        { x: 0.2, w: 0.33, yb: -0.065, yt: 0.13, n: 10, tb: 0.05 },
-        { x: -0.4, w: 0.33, yb: -0.065, yt: 0.135, n: 10, tb: 0.05 },
-        { x: -0.53, w: 0.325, yb: -0.055, yt: 0.135, n: 10, tb: 0.04 },
-        { x: -0.55, w: 0.31, yb: -0.04, yt: 0.12, n: 9 },
+        { x: 0.795, w: 0.3, yb: -0.05, yt: 0.1, n: 11 },
+        { x: 0.775, w: 0.325, yb: -0.06, yt: 0.135, n: 12, tb: 0.03 },
+        { x: 0.55, w: 0.33, yb: -0.065, yt: 0.15, n: 12, tb: 0.05 },
+        { x: 0.38, w: 0.33, yb: -0.065, yt: 0.155, n: 11, tb: 0.05 },
+        { x: -0.4, w: 0.33, yb: -0.065, yt: 0.155, n: 10, tb: 0.05 },
+        { x: -0.53, w: 0.325, yb: -0.055, yt: 0.155, n: 10, tb: 0.04 },
+        { x: -0.55, w: 0.31, yb: -0.04, yt: 0.14, n: 9 },
       ], { ring: 48, twoTone: { y: -0.035, dark: 0.12 } });
       // Tall glasshouse: raked windscreen, flat roof, near-vertical hatch.
       k.shell([
-        { x: 0.3, w: 0.29, yb: 0.12, yt: 0.135, n: 8, tb: 0.12 },
-        { x: 0.14, w: 0.29, yb: 0.12, yt: 0.33, n: 8, tb: 0.16 },
-        { x: -0.36, w: 0.29, yb: 0.125, yt: 0.335, n: 8, tb: 0.16 },
-        { x: -0.47, w: 0.28, yb: 0.13, yt: 0.3, n: 8, tb: 0.14 },
-        { x: -0.53, w: 0.27, yb: 0.135, yt: 0.16, n: 8, tb: 0.1 },
+        { x: 0.39, w: 0.29, yb: 0.145, yt: 0.16, n: 8, tb: 0.12 },
+        { x: 0.22, w: 0.29, yb: 0.145, yt: 0.325, n: 8, tb: 0.04 },
+        { x: -0.36, w: 0.29, yb: 0.145, yt: 0.327, n: 8, tb: 0.04 },
+        { x: -0.47, w: 0.28, yb: 0.15, yt: 0.31, n: 8, tb: 0.14 },
+        { x: -0.53, w: 0.27, yb: 0.15, yt: 0.175, n: 8, tb: 0.1 },
       ], { mat: 'glass', ring: 40 });
-      k.rbox([0.5, 0.022, 0.585], [-0.11, 0.334, 0], 'paintPlain', { r: 0.008 });
+      // Roof panel: sits on the glasshouse and stays inside its outline (no overhang).
+      k.shell([
+        { x: 0.21, w: 0.27, yb: 0.325, yt: 0.335, n: 8 },
+        { x: 0.17, w: 0.285, yb: 0.322, yt: 0.345, n: 8, tb: 0.2 },
+        { x: -0.33, w: 0.285, yb: 0.322, yt: 0.347, n: 8, tb: 0.2 },
+        { x: -0.37, w: 0.27, yb: 0.32, yt: 0.335, n: 8 },
+      ], { mat: 'paintPlain', ring: 40 });
+      // Small black lip spoiler at the top of the hatch.
+      k.rbox([0.05, 0.012, 0.46], [-0.375, 0.343, 0], 'plastic', { r: 0.004, rot: [0, 0, -0.15] });
       k.sym((s) => {
         // Thick C-pillar (following the hatch line), thin A- and B-pillars, mirror.
-        k.plate([[0, 0], [0.16, 0], [0.16, 0.195], [0.05, 0.165], [-0.005, 0.025]], 0.01, [-0.52, 0.135, s * 0.287], 'paintPlain', { bevel: 0.003 });
-        k.box([0.012, 0.2, 0.012], [0.21, 0.23, s * 0.284], 'paintPlain', [0, 0, 0.75]);
-        k.box([0.014, 0.2, 0.012], [-0.06, 0.23, s * 0.287], 'black');
-        k.rbox([0.03, 0.03, 0.05], [0.28, 0.16, s * 0.33], 'black', { r: 0.008 });
+        k.plate([[0, 0], [0.16, 0], [0.16, 0.19], [0.05, 0.16], [-0.005, 0.025]], 0.01, [-0.52, 0.152, s * 0.287], 'paintPlain', { bevel: 0.003 });
+        k.box([0.012, 0.21, 0.012], [0.3, 0.245, s * 0.284], 'paintPlain', [0, 0, 0.82]);
+        k.box([0.014, 0.19, 0.012], [-0.02, 0.24, s * 0.287], 'black');
+        k.rbox([0.03, 0.03, 0.05], [0.35, 0.18, s * 0.33], 'black', { r: 0.008 });
+        // Black window surround along the beltline.
+        k.box([0.88, 0.012, 0.008], [-0.08, 0.15, s * 0.291], 'black');
         // Round headlamps in the black grille, square indicators below.
-        k.cyl(0.042, 0.042, 0.016, [0.8, 0.045, s * 0.21], 'chrome', { axis: 'x' });
-        k.cyl(0.034, 0.034, 0.012, [0.806, 0.045, s * 0.21], 'head', { axis: 'x' });
+        k.cyl(0.046, 0.046, 0.016, [0.8, 0.06, s * 0.21], 'chrome', { axis: 'x' });
+        k.cyl(0.037, 0.037, 0.012, [0.806, 0.06, s * 0.21], 'head', { axis: 'x' });
         k.rbox([0.012, 0.022, 0.05], [0.8, -0.03, s * 0.25], 'amber', { r: 0.004 });
         // Wide tail lamps.
-        k.rbox([0.012, 0.06, 0.1], [-0.552, 0.075, s * 0.22], 'tail', { r: 0.006 });
-        k.rbox([0.012, 0.02, 0.1], [-0.552, 0.03, s * 0.22], 'amber', { r: 0.004 });
+        k.rbox([0.012, 0.07, 0.1], [-0.552, 0.09, s * 0.22], 'tail', { r: 0.006 });
+        k.rbox([0.012, 0.02, 0.1], [-0.552, 0.04, s * 0.22], 'amber', { r: 0.004 });
         // Black arch extensions and the side trim strip.
         for (const x of [0.5125, -0.34]) k.arch(x, -0.031, s * 0.338, 0.162, 0.05, 'plastic', { thick: 0.014, from: 0, to: Math.PI });
         k.box([0.62, 0.02, 0.008], [0.09, 0.0, s * 0.334], 'plastic');
+        k.box([1.24, 0.008, 0.006], [0.12, 0.085, s * 0.333], 'accent');
         k.nozzle([-0.57, -0.035, s * 0.14], 0.045);
       });
       // Grille: full-width black panel with a thin red outline, badge-free.
-      k.rbox([0.016, 0.095, 0.56], [0.796, 0.045, 0], 'black', { r: 0.008 });
-      k.box([0.008, 0.008, 0.56], [0.806, 0.094, 0], red);
-      k.box([0.008, 0.008, 0.56], [0.806, -0.004, 0], red);
-      for (const y of [0.02, 0.045, 0.07]) k.box([0.006, 0.006, 0.26], [0.805, y, 0], 'darkMetal');
+      k.rbox([0.016, 0.115, 0.56], [0.796, 0.06, 0], 'black', { r: 0.008 });
+      k.box([0.008, 0.008, 0.56], [0.806, 0.119, 0], red);
+      k.box([0.008, 0.008, 0.56], [0.806, 0.001, 0], red);
+      for (const y of [0.03, 0.06, 0.09]) k.box([0.006, 0.006, 0.26], [0.805, y, 0], 'darkMetal');
       // Black wraparound bumpers and a small front lip.
       k.rbox([0.05, 0.035, 0.68], [0.81, -0.055, 0], 'plastic', { r: 0.01 });
       k.rbox([0.04, 0.035, 0.66], [-0.565, -0.045, 0], 'plastic', { r: 0.01 });
       k.box([0.06, 0.008, 0.6], [0.8, -0.078, 0], 'black');
       // Rear hatch details: wiper and plate recess.
-      k.box([0.006, 0.008, 0.14], [-0.53, 0.17, 0.04], 'black', [0.5, 0, 0]);
-      k.rbox([0.01, 0.04, 0.16], [-0.556, 0.08, 0], 'black', { r: 0.004 });
+      k.box([0.006, 0.008, 0.14], [-0.53, 0.19, 0.04], 'black', [0.5, 0, 0]);
+      k.rbox([0.01, 0.04, 0.16], [-0.556, 0.09, 0], 'black', { r: 0.004 });
     },
   },
 };
