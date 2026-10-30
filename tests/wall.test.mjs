@@ -42,6 +42,30 @@ for (const [vx, vy] of [[1800, 0], [2400, 0], [1500, 1500], [2000, 800]]) {
   check(`roll at the wall (${vx}, ${vy}) uu/s: stays on the wall`, share > 0.9 && maxGap < 25, `on the wall ${(share * 100).toFixed(0)}% of ${(upTicks / 120).toFixed(2)} s, max gap ${maxGap.toFixed(0)} uu, up to ${maxZ.toFixed(0)} uu`);
 }
 
+// Car through the floor-to-wall curve with boost: it should lose about what gravity takes (climbing
+// ~2.4 m costs ~0.8 m/s at 20 m/s), not brake in the bend.
+{
+  const THREE = await import('three');
+  const s2 = new Simulation();
+  s2.goalDetection = false;
+  const car = s2.addCar(0, 'standard');
+  s2.setupKickoff();
+  car.place(new THREE.Vector3(25, 0.2, 0), 0, 100);
+  car.body.setLinvel({ x: 12, y: 0, z: 0 }, true);
+  car.readState();
+  let before = 0;
+  let minV = 99;
+  for (let i = 0; i < 200; i++) {
+    car.controls.reset();
+    car.controls.throttle = 1;
+    car.controls.boost = true;
+    s2.step();
+    if (car.pos.x < 38.5 && car.pos.y < 0.3) before = car.vel.length();
+    if (car.pos.x >= 38.5 && car.pos.y < 3) minV = Math.min(minV, car.vel.length());
+  }
+  check('car boosting up the wall keeps its speed in the curve', before - minV < 1.3, `${before.toFixed(1)} -> lowest ${minV.toFixed(1)} m/s`);
+}
+
 let pass = 0;
 for (const r of results) {
   if (r.ok) pass++;

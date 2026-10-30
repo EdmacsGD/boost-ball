@@ -122,6 +122,37 @@ export class Simulation {
     this.needsSync = true;
   }
 
+  // Curved floor-to-wall ramps: the suspension cannot take a 2.56 m bend at speed, so it compressed
+  // fully and turned speed into heat; driving up or down a wall the car slowed in the bend and sped up
+  // after it. While the wheels ride the curve, the car now keeps the speed that gravity, boost and a
+  // little rolling loss allow. Hits (ball, cars) are left alone.
+  rampAssist(car) {
+    if (car.isDemoed || car.netDriven || !car.snapVel) return;
+    const prev = car.snapVel.length();
+    if (prev < 4 || car.numWheelsInContact < 3) return;
+    let onCurve = false;
+    for (const w of car.wheels) {
+      if (!w.inContact) continue;
+      const ny = Math.abs(w.contactNormal.y);
+      if (ny > 0.06 && ny < 0.985) onCurve = true;
+    }
+    if (!onCurve) return;
+    for (const e of this.events) if (e.carId === car.id && (e.type === 'ballHit' || e.type === 'bump' || e.type === 'demo')) return;
+    car.readState();
+    const now = car.vel.length();
+    if (now < 0.1) return;
+    const dir = v0.copy(car.snapVel).divideScalar(prev);
+    let accel = -Math.abs(CONFIG.physics.gravityZ) * UU * dir.y; // gravity along the motion
+    if (car.isBoosting && car.boost > 0) accel += CONFIG.boost.accelGround * UU * Math.max(0, car.fwd.dot(dir));
+    accel -= 0.6; // allowed rolling loss (m/s^2)
+    const max = CONFIG.physics.carMaxSpeed ? CONFIG.physics.carMaxSpeed * UU : 23;
+    const floor = Math.min(max, prev + accel * DT);
+    if (now >= floor) return;
+    const k = floor / now;
+    car.body.setLinvel({ x: car.vel.x * k, y: car.vel.y * k, z: car.vel.z * k }, true);
+    car.readState();
+  }
+
   step() {
     this.events.length = 0;
     this.goalScored = -1;
@@ -165,6 +196,7 @@ export class Simulation {
     this.handleBallContacts();
     this.handleCarContacts();
     this.handleWorldContacts();
+    for (const car of this.cars) this.rampAssist(car);
 
     for (const car of this.cars) {
       car.postTick();
