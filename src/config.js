@@ -247,6 +247,9 @@ export const CONFIG = {
     easy: { reaction: 0.4, aim: 1.0, boostUse: 0.3, maxSpeedUse: 0.72, dodges: 0.25, aerialHeight: 0, rotate: 0.45 },
     medium: { reaction: 0.2, aim: 0.5, boostUse: 0.65, maxSpeedUse: 0.9, dodges: 0.6, aerialHeight: 7, rotate: 0.8 },
     hard: { reaction: 0.09, aim: 0.15, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 0.9, aerialHeight: 12, rotate: 1.0 },
+    // Ultra: near-instant decisions, perfect aim at the corner away from the defender, flips into
+    // every ground hit, speed flips, aerials up to the ceiling, ball read twice as often and further ahead.
+    ultra: { reaction: 0.025, aim: 0.0, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 1.0, aerialHeight: 17, rotate: 1.0, flipHit: 0.95, speedFlips: true, predictEvery: 0.03, predictAhead: 5, corners: true, readPlay: true },
   },
 
   // Arenas: same field and physics, different look. Theme details live in render/arenaThemes.js.

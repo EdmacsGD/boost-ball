@@ -77,6 +77,10 @@ Aurora Arena, Solstice Park, Neon District, Frostbite Bowl, Dune Canyon, Sky Hav
 
 **Free camera** (free play and Sky Field): V or R3 toggles it. WASD / left stick to move, mouse or right stick to look, Space / X (A / B) up and down, Shift (right trigger) faster.
 
+## Ultra bots
+
+The Ultra difficulty decides 40 times a second, aims for the post farther from the defender, flips into almost every ground hit, speed-flips on long runs, goes for aerials up to the ceiling, reads the ball 5 s ahead, and backs off to defend when the opponent will reach the ball first instead of diving in. No cheats: same car, same boost. In bot-vs-bot tests (`node tests/botduel.mjs ultra hard 10`) it outscored Hard by about 1.4 to 1.8 times.
+
 ## Match replay
 
 After a match (bots or online), **Watch replay** on the end screen plays the whole match again from a recording of every car and the ball (30 times a second). Cameras: free camera (WASD / mouse, the default), ball camera, or follow any player (C cycles). K play/pause, J / L 10 seconds back / forward, , / . speed (0.25x to 4x), drag the timeline (goal markers on it), Esc back to the results. The recording is kept until the next match starts.
@@ -111,7 +115,7 @@ On the website, stats, achievement items and ratings are decided by the database
 ## Ranked, practice and quick chat
 
 - **Ranked** (website): quick play and normal online matches. Elo rating per mode, everyone starts at 1000, K = 32 (team average vs team average). Every player reports the final score; the score most reports agree on counts, a tie between different scores voids the match. Leaving early counts as a loss. Tiers: Bronze, Silver (900), Gold (1050), Platinum (1200), Diamond (1350), Champion (1500).
-- **Bot matches** (website) change the rating too, at half weight (K = 16), against a fixed bot rating: Easy 800, Medium 1000, Hard 1250. Changing the difficulty mid-match voids that match.
+- **Bot matches** (website) change the rating too, at half weight (K = 16), against a fixed bot rating: Easy 800, Medium 1000, Hard 1250, Ultra 1500. Changing the difficulty mid-match voids that match.
 - **Practice**: the host picks it in the match lobby. Nothing counts (no rating, stats, XP or quests), unlimited boost allowed.
 - **Quick chat** in online matches: 1 Nice shot!, 2 What a save!, 3 Great pass!, 4 Thanks!, 5 Sorry!, 6 gg (at most 3 messages per 5 s).
 

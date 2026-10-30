@@ -459,11 +459,11 @@ export class Account {
   }
 
   // A match against bots starts: the server notes the time (a result sooner than a match lasts is refused).
-  // `diff`: bot difficulty, which sets the bots' rating (Easy 800, Medium 1000, Hard 1250).
+  // `diff`: bot difficulty, which sets the bots' rating (Easy 800, Medium 1000, Hard 1250, Ultra 1500).
   startMatch(mode, diff = 'medium') {
     this.ticket = null;
     if (!this.serverStats) return;
-    const p_diff = ['easy', 'medium', 'hard'].includes(diff) ? diff : 'medium';
+    const p_diff = ['easy', 'medium', 'hard', 'ultra'].includes(diff) ? diff : 'medium';
     this.ticket = this.online.rpc('bb_start_match', { p_mode: mode, p_diff }).catch(() => null);
   }
 

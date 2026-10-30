@@ -1,6 +1,7 @@
 // Bot driver. Each decision picks one plan (kickoff, attack, clear, save, rotate back, shadow, boost),
 // then simple controllers drive the car: steering toward a target, flips into the ball, aerials and
-// air recovery. Difficulty changes reaction time, aim, boost use, flips and aerials. Beatable on purpose.
+// air recovery. Difficulty changes reaction time, aim, boost use, flips and aerials. Easy to Hard are
+// beatable on purpose; Ultra adds corner shots, flip hits, speed flips and reading who reaches the ball first.
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { UU, clamp } from '../util/math.js';
@@ -63,8 +64,8 @@ export class Bot {
     if (car.isDemoed) return;
     const ball = this.game.sim.ball;
     this.pathAge += dt;
-    if (this.pathAge > 0.08) {
-      this.path = predictBall(ball.pos, ball.vel, 4, 1 / 30);
+    if (this.pathAge > (this.d.predictEvery ?? 0.08)) {
+      this.path = predictBall(ball.pos, ball.vel, this.d.predictAhead ?? 4, 1 / 30);
       this.pathAge = 0;
     }
     if (this.dodge) {
@@ -159,6 +160,21 @@ export class Bot {
       if (this.detourForBoost(32, true)) return;
     }
 
+    // 4b. Reading the play (ultra): the opponent gets there clearly first and we are not goal-side,
+    // so do not dive in from a bad angle. Get between the ball and our goal and wait for the hit.
+    if (this.d.readPlay && intercept && ballDistToOwnGoal < 75) {
+      const mine = this.reachTime(car, ball.pos);
+      const theirs = this.opponentReach(ball);
+      if (theirs + (this.d.readMargin ?? 0.25) < mine && goalSide < 4) {
+        this.state = 'shadow';
+        const back = v1.set(0, 0, ownGoalZ).sub(ball.pos).setY(0).normalize();
+        this.target.copy(ball.pos).addScaledVector(back, Math.min(18, ballDistToOwnGoal * 0.45)).setY(0);
+        this.clampTarget(4);
+        this.targetSpeed = 23;
+        return;
+      }
+    }
+
     // 5. Attack, or clear when the ball is in our third.
     if (intercept) {
       this.plan(ballDistToOwnGoal < 34 ? 'clear' : 'attack', intercept);
@@ -233,7 +249,19 @@ export class Bot {
       const sx = Math.sign(p.x || (Math.random() - 0.5)) * 0.9;
       return v2.set(sx, 0, dir).normalize();
     }
-    const aimX = clamp(p.x * 0.25, -GOAL_W * 0.5, GOAL_W * 0.5) + this.aimError * 6;
+    let aimX = clamp(p.x * 0.25, -GOAL_W * 0.5, GOAL_W * 0.5) + this.aimError * 6;
+    if (this.d.corners) {
+      // Aim inside the post farther from the closest defender (or the far post if none is home).
+      let keeper = null;
+      let kd = Infinity;
+      for (const c of this.game.sim.cars) {
+        if (c.team === this.car.team || c.isDemoed) continue;
+        const d = Math.abs(c.pos.z - dir * FIELD_Z);
+        if (d < kd) { kd = d; keeper = c; }
+      }
+      const side = keeper && kd < 25 ? -Math.sign(keeper.pos.x || 1) : -Math.sign(p.x || 1);
+      aimX = side * GOAL_W * 0.62;
+    }
     return v2.set(aimX - p.x, 0, dir * (FIELD_Z + 2) - p.z).normalize();
   }
 
@@ -267,6 +295,29 @@ export class Bot {
     const tLeft = Math.max(0.2, ip.t - (this.game.sim.tick / 120 - this.interceptStart));
     // Ground balls: go fast. Bouncing balls: time the arrival.
     this.targetSpeed = ip.y < 1.5 ? 23 : clamp(dist / tLeft + 2, 8, 23);
+  }
+
+  // Rough time for a car to reach the ball's ground spot (s), for reading who gets there first.
+  reachTime(car, p) {
+    const speed = Math.max(car.vel.length(), 4);
+    const vmax = car.boost > 8 ? 22 : 14;
+    const accel = car.boost > 8 ? 17 : 8;
+    const dist = Math.max(0, Math.hypot(p.x - car.pos.x, p.z - car.pos.z) - 1.4);
+    const tAcc = Math.max(0, (vmax - speed) / accel);
+    const dAcc = speed * tAcc + 0.5 * accel * tAcc * tAcc;
+    const t = dist <= dAcc ? (-speed + Math.sqrt(speed * speed + 2 * accel * dist)) / accel : tAcc + (dist - dAcc) / vmax;
+    const toP = v0.set(p.x - car.pos.x, 0, p.z - car.pos.z).normalize();
+    return t + (1 - toP.dot(v3.copy(car.fwd).setY(0).normalize())) * 0.45;
+  }
+
+  // Seconds the closest opponent needs to reach the ball (Infinity if none).
+  opponentReach(ball) {
+    let best = Infinity;
+    for (const c of this.game.sim.cars) {
+      if (c.team === this.car.team || c.isDemoed) continue;
+      best = Math.min(best, this.reachTime(c, ball.pos));
+    }
+    return best;
   }
 
   // Earliest predicted ball position this car can reach in time.
@@ -363,7 +414,7 @@ export class Bot {
         return;
       }
       // Flip into the ball for a harder hit.
-      if (dBall < 2.9 && ball.pos.y < 1.3 && Math.abs(ballAngle) < 0.28 && speed > 9 && good && car.isOnGround && Math.random() < this.d.dodges * 0.3) {
+      if (dBall < 2.9 && ball.pos.y < 1.3 && Math.abs(ballAngle) < 0.28 && speed > 9 && good && car.isOnGround && Math.random() < (this.d.flipHit ?? this.d.dodges * 0.3)) {
         this.startDodge(1, clamp(ballAngle * 2.2, -0.6, 0.6));
         return;
       }
@@ -377,6 +428,17 @@ export class Bot {
       // Take off when facing it and the remaining time matches the climb.
       if (Math.abs(ang) < 0.3 && tLeft < 0.55 + ip.y / 7 && horiz < 4 + ip.y * 2) {
         this.aerial = { t: 0, arrive: Math.max(0.5, tLeft), jumped: false };
+        return;
+      }
+    }
+
+    // Speed flip: a long straight run without boost to spare goes faster with a front flip.
+    if (this.d.speedFlips && car.isOnGround && car.up.y > 0.9 && Math.abs(angle) < 0.08 && dist > 28
+      && fwdSpeed > 9 && fwdSpeed < 19 && (car.boost < 15 || !c.boost) && this.state !== 'defend' && this.state !== 'shadow') {
+      const now = this.game.sim.tick / 120;
+      if (now > (this.nextSpeedFlip || 0)) {
+        this.nextSpeedFlip = now + 1.6;
+        this.startDodge(1, 0);
         return;
       }
     }
