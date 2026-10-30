@@ -122,6 +122,7 @@ export class Game {
     this.ballTrail = new Ribbon(36, 0.5, 0xffc070, 0.5, 10, [2.0, 6.0]);
     scene.add(this.ballTrail.mesh);
     this.effects = new Effects(scene, this.renderer.quality);
+    this.effects.screen = this.renderer.screenFx;
     this.showroom = new Showroom(this.renderer.renderer);
     this.renderer.onResize = (w, h) => this.showroom.resize(w, h);
     this.showroom.resize(this.renderer.width, this.renderer.height);
@@ -361,6 +362,8 @@ export class Game {
     if (this.state === 'theater' && s !== 'theater') this.theater.teardown();
     this.state = s;
     this.stateTime = 0;
+    // A full-screen explosion effect never carries into the replay, the next kickoff or a menu.
+    if (s !== 'goal') this.renderer.screenFx.clear();
     if (s === 'home') {
       this.home.show();
       this.stopGoalAnthem(0.4);

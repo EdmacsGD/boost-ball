@@ -117,6 +117,8 @@ On the website, stats, achievement items and ratings are decided by the database
 - **Ranked** (website): quick play and normal online matches. Elo rating per mode, everyone starts at 1000, K = 32 (team average vs team average). Every player reports the final score; the score most reports agree on counts, a tie between different scores voids the match. Leaving early counts as a loss. Tiers: Bronze, Silver (900), Gold (1050), Platinum (1200), Diamond (1350), Champion (1500).
 - **Bot matches** (website) change the rating too, at half weight (K = 16), against a fixed bot rating: Easy 800, Medium 1000, Hard 1250, Ultra 1500. Changing the difficulty mid-match voids that match.
 - **Practice**: the host picks it in the match lobby. Nothing counts (no rating, stats, XP or quests), unlimited boost allowed.
+- **Goal explosions** also act on the whole screen (src/render/screenFx.js, a post-processing pass that runs only while an explosion plays): Black Hole pulls the arena into a spinning hole and throws it back out, Voxel pixelates the view, Shockwave ripples it, Inferno and Phoenix add heat shimmer, Eclipse and Galaxy darken it to stars, and so on.
+- **Boost pad lines**: every pad has a painted ring on the floor, and dashed lanes join neighbor pads.
 - **Online connection**: players connect directly to each other (WebRTC data channels, 30 updates a second); Supabase only carries the handshake. If a network blocks direct connections, that pair falls back to Supabase at a rate that keeps the project under its 100 messages a second. The HUD shows `PING ms · DIRECT` or `· RELAY`.
 - **Quick chat** in online matches: 1 Nice shot!, 2 What a save!, 3 Great pass!, 4 Thanks!, 5 Sorry!, 6 gg (at most 3 messages per 5 s).
 

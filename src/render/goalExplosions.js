@@ -2,6 +2,7 @@
 // Effects (fireballs, flashes, rings, glow / smoke / streak particles, timed steps and small meshes),
 // colored by the scoring team. All original designs.
 import * as THREE from 'three';
+import { env } from './screenFx.js';
 
 const v = new THREE.Vector3();
 const v2 = new THREE.Vector3();
@@ -217,31 +218,69 @@ function lightning(fx, pos, tc) {
   fx.shake = Math.max(fx.shake, 1.2);
 }
 
+// Black hole: a dark core opens, the whole arena is pulled into it and spirals away until only the
+// void is left, then everything is thrown back out in one blast. The full-screen part is in SCREEN.
+const BH_PULL = 1.45; // seconds of pulling
+const BH_BLAST = 1.75; // when it blows
 function blackHole(fx, pos, tc) {
   const { hot, pale } = palette(tc);
   const dark = new THREE.Color(0.02, 0.0, 0.05);
-  const pull = 0.75;
-  // Matter sucked in from a sphere around the goal, then a dark core, then the blast.
-  const n = Math.round(420 * fx.quality.particles);
-  for (let i = 0; i < n; i++) {
-    randDir(v);
-    const r = rnd(6, 12);
-    const t = rnd(0.45, pull);
-    const p = pos.clone().addScaledVector(v, r);
-    fx.glow.spawn(p.x, p.y, p.z, -v.x * (r / t), -v.y * (r / t), -v.z * (r / t), t, 0.25, 0.1, pale, tc, 1, 0, 0);
+  const violet = new THREE.Color(0.55, 0.25, 1);
+  // Matter from all over the field: streams that spiral in, more and more of them.
+  const steps = 24;
+  for (let s = 0; s < steps; s++) {
+    fx.later((s / steps) * BH_PULL * 0.85, () => {
+      const n = Math.round(34 * fx.quality.particles) + 4;
+      const left = BH_PULL - (s / steps) * BH_PULL * 0.85;
+      for (let i = 0; i < n; i++) {
+        const r = rnd(10, 48);
+        const a = Math.random() * Math.PI * 2;
+        const p = v.set(pos.x + Math.cos(a) * r, rnd(0.2, 14), pos.z + Math.sin(a) * r * 0.8);
+        const t = Math.max(0.25, left * rnd(0.6, 1));
+        // Straight in plus a sideways part, so the streams curl.
+        const vx = (pos.x - p.x) / t - Math.sin(a) * r * 0.6;
+        const vz = (pos.z - p.z) / t + Math.cos(a) * r * 0.6;
+        const vy = (pos.y - p.y) / t;
+        fx.glow.spawn(p.x, p.y, p.z, vx, vy, vz, t, rnd(0.25, 0.5), 0.05, Math.random() < 0.4 ? pale : tc, violet, 1, 0, 0);
+      }
+      // Dust torn off the floor.
+      if (s % 3 === 0) {
+        const m = Math.round(10 * fx.quality.particles) + 2;
+        for (let i = 0; i < m; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = rnd(6, 30);
+          const x = pos.x + Math.cos(a) * r;
+          const z = pos.z + Math.sin(a) * r;
+          fx.smoke.spawn(x, 0.3, z, (pos.x - x) * 1.2, rnd(1, 3), (pos.z - z) * 1.2, rnd(0.6, 1), 1, 0.2, fx.colors.smokeDark, dark, 0.5, 0, 0);
+        }
+      }
+    });
   }
-  fx.ring(pos, fieldDir(pos), 14, 0.5, pull, tc, 0.9, 0.9);
-  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 16, 0.5, pull, hot, 0.7, 0.92);
-  fx.fireball(pos, dark, tc, 0.3, 3.2, pull + 0.3, 'smoke', 0);
-  fx.flash(pos, 6, pull, new THREE.Color(0.35, 0.1, 0.6));
-  fx.later(pull, () => {
-    fx.flash(pos, 34, 0.4, WHITE);
-    fx.fireball(pos, tc, hot, 1, 22, 0.55, 'shell', 0);
-    fx.fireball(pos, tc, pale, 0.6, 7, 0.6, 'plasma', 0);
-    streakBurst(fx, pos, 320, 25, 60, 0.6, () => (Math.random() < 0.5 ? pale : tc), { lift: 0 });
-    burst(fx, pos, 250, 10, 30, 1.2, 0.35, 0.05, hot, tc, { grav: 3 });
-    fx.ring(pos, fieldDir(pos), 1, 24, 0.7, pale, 1, 0.94);
-    fx.shake = Math.max(fx.shake, 1.8);
+  // Accretion ring: a bright disk turning around the core.
+  const ringN = Math.round(260 * fx.quality.particles) + 30;
+  for (let i = 0; i < ringN; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = rnd(1.5, 3.2);
+    const sp = 14 / r;
+    fx.glow.spawn(pos.x + Math.cos(a) * r, pos.y + rnd(-0.1, 0.1), pos.z + Math.sin(a) * r, -Math.sin(a) * sp * r * 0.3, 0, Math.cos(a) * sp * r * 0.3, rnd(0.6, BH_PULL), rnd(0.15, 0.3), 0.05, Math.random() < 0.5 ? hot : pale, violet, 1, 0, 0);
+  }
+  fx.ring(pos, fieldDir(pos), 22, 0.5, BH_PULL, tc, 0.9, 0.92);
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 30, 0.5, BH_PULL, hot, 0.7, 0.94);
+  fx.later(BH_PULL * 0.5, () => fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 18, 0.5, BH_PULL * 0.5, violet, 0.7, 0.9));
+  fx.fireball(pos, dark, tc, 0.3, 3.6, BH_BLAST, 'smoke', 0);
+  fx.flash(pos, 7, BH_BLAST, violet);
+  fx.later(BH_BLAST, () => {
+    fx.flash(pos, 34, 0.45, WHITE);
+    fx.flash(pos, 30, 1.2, tc);
+    fx.fireball(pos, tc, hot, 1, 32, 0.7, 'shell', 0);
+    fx.later(0.12, () => fx.fireball(pos, violet, pale, 1, 22, 0.8, 'shell', 0));
+    fx.fireball(pos, tc, pale, 0.6, 9, 0.8, 'plasma', 0);
+    streakBurst(fx, pos, 520, 30, 80, 0.8, () => (Math.random() < 0.5 ? pale : tc), { lift: 0 });
+    burst(fx, pos, 420, 12, 45, 1.6, 0.4, 0.05, hot, violet, { grav: 2 });
+    fx.ring(pos, fieldDir(pos), 1, 40, 0.9, pale, 1, 0.95);
+    fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 60, 1.1, tc, 1, 0.96);
+    smokeBurst(fx, pos, 80, 6, 18, 2.5, 2, 8, violet, dark, 0.4, { grav: 0 });
+    fx.shake = Math.max(fx.shake, 2.4);
   });
 }
 
@@ -760,6 +799,108 @@ function thunderdome(fx, pos, tc) {
   });
 }
 
+// ------------------------------------------------------------------ full-screen parts
+// What each explosion does to the whole picture (see screenFx.js). Arguments: the ScreenFx, the
+// blast position, the team color. Times match the effects above.
+const R = (t, at, len, r1, amp) => env.ripple(t, at, len, r1, amp);
+const { up, down, pulse } = env;
+const ICE = new THREE.Color(0.6, 0.85, 1);
+const FIRE = new THREE.Color(1, 0.45, 0.12);
+const VIOLET = new THREE.Color(0.55, 0.25, 1);
+const SCREEN = {
+  classic: (sf, pos, tc) => sf.add(pos, 1.2, (t) => ({ ...R(t, 0, 0.9, 1.4, 0.05), bulge: 0.18 * pulse(t, 0, 0.35), flash: 0.5 * pulse(t, 0, 0.3), chroma: 0.6 * pulse(t, 0, 0.5), vig: 0.35 * pulse(t, 0, 1.1) }), tc),
+  fireworks: (sf, pos, tc) => {
+    const cols = [tc, GOLD, WHITE, tc.clone().lerp(WHITE, 0.7)];
+    sf.add(pos, 2.4, (t) => {
+      let f = 0;
+      for (let i = 0; i < 9; i++) f += pulse(t, 0.55 + i * 0.09, 0.25);
+      return { flash: 0.12 * f, flashColor: cols[Math.floor(t * 7) % cols.length], vig: 0.25 * f };
+    }, tc);
+  },
+  supernova: (sf, pos, tc) => sf.add(pos, 2.2, (t) => ({
+    flash: 0.8 * pulse(t, 0, 0.4) + 0.15 * pulse(t, 0.15, 0.6), flashColor: WHITE,
+    bulge: 0.45 * pulse(t, 0, 0.6), ...R(t, 0.05, 1.3, 1.8, 0.09), zoom: 0.9 * pulse(t, 0, 0.7),
+    chroma: 1.4 * pulse(t, 0, 1), vig: 0.6 * pulse(t, 0.2, 2), tintA: 0.25 * pulse(t, 0.3, 1.8),
+  }), tc),
+  shockwave: (sf, pos, tc) => sf.add(pos, 1.8, (t) => {
+    let best = { ripR: 0, ripA: 0 };
+    for (let i = 0; i < 4; i++) {
+      const r = R(t, i * 0.14, 0.9, 1.3 + i * 0.25, 0.09);
+      if (Math.abs(r.ripA) > Math.abs(best.ripA)) best = r;
+    }
+    return { ...best, chroma: 0.7 * pulse(t, 0, 1), flash: 0.25 * pulse(t, 0, 0.25) };
+  }, tc),
+  inferno: (sf, pos) => sf.add(pos, 3.2, (t) => ({ haze: 1.6 * up(t, 0, 0.3) * down(t, 2, 3.2), vig: 0.45 * up(t, 0, 0.4) * down(t, 1.6, 3.2), tintA: 0.15 * up(t, 0, 0.3) * down(t, 1.5, 3), flash: 0.35 * pulse(t, 0, 0.4) }), FIRE),
+  frost: (sf, pos) => sf.add(pos, 3.2, (t) => ({ vig: 1.1 * up(t, 0, 0.25) * down(t, 2.2, 3.2), tintA: 0.35 * up(t, 0, 0.2) * down(t, 1.8, 3.2), hue: -0.25 * up(t, 0, 0.3) * down(t, 2, 3.2), ...R(t, 0, 0.8, 1.2, 0.05), flash: 0.5 * pulse(t, 0, 0.3), flashColor: ICE }), ICE),
+  lightning: (sf, pos, tc) => {
+    const hits = Array.from({ length: 6 }, (_, i) => i * 0.14 + Math.random() * 0.04);
+    sf.add(pos, 1.6, (t) => {
+      let f = 0;
+      for (const h of hits) f += pulse(t, h, 0.09);
+      return { dark: 0.45 * up(t, 0, 0.05) * down(t, 0.9, 1.5), flash: 0.9 * f, flashColor: WHITE, chroma: 1.2 * f, zoom: 0.3 * f };
+    }, tc);
+  },
+  blackhole: (sf, pos, tc) => sf.add(pos, BH_BLAST + 1.3, (t) => {
+    const blast = t >= BH_BLAST;
+    if (!blast) {
+      const pull = up(t, 0.2, BH_PULL);
+      const hole = t < BH_PULL ? 0.02 + 0.1 * up(t, 0, BH_PULL) : 0.12 * down(t, BH_PULL, BH_BLAST) + 0.01;
+      return {
+        pinch: Math.min(0.995, pull * pull * pull * 1.03),
+        swirl: 11 * Math.pow(up(t, 0, BH_PULL), 1.5),
+        hole, rimColor: tc.clone().lerp(VIOLET, 0.4),
+        dark: 0.3 * up(t, 0.2, BH_PULL),
+        chroma: 0.8 * up(t, 0.4, BH_PULL),
+        stars: 0.6 * up(t, 0.5, BH_PULL),
+      };
+    }
+    const k = t - BH_BLAST;
+    // Thrown back out: the picture snaps back past normal (a bulge), with a ripple and a white flash.
+    return {
+      pinch: 0.995 * down(k, 0, 0.16),
+      swirl: -4 * down(k, 0, 0.3),
+      bulge: 0.75 * pulse(k, 0.05, 0.7),
+      ...R(k, 0.05, 1.1, 1.9, 0.12),
+      flash: 0.9 * pulse(k, 0, 0.35),
+      flashColor: WHITE,
+      chroma: 2 * pulse(k, 0, 1),
+      zoom: pulse(k, 0, 0.6),
+      vig: 0.7 * pulse(k, 0.1, 1.2),
+    };
+  }, tc),
+  confetti: (sf, pos, tc) => sf.add(pos, 1.4, (t) => ({ hue: 0.6 * Math.sin(t * 9) * pulse(t, 0, 1.4), flash: 0.25 * (pulse(t, 0, 0.2) + pulse(t, 0.18, 0.2) + pulse(t, 0.36, 0.2)), bulge: 0.08 * pulse(t, 0, 0.4) }), tc),
+  geyser: (sf, pos, tc) => sf.add(pos, 2.4, (t) => ({ haze: 0.9 * up(t, 0, 0.2) * down(t, 1.2, 2), ...R(t, 1.25, 0.9, 1.2, 0.06), flash: 0.4 * pulse(t, 1.25, 0.35), vig: 0.4 * up(t, 0, 0.3) * down(t, 1.5, 2.4) }), tc),
+  rainbow: (sf, pos, tc) => sf.add(pos, 2.2, (t) => ({ hue: 6.283 * up(t, 0, 2.2), ...R(t, 0, 1.2, 1.5, 0.06), chroma: 0.8 * pulse(t, 0, 1.6), flash: 0.3 * pulse(t, 0, 0.3) }), tc),
+  voxel: (sf, pos, tc) => sf.add(pos, 1.6, (t) => ({ pixel: 0.9 * up(t, 0, 0.06) * down(t, 0.3, 1.5), flash: 0.4 * pulse(t, 0, 0.25), bulge: 0.12 * pulse(t, 0, 0.4) }), tc),
+  starburst: (sf, pos, tc) => sf.add(pos, 1.6, (t) => ({ zoom: 1 * pulse(t, 0, 1.1), flash: 0.8 * pulse(t, 0, 0.35), chroma: 0.8 * pulse(t, 0, 1), vig: 0.4 * pulse(t, 0.1, 1.4) }), tc),
+  meteor: (sf, pos, tc) => sf.add(pos, 2.2, (t) => {
+    const k = t - 0.42;
+    return { dark: 0.4 * up(t, 0, 0.2) * down(t, 0.42, 0.6), ...R(k, 0, 1, 1.6, 0.11), bulge: 0.35 * pulse(k, 0, 0.5), flash: 0.6 * pulse(k, 0, 0.35), flashColor: FIRE, zoom: 0.7 * pulse(k, 0, 0.6), haze: 0.8 * pulse(k, 0.1, 1.6), chroma: 1 * pulse(k, 0, 0.8) };
+  }, FIRE),
+  vortex: (sf, pos, tc) => sf.add(pos, 1.9, (t) => ({ swirl: 3.5 * up(t, 0, 1.2) * down(t, 1.2, 1.5), flash: 0.5 * pulse(t, 1.2, 0.35), ...R(t, 1.2, 0.7, 1.1, 0.06), vig: 0.35 * up(t, 0, 0.6) * down(t, 1.2, 1.9) }), tc),
+  bubbles: (sf, pos, tc) => sf.add(pos, 2.6, (t) => ({ haze: 1.2 * up(t, 0, 0.3) * down(t, 1.8, 2.6), bulge: 0.12 * Math.sin(t * 6) * down(t, 1.5, 2.6), vig: 0.3 * down(t, 1, 2.6) }), tc),
+  petals: (sf, pos) => sf.add(pos, 3.5, (t) => ({ vig: 0.5 * up(t, 0, 0.4) * down(t, 2.2, 3.5), tintA: 0.12 * up(t, 0, 0.4) * down(t, 2, 3.5), flash: 0.25 * pulse(t, 0, 0.3) }), new THREE.Color(1, 0.62, 0.78)),
+  cometshower: (sf, pos, tc) => sf.add(pos, 1.8, (t) => {
+    let f = 0;
+    for (let c = 0; c < 9; c++) f += pulse(t, c * 0.09 + 0.35, 0.15);
+    return { flash: 0.18 * f, chroma: 0.5 * f, ...R(t, 1.1, 0.7, 1.2, 0.07), bulge: 0.2 * pulse(t, 1.1, 0.4) };
+  }, tc),
+  heartbeat: (sf, pos) => sf.add(pos, 1.8, (t) => ({ bulge: 0.2 * pulse(t, 0, 0.25) + 0.3 * pulse(t, 0.38, 0.3), vig: 0.6 * pulse(t, 0, 0.35) + 0.8 * pulse(t, 0.38, 0.6), flash: 0.2 * pulse(t, 0.38, 0.2) }), new THREE.Color(1, 0.2, 0.35)),
+  phoenix: (sf, pos) => sf.add(pos, 2.6, (t) => ({ haze: 1.3 * up(t, 0, 0.3) * down(t, 1.6, 2.6), vig: 0.7 * up(t, 0, 0.3) * down(t, 1.4, 2.6), tintA: 0.2 * up(t, 0, 0.3) * down(t, 1.2, 2.4), flash: 0.5 * pulse(t, 0, 0.4) }), FIRE),
+  galaxy: (sf, pos, tc) => sf.add(pos, 2.4, (t) => ({ dark: 0.55 * up(t, 0, 0.4) * down(t, 1.4, 1.6), stars: 1.2 * up(t, 0, 0.4) * down(t, 1.4, 1.8), swirl: 2.2 * up(t, 0, 1.4) * down(t, 1.4, 1.7), flash: 0.6 * pulse(t, 1.4, 0.35), flashColor: WHITE, ...R(t, 1.4, 0.9, 1.6, 0.08) }), VIOLET),
+  aurora: (sf, pos) => sf.add(pos, 2.8, (t) => ({ vig: 0.8 * up(t, 0, 0.4) * down(t, 1.8, 2.8), tintA: 0.15 * up(t, 0, 0.4) * down(t, 1.8, 2.8), hue: 0.4 * Math.sin(t * 2.5) * down(t, 1.5, 2.8), haze: 0.4 * down(t, 1, 2.8) }), new THREE.Color(0.25, 1, 0.55)),
+  eclipse: (sf, pos, tc) => sf.add(pos, 2.4, (t) => {
+    const k = t - 0.9;
+    return { dark: 0.75 * up(t, 0, 0.8) * down(t, 0.9, 1.0), stars: 0.8 * up(t, 0.3, 0.85) * down(t, 0.9, 1), flash: 0.85 * pulse(k, 0, 0.4), flashColor: new THREE.Color(1, 0.85, 0.5), ...R(k, 0, 1.2, 1.7, 0.1), bulge: 0.4 * pulse(k, 0, 0.6), chroma: 1.2 * pulse(k, 0, 0.8) };
+  }, tc),
+  thunderdome: (sf, pos, tc) => sf.add(pos, 1.8, (t) => {
+    let f = 0;
+    for (let i = 0; i < 8; i++) f += pulse(t, i * 0.06, 0.08);
+    const k = t - 0.65;
+    return { dark: 0.5 * up(t, 0, 0.05) * down(t, 0.65, 0.75), flash: 0.4 * f + 0.8 * pulse(k, 0, 0.35), flashColor: WHITE, chroma: 0.6 * f + 1.5 * pulse(k, 0, 0.8), ...R(k, 0, 1, 1.7, 0.11), bulge: 0.35 * pulse(k, 0, 0.5) };
+  }, tc),
+};
+
 export const GOAL_EXPLOSIONS = [
   { id: 'classic', name: 'Classic', blurb: 'Fireball, shock ring and embers.', fn: classic },
   { id: 'fireworks', name: 'Fireworks', blurb: 'Rockets that burst over the goal.', fn: fireworks },
@@ -768,7 +909,7 @@ export const GOAL_EXPLOSIONS = [
   { id: 'inferno', name: 'Inferno', blurb: 'A rolling column of fire and smoke.', fn: inferno },
   { id: 'frost', name: 'Frost', blurb: 'Ice shards, then snow drifts down.', fn: frost },
   { id: 'lightning', name: 'Lightning', blurb: 'Bolts strike the goal from above.', fn: lightning },
-  { id: 'blackhole', name: 'Black Hole', blurb: 'Pulls everything in, then blows.', fn: blackHole },
+  { id: 'blackhole', name: 'Black Hole', blurb: 'Swallows the whole arena, then blows it back out.', fn: blackHole },
   { id: 'confetti', name: 'Confetti', blurb: 'Party cannon, three waves.', fn: confetti },
   { id: 'geyser', name: 'Geyser', blurb: 'A fountain of light shoots up.', fn: geyser },
   { id: 'rainbow', name: 'Rainbow', blurb: 'Seven colored rings ripple out.', fn: rainbow },
@@ -791,5 +932,7 @@ export const EXPLOSION_IDS = GOAL_EXPLOSIONS.map((e) => e.id);
 
 export function playGoalExplosion(fx, id, pos, teamColor) {
   const e = GOAL_EXPLOSIONS.find((x) => x.id === id) || GOAL_EXPLOSIONS[0];
-  e.fn(fx, pos.clone(), new THREE.Color(teamColor));
+  const tc = new THREE.Color(teamColor);
+  e.fn(fx, pos.clone(), tc);
+  if (fx.screen && SCREEN[e.id]) SCREEN[e.id](fx.screen, pos.clone(), tc);
 }

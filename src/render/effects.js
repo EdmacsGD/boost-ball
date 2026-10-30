@@ -541,6 +541,7 @@ export class Effects {
     this.timers = []; // { t, fn }: run fn after t seconds (multi-stage goal explosions)
     this.temps = []; // { obj, age, life, fn }: meshes with their own update, removed after life
     this.colors = COLORS;
+    this.screen = null; // ScreenFx (full-screen warps for goal explosions), set by the game
   }
 
   later(delay, fn) {
@@ -747,6 +748,7 @@ export class Effects {
   }
 
   update(dt, camPos = null) {
+    if (this.screen) this.screen.update(dt);
     if (this.timers.length) {
       const due = [];
       for (let i = this.timers.length - 1; i >= 0; i--) {
@@ -852,6 +854,7 @@ export class Effects {
     this.streaks.clear();
     // Drop pending explosion steps and live pieces.
     this.timers.length = 0;
+    if (this.screen) this.screen.clear();
     for (const t of this.temps) this.scene.remove(t.obj);
     this.temps.length = 0;
     for (const f of this.fireballs) {

@@ -171,6 +171,44 @@ export function makeTurfTexture(floorPoly, renderer, turf = {}) {
       g.ellipse(...toPx(0, y0 - s * 1050), 24 * sx, 24 * sy, 0, 0, Math.PI * 2);
       g.fill();
     }
+    // Boost pads: a painted ring around every pad, and thin dashed lanes joining neighbor pads, so
+    // the pad routes can be read from the floor.
+    const padCol = turf.padLines || (gridColor ? 'rgba(255, 190, 80, 0.9)' : 'rgba(255, 196, 92, 0.62)');
+    const BP = CONFIG.boostPads;
+    const pads = [...BP.big.map((p) => ({ x: p[0], y: p[1], r: 330 })), ...BP.small.map((p) => ({ x: p[0], y: p[1], r: 190 }))];
+    g.strokeStyle = padCol;
+    g.lineWidth = lw(18);
+    for (const p of pads) {
+      g.beginPath();
+      g.ellipse(...toPx(p.x, p.y), p.r * sx, p.r * sy, 0, 0, Math.PI * 2);
+      g.stroke();
+      if (p.r > 300) {
+        g.beginPath();
+        g.ellipse(...toPx(p.x, p.y), (p.r + 70) * sx, (p.r + 70) * sy, 0, 0, Math.PI * 2);
+        g.setLineDash([lw(50), lw(40)]);
+        g.stroke();
+        g.setLineDash([]);
+      }
+    }
+    g.lineWidth = lw(16);
+    g.setLineDash([lw(80), lw(60)]);
+    for (let i = 0; i < pads.length; i++) {
+      for (let j = i + 1; j < pads.length; j++) {
+        const a = pads[i];
+        const b = pads[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1500) continue;
+        const ux = dx / d;
+        const uy = dy / d;
+        g.beginPath();
+        g.moveTo(...toPx(a.x + ux * (a.r + 40), a.y + uy * (a.r + 40)));
+        g.lineTo(...toPx(b.x - ux * (b.r + 40), b.y - uy * (b.r + 40)));
+        g.stroke();
+      }
+    }
+    g.setLineDash([]);
     // Center emblem: two chevrons pointing at each goal, in team colors.
     g.lineWidth = lw(26);
     for (const [s, col] of [[-1, blue], [1, orange]]) {

@@ -4,6 +4,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { ScreenFx } from './screenFx.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
 // Quality presets. "auto" starts at medium and moves up or down from measured frame times.
@@ -62,6 +63,9 @@ export class Renderer {
     this.fxaaPass = null;
     this.frameTimes = [];
     this.autoQuality = true;
+    this.screenFx = new ScreenFx();
+    this.warpPass = null;
+    this.fxComposer = null; // low qualities draw straight to the screen; this one is for screen effects
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -81,6 +85,11 @@ export class Renderer {
       this.composer.dispose?.();
       this.composer = null;
     }
+    if (this.fxComposer) {
+      this.fxComposer.dispose?.();
+      this.fxComposer = null;
+    }
+    this.warpPass = null;
     if (!q.bloom && !q.fxaa) {
       // Direct render: tone mapping and sRGB conversion happen in the main pass.
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -102,6 +111,9 @@ export class Renderer {
       this.bloomPass = null;
     }
     composer.addPass(new OutputPass());
+    this.warpPass = new ShaderPass(this.screenFx.makeShader());
+    this.warpPass.enabled = false;
+    composer.addPass(this.warpPass);
     if (q.fxaa) {
       this.fxaaPass = new ShaderPass(FXAAShader);
       composer.addPass(this.fxaaPass);
@@ -195,7 +207,43 @@ export class Renderer {
     }
   }
 
+  // A composer for the low qualities, used only while a screen effect runs.
+  ensureFxComposer() {
+    if (this.fxComposer) return this.fxComposer;
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType });
+    const c = new EffectComposer(this.renderer, target);
+    c.addPass(new RenderPass(this.view.scene, this.view.camera));
+    c.addPass(new OutputPass());
+    const warp = new ShaderPass(this.screenFx.makeShader());
+    c.addPass(warp);
+    c.warp = warp;
+    this.fxComposer = c;
+    return c;
+  }
+
   render() {
+    const fx = this.screenFx;
+    const on = fx.active && this.view.scene === this.scene;
+    if (on) {
+      let pass = this.warpPass;
+      let comp = this.composer;
+      if (!comp) {
+        comp = this.ensureFxComposer();
+        pass = comp.warp;
+        comp.passes[0].scene = this.view.scene;
+        comp.passes[0].camera = this.view.camera;
+        const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+        if (comp.renderTarget1.width !== size.x || comp.renderTarget1.height !== size.y) {
+          comp.setPixelRatio(this.renderer.getPixelRatio());
+          comp.setSize(this.width, this.height);
+        }
+      }
+      pass.enabled = fx.apply(pass.material.uniforms, this.view.camera, this.width, this.height);
+      comp.render();
+      return;
+    }
+    if (this.warpPass) this.warpPass.enabled = false;
     if (this.composer) this.composer.render();
     else this.renderer.render(this.view.scene, this.view.camera);
   }
