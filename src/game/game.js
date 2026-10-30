@@ -127,6 +127,11 @@ export class Game {
     this.effects = new Effects(scene, this.renderer.quality);
     this.effects.screen = this.renderer.screenFx;
     this.showroom = new Showroom(this.renderer.renderer);
+    // The menu car's stand sits on the pitch: no grass inside its rings (radius 1.45 m).
+    this.showroom.onStage = (mode, pos) => {
+      this.stageClear = mode === 'arena' ? [pos.x, pos.z, 1.45] : null;
+      this.applyStageClear();
+    };
     this.renderer.onResize = (w, h) => this.showroom.resize(w, h);
     this.showroom.resize(this.renderer.width, this.renderer.height);
     this.renderer.onQualityChange = (q) => {
@@ -760,6 +765,13 @@ export class Game {
     setTimeout(() => document.getElementById('welcomeTutorial').focus(), 50);
   }
 
+  applyStageClear() {
+    const g = this.stadium?.grass;
+    if (!g) return;
+    const c = this.stageClear;
+    g.setClear(c ? c[0] : 0, c ? c[1] : 0, c ? c[2] : 0);
+  }
+
   showLogin() {
     this.account.logout();
     this.login.show();
@@ -1268,6 +1280,7 @@ export class Game {
     }
     this.stadium = new Stadium(this.renderer.renderer, this.sim.pw, this.renderer.quality, id);
     this.grassCol = null;
+    this.applyStageClear?.();
     scene.add(this.stadium.group);
     scene.environment = this.stadium.envMap;
     const T = this.stadium.theme;

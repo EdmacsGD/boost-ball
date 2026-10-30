@@ -199,6 +199,8 @@ export class Showroom {
       this.stage.position.set(0, 0, 0);
     }
     this.stageMode = mode === 'arena' && scene ? 'arena' : 'studio';
+    // The stand's rings lie flat on the pitch: keep the arena grass out of them.
+    this.onStage?.(this.stageMode, this.stage.position);
     if (this.mirror) this.mirror.visible = this.stageMode === 'studio';
     this.glow.visible = this.stageMode === 'arena';
     if (this.size) this.resize(...this.size);

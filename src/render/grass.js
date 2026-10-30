@@ -38,6 +38,7 @@ export class Grass {
       uTime: { value: 0 },
       uPush: { value: Array.from({ length: MAX_PUSH }, () => new THREE.Vector4(0, 0, 0, 0)) },
       uShells: { value: shells },
+      uClear: { value: new THREE.Vector3(0, 0, 0) }, // x, z, radius: no grass inside (menu car stand)
     };
     const tip = style === 'snow' ? new THREE.Color(1.05, 1.05, 1.08) : style === 'sand' ? new THREE.Color(1.1, 1.05, 0.95) : new THREE.Color(1.12, 1.18, 0.95);
     // Lambert lighting: the blades are tiny and matte, and it costs far less than the floor's PBR shading.
@@ -47,6 +48,7 @@ export class Grass {
       shader.uniforms.uTime = U.uTime;
       shader.uniforms.uPush = U.uPush;
       shader.uniforms.uShells = U.uShells;
+      shader.uniforms.uClear = U.uClear;
       shader.uniforms.uTip = { value: tip };
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>
@@ -85,6 +87,7 @@ export class Grass {
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           uniform float uShells;
+          uniform vec3 uClear;
           uniform vec3 uTip;
           varying float vShell;
           varying vec3 vGrassPos;
@@ -94,6 +97,7 @@ export class Grass {
           {
             float k = vShell * ${MAX_SHELLS.toFixed(1)} / max(uShells, 1.0);
             if (k > 1.001) discard;
+            if (uClear.z > 0.0 && length(vGrassPos.xz - uClear.xy) < uClear.z) discard;
             // Blades: a jittered grid of cells (about 2.4 cm); each cell has its own height and the
             // blade gets thinner toward its tip.
             vec2 g = vGrassPos.xz * 42.0;
@@ -117,6 +121,11 @@ export class Grass {
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1;
     this.setShells(shells);
+  }
+
+  // Keep a circle free of grass (the glowing stand under the menu car); radius 0 turns it off.
+  setClear(x, z, r) {
+    this.uniforms.uClear.value.set(x, z, r);
   }
 
   setShells(count) {
