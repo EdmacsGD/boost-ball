@@ -109,6 +109,11 @@
         <b>Sky Field</b>
         <small>A floor that never ends and unlimited boost. Fly as far as you like.</small>
       </button>
+      <button type="button" class="tile tile-tut" id="tileTutorial">
+        <span class="tile-tag">New here?</span>
+        <b>Tutorial</b>
+        <small>Learn to drive, boost, jump, flip and score in about 3 minutes.</small>
+      </button>
       <div class="tile tile-tip">
         <span class="tile-tag">Tip</span>
         <p id="tileTip"></p>
@@ -235,6 +240,7 @@
           <span class="field-label">Beta testers</span>
           <b>Johannes Trædal</b>
           <b>Adrian Naustvåg</b>
+          <b>Grishma Bhatta</b>
         </div>
       </div>
     </section>
@@ -288,6 +294,17 @@
       <button type="button" class="login-guest" id="guestBtn">Play as guest</button>
       <button type="button" class="login-guest" id="logoutBtn" hidden>Log out of <span id="logoutMail"></span></button>
       <p class="login-note" id="loginNote"></p>
+    </div>
+  </div>
+
+  <!-- First visit: tutorial or skip, before the login -->
+  <div class="overlay login" id="welcome" hidden>
+    <div class="login-card welcome-card">
+      <div class="home-logo"><b>BOOST BALL</b><span>ROCKET CAR SOCCER</span></div>
+      <p class="login-status">Welcome! Is this your first time?</p>
+      <p class="welcome-text">The tutorial shows you how to drive, boost, jump, flip and score. It takes about 3 minutes, and you can log in or make an account afterwards.</p>
+      <button type="button" class="kick" id="welcomeTutorial">Start the tutorial</button>
+      <button type="button" class="login-guest" id="welcomeSkip">Skip, I know how to play</button>
     </div>
   </div>
 

@@ -118,6 +118,7 @@ export class HomeScreen {
     this.el.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', click(() => this.setPage('main'))));
     $('tileQuick').addEventListener('click', click(() => game.startQuickMatch()));
     $('tileFree').addEventListener('click', click(() => game.startFreePlay()));
+    $('tileTutorial').addEventListener('click', click(() => game.tutorial.start(false)));
     $('tileSky').addEventListener('click', click(() => game.startEndless()));
     $('creditsLink').addEventListener('click', click(() => this.setPage('credits')));
     $('arenaPick').addEventListener('click', click(() => this.setPage('arenas')));

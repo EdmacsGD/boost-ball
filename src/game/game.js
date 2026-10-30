@@ -20,6 +20,7 @@ import { AudioEngine } from '../audio/audio.js';
 import { HUD } from '../ui/hud.js';
 import { setupBindings } from '../ui/bindings.js';
 import { EXPLOSION_IDS } from '../render/goalExplosions.js';
+import { Tutorial } from './tutorial.js';
 
 // Bots only use items anyone can get, so achievement items stay special.
 const BOT_CARS = CAR_IDS.filter((id) => !isExclusive('car', id));
@@ -194,6 +195,7 @@ export class Game {
     this.np = null; // NetPlay while in an online match
     this.home = new HomeScreen(this);
     this.login = new LoginScreen(this);
+    this.tutorial = new Tutorial(this);
     this.online.init();
     this.progress(0.95, 'Kicking off');
     // Tests start as a guest; everyone else picks an account first.
@@ -202,7 +204,9 @@ export class Game {
     this.enterHome();
     this.progress(1, 'Ready');
     if (!this.testMode) {
-      this.login.show();
+      // New players get the welcome card (tutorial or skip) first; the login comes after it.
+      if (this.tutorial.isNewPlayer()) this.showWelcome();
+      else this.login.show();
       requestAnimationFrame((t) => this.frame(t));
     }
   }
@@ -584,6 +588,7 @@ export class Game {
     }
     this.updateState(dt);
     if (this.state === 'theater') this.theater.update(dt);
+    if (this.tutorial.active) this.tutorial.update(dt);
     this.online.update(dt);
     const alpha = clamp(this.acc / TICK, 0, 1);
     this.updateVisuals(dt, alpha);
@@ -729,6 +734,28 @@ export class Game {
     clearTimeout(this.anthemTagTimer);
     const tag = document.getElementById('anthemTag');
     if (tag) tag.hidden = true;
+  }
+
+  // Welcome card for new players: start the tutorial as a guest, or skip to the login.
+  showWelcome() {
+    const box = document.getElementById('welcome');
+    box.hidden = false;
+    const close = () => {
+      box.hidden = true;
+      this.tutorial.markWelcomed();
+    };
+    document.getElementById('welcomeTutorial').onclick = () => {
+      close();
+      this.audio.init();
+      this.account.useGuest(this.legacyProfile());
+      this.onLogin();
+      this.tutorial.start(true);
+    };
+    document.getElementById('welcomeSkip').onclick = () => {
+      close();
+      this.login.show();
+    };
+    setTimeout(() => document.getElementById('welcomeTutorial').focus(), 50);
   }
 
   showLogin() {
@@ -1301,7 +1328,7 @@ export class Game {
   handleGlobalKeys() {
     const inp = this.input;
     if (inp.consumeAction('fullscreen')) this.toggleFullscreen();
-    if (this.login?.visible) {
+    if (this.login?.visible || !document.getElementById('welcome').hidden) {
       inp.clearEdges();
       return;
     }
@@ -1524,6 +1551,7 @@ export class Game {
   handleEvents() {
     for (const e of this.sim.events) {
       const p = e.carId !== undefined ? this.playerById(e.carId) : null;
+      if (this.tutorial.active) this.tutorial.onEvent(e.type, p);
       switch (e.type) {
         case 'ballHit': {
           const ball = this.sim.ball;

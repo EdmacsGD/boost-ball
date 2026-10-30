@@ -1279,3 +1279,38 @@ body.theater #hud > *:not(.theater-bar):not(#score):not(#feed) { visibility: hid
 .goal-mark.blue { background: var(--blue); }
 .goal-mark.orange { background: var(--orange); }
 .theater-help { margin: 0; font-size: 10px; letter-spacing: 0.08em; color: var(--muted); }
+
+/* ------------------------------------------------------------------ welcome card and tutorial */
+.welcome-text { margin: 0; font-family: var(--body, inherit); font-size: 14px; line-height: 1.55; color: #c3cfde; text-align: center; }
+.tile-tut { background: linear-gradient(135deg, rgba(30, 150, 110, 0.9), rgba(8, 70, 52, 0.85)); border-color: rgba(140, 255, 200, 0.45); }
+.tile-tut small { color: #d4ffea; }
+.tile-tut b { font-size: 22px; }
+.tut {
+  position: absolute;
+  top: calc(84px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px 12px;
+  background: linear-gradient(180deg, rgba(9, 13, 22, 0.92), rgba(6, 9, 16, 0.86));
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--gold);
+  font-family: var(--display);
+  pointer-events: auto;
+  z-index: 6;
+  transition: border-color 0.2s;
+}
+.tut.done { border-top-color: #4dffa6; }
+.tut-count { font-size: 10px; font-weight: 700; letter-spacing: 0.26em; color: var(--gold); }
+.tut-title { font-size: 24px; font-weight: 800; font-style: italic; letter-spacing: 0.04em; line-height: 1.1; }
+.tut.done .tut-title { color: #4dffa6; }
+.tut-text { margin: 0; font-size: 14px; line-height: 1.5; color: #dbe5f2; letter-spacing: 0.02em; }
+.tut-bar { height: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.tut-bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width 0.1s linear; }
+.tut.done .tut-bar i { background: #4dffa6; }
+.tut-bar-text { font-size: 11px; color: #9fb2c8; letter-spacing: 0.08em; min-height: 0; }
+.tut-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+@media (max-width: 560px) { .tut { top: calc(70px + env(safe-area-inset-top, 0px)); padding: 10px 12px; } .tut-title { font-size: 19px; } .tut-text { font-size: 13px; } }
+@media (max-height: 780px) { .tile-tip { display: none; } }
