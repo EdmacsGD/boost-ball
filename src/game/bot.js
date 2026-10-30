@@ -1,7 +1,9 @@
 // Bot driver. Each decision picks one plan (kickoff, attack, clear, save, rotate back, shadow, boost),
 // then simple controllers drive the car: steering toward a target, flips into the ball, aerials and
-// air recovery. Difficulty changes reaction time, aim, boost use, flips and aerials. Easy to Hard are
-// beatable on purpose; Ultra adds corner shots, flip hits, speed flips and reading who reaches the ball first.
+// air recovery. Difficulty changes reaction time, aim, boost use, flips and aerials. Easy and Medium are
+// beatable on purpose. Hard and Ultra play like real players: small-pad boost routes, timed jumps and
+// double jumps, aerials that feather boost, half-flips to turn around, late kickoff flips, and (Ultra)
+// corner shots, speed flips and reading who reaches the ball first. Tuned with bot-vs-bot tests.
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { UU, clamp } from '../util/math.js';
@@ -12,6 +14,25 @@ const FIELD_Z = CONFIG.arena.extentY * UU;
 const FIELD_X = CONFIG.arena.extentX * UU;
 const GOAL_W = CONFIG.arena.goalHalfWidth * UU;
 const G = Math.abs(CONFIG.physics.gravityZ) * UU;
+const B_AIR = CONFIG.boost.accelAir * UU; // boost acceleration in the air (m/s^2)
+const JUMP_VZ = 7.5; // rough upward speed right after a quick double jump (m/s)
+
+// Seconds from takeoff until the car's center reaches a height (m), measured in this physics.
+const SINGLE_RISE = [[0.17, 0], [0.6, 0.13], [1, 0.23], [1.4, 0.33], [1.8, 0.46], [2.1, 0.6]];
+const DOUBLE_RISE = [[0.17, 0], [2, 0.38], [2.5, 0.47], [3, 0.57], [3.5, 0.68], [4, 0.82], [4.5, 1.02]];
+function riseTime(table, h) {
+  if (h <= table[0][0]) return 0;
+  for (let i = 1; i < table.length; i++) {
+    if (h <= table[i][0]) {
+      const [h0, t0] = table[i - 1];
+      const [h1, t1] = table[i];
+      return t0 + ((h - h0) / (h1 - h0)) * (t1 - t0);
+    }
+  }
+  return table[table.length - 1][1];
+}
+// How far below the ball's center the car's center can be and still hit it.
+let REACH = 0.75;
 
 const v0 = new THREE.Vector3();
 const v1 = new THREE.Vector3();
@@ -47,6 +68,7 @@ export class Bot {
   setDifficulty(name) {
     this.difficultyName = name;
     this.d = CONFIG.bots[name] || CONFIG.bots.medium;
+    if (this.d.reach) REACH = this.d.reach;
   }
 
   get team() {
@@ -102,15 +124,33 @@ export class Bot {
     const ownGoalZ = -dir * FIELD_Z;
     const now = this.game.sim.tick / 120;
     if (kickoff) {
-      this.state = 'kickoff';
-      this.target.copy(ball.pos).setY(0);
-      this.targetSpeed = 23;
+      // Like real teams: one car takes the kickoff, the next goes for a corner boost, the last stays home.
+      const mates = this.game.sim.cars.filter((c) => c.team === this.team && !c.isDemoed)
+        .sort((a, b) => (a.pos.distanceTo(ball.pos) - b.pos.distanceTo(ball.pos)) || (a.pos.x - b.pos.x) * dir);
+      const rank = mates.indexOf(car);
+      if (this.state !== 'kickoff') this.koFlipped = false;
+      // All-bot teams send two cars (measured: wins more kickoffs against bots that do the same); with a
+      // person on the team only one goes, so the bot never crashes into its teammate.
+      const human = (this.game.players || []).some((p) => !p.bot && p.car && p.car.team === this.team);
+      const takers = human ? 1 : 2;
+      if (rank < takers || this.d.kickoffAll) {
+        this.state = 'kickoff';
+        this.target.copy(ball.pos).setY(0);
+        this.targetSpeed = 23;
+      } else if (rank === takers) {
+        // Next car "cheats" up behind the kickoff to pick up whatever comes loose.
+        this.state = 'boost';
+        this.target.set(ball.pos.x, 0, ball.pos.z - dir * (this.d.cheatDist ?? 11));
+        this.targetSpeed = 23;
+      } else {
+        this.setDefend(ball, ownGoalZ, dir, Math.abs(car.pos.z - ownGoalZ));
+      }
       return;
     }
     this.role = this.game.roleFor ? this.game.roleFor(this) : 'attacker';
     const bound = goalBound(this.path);
     const threat = bound === this.team;
-    const intercept = this.findIntercept();
+    const intercept = this.findIntercept(threat);
     const ballDistToOwnGoal = Math.abs(ball.pos.z - ownGoalZ);
     const carDistToOwnGoal = Math.abs(car.pos.z - ownGoalZ);
     // Positive = we are between the ball and our own goal (the right side to hit from).
@@ -321,8 +361,9 @@ export class Bot {
   }
 
   // Earliest predicted ball position this car can reach in time.
-  findIntercept() {
+  findIntercept(save = false) {
     const car = this.car;
+    const aerialBoost = save && this.d.cheapSaves ? 12 : 25;
     const speed = Math.max(car.vel.length(), 4);
     const boostAvail = car.boost > 8 && this.d.boostUse > 0.25;
     const vmax = boostAvail ? 22 : 14;
@@ -330,9 +371,10 @@ export class Bot {
     for (const p of this.path) {
       const height = p.y;
       const groundReach = height < 1.75;
-      const jumpReach = height < 3.3 && this.d.dodges > 0.3;
-      const aerialReach = this.d.aerialHeight > 0 && car.boost > 25 && height >= 3.3 && height < this.d.aerialHeight;
-      if (!groundReach && !jumpReach && !aerialReach) continue;
+      const jumpReach = height < (this.d.singleMax ?? 3.3) && this.d.dodges > 0.3;
+      const djReach = !jumpReach && this.d.doubleJump && height < (this.d.doubleMax ?? 4.5 + REACH);
+      const aerialReach = this.d.aerialHeight > 0 && car.boost > aerialBoost && height >= 3.3 && height < this.d.aerialHeight;
+      if (!groundReach && !jumpReach && !aerialReach && !djReach) continue;
       if (Math.abs(p.z) > FIELD_Z) continue;
       const dist = Math.max(0, Math.hypot(p.x - car.pos.x, p.z - car.pos.z) - 1.4);
       const tAcc = Math.max(0, (vmax - speed) / accel);
@@ -342,6 +384,8 @@ export class Bot {
       const toP = v0.set(p.x - car.pos.x, 0, p.z - car.pos.z).normalize();
       const facing = toP.dot(v3.copy(car.fwd).setY(0).normalize());
       const turn = (1 - facing) * 0.45;
+      // A double jump needs no boost and is easier to time than an aerial, so it is tried first.
+      if (djReach && tReach + turn + 0.15 <= p.t + 0.03) return { ...p, djump: true };
       const extra = aerialReach && !jumpReach ? 0.35 + height / 8 : jumpReach && !groundReach ? 0.25 : 0;
       if (tReach + turn + extra <= p.t + 0.03) return { ...p, aerial: aerialReach && !jumpReach, jump: jumpReach && !groundReach };
     }
@@ -364,7 +408,8 @@ export class Bot {
     }
 
     qInv.copy(car.quat).invert();
-    const local = v0.subVectors(this.target, car.pos).applyQuaternion(qInv);
+    const goal = this.d.smallPads ? this.padRoute() || this.target : this.target;
+    const local = v0.subVectors(goal, car.pos).applyQuaternion(qInv);
     const dist = Math.hypot(local.x, local.z);
     const angle = Math.atan2(local.z, local.x); // + = target to the right
     const fwdSpeed = car.forwardSpeed;
@@ -382,7 +427,13 @@ export class Bot {
       c.throttle = Math.abs(ba) > 0.4 ? (Math.abs(ba) > 2 ? -0.6 : 0.4) : 0;
       return;
     }
-    if (Math.abs(angle) > 2.0 && (dist < 7 || speed < 5) && fwdSpeed < 7) {
+    // Half-flip (hard and up): already rolling backward and the target is far behind, so backflip,
+    // cancel it and roll upright. Turns the car around in about 0.8 s while keeping speed.
+    if (this.d.halfFlip && Math.abs(angle) > 2.6 && dist > 14 && fwdSpeed < -2.5 && car.isOnGround && car.up.y > 0.9) {
+      this.dodge = { half: true, t: 0, roll: angle > 0 ? 1 : -1 };
+      return;
+    }
+    if (Math.abs(angle) > 2.0 && (dist < 7 || speed < 5 || (this.d.halfFlip && dist > 14)) && fwdSpeed < 7) {
       // Target behind us and we are slow: reverse-turn instead of a wide loop.
       c.throttle = -1;
       c.steer = -Math.sign(angle);
@@ -397,7 +448,13 @@ export class Bot {
       c.throttle = 1;
       c.boost = car.boost > 0;
       const dBall = car.pos.distanceTo(ball.pos);
-      if (dBall < 7.5 && Math.abs(angle) < 0.25 && this.d.dodges > 0.3) this.startDodge(1, clamp(angle * 2, -0.4, 0.4));
+      // Speed-flip kickoff: a diagonal flip early in the run (while still boosting) arrives sooner.
+      if (this.d.kickoffFlip && !this.koFlipped && dBall > 18 && fwdSpeed > (this.d.koFlipSpeed ?? 12) && Math.abs(angle) < 0.15 && car.isOnGround) {
+        this.koFlipped = true;
+        this.startDodge(1, Math.sign(angle || 1) * 0.35);
+        return;
+      }
+      if (dBall < (this.d.kickFlipDist ?? 7.5) && Math.abs(angle) < 0.25 && this.d.dodges > 0.3) this.startDodge(1, clamp(angle * 2, -0.4, 0.4));
       return;
     }
 
@@ -408,8 +465,20 @@ export class Bot {
       const good = hitDir.dot(this.shotDir) > (this.state === 'attack' ? 0.55 : 0.2);
       const ballLocal = toBall.applyQuaternion(qInv);
       const ballAngle = Math.atan2(ballLocal.z, ballLocal.x);
-      // Jump for a bouncing ball that is just out of reach.
-      if (this.intercept.jump && dBall < 5 && ball.pos.y > 1.8 && Math.abs(ballAngle) < 0.3 && good && car.isOnGround) {
+      const ip = this.intercept;
+      const tLeft = ip.t - (this.game.sim.tick / 120 - this.interceptStart);
+      const hDist = Math.hypot(ip.x - car.pos.x, ip.z - car.pos.z);
+      // Timed jumps (hard and up): take off so the car reaches the ball's height as it arrives.
+      if (this.d.timedJumps && (ip.jump || ip.djump) && car.isOnGround && Math.abs(ballAngle) < 0.35 && good) {
+        const rise = riseTime(ip.djump ? DOUBLE_RISE : SINGLE_RISE, Math.max(0.2, ip.y - REACH));
+        const travel = Math.max(speed, 4) * rise;
+        if (tLeft <= rise + 0.03 && hDist < travel + 2.5) {
+          if (ip.djump) this.startDoubleJump();
+          else this.startDodge(0, 0, true);
+          return;
+        }
+      } else if (this.intercept.jump && dBall < 5 && ball.pos.y > 1.8 && Math.abs(ballAngle) < 0.3 && good && car.isOnGround) {
+        // Jump for a bouncing ball that is just out of reach.
         this.startDodge(0, 0, true);
         return;
       }
@@ -419,7 +488,22 @@ export class Bot {
         return;
       }
     }
-    if (this.state === 'aerial' && this.intercept && car.isOnGround && car.boost > 25) {
+    if (this.state === 'aerial' && this.intercept && car.isOnGround && car.boost > 12 && this.d.aerial2) {
+      // Take off once the acceleration needed to meet the ball is something boost can give.
+      const ip = this.intercept;
+      const T = ip.t - (this.game.sim.tick / 120 - this.interceptStart);
+      const l2 = v1.set(ip.x, ip.y, ip.z).sub(car.pos).applyQuaternion(qInv);
+      const ang = Math.atan2(l2.z, l2.x);
+      if (T > 0.35 && T < 2.2 && Math.abs(ang) < 0.35) {
+        const need = v2.set(ip.x - car.pos.x - car.vel.x * T, ip.y - car.pos.y - JUMP_VZ * T + 0.5 * G * T * T, ip.z - car.pos.z - car.vel.z * T);
+        const a = (2 * need.length()) / (T * T);
+        const fuel = car.boost / (100 / 3); // seconds of boost left
+        if (a < B_AIR * (this.d.aerTake ?? 0.8) && fuel > T * (a / B_AIR) * 0.9) {
+          this.aerial = { t: 0, arrive: T, jumped: false };
+          return;
+        }
+      }
+    } else if (this.state === 'aerial' && this.intercept && car.isOnGround && car.boost > 25) {
       const ip = this.intercept;
       const l2 = v1.set(ip.x, ip.y, ip.z).sub(car.pos).applyQuaternion(qInv);
       const horiz = Math.hypot(l2.x, l2.z);
@@ -457,6 +541,41 @@ export class Bot {
     }
   }
 
+  // Small boost pads on the way: real players route over them all the time, so they rarely run dry.
+  // Returns a pad to drive over when it costs a small detour, else null.
+  padRoute() {
+    const car = this.car;
+    if (car.boost > 85 || this.state === 'kickoff' || this.state === 'defend') return null;
+    if (this.intercept && (this.state === 'attack' || this.state === 'clear' || this.state === 'save' || this.state === 'aerial') && this.intercept.t < 1.6) return null;
+    const direct = Math.hypot(this.target.x - car.pos.x, this.target.z - car.pos.z);
+    if (direct < 6) return null;
+    const fx = car.fwd.x;
+    const fz = car.fwd.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    let best = null;
+    let bestCost = car.boost < 40 ? 4.5 : 2.5;
+    for (const pad of this.game.sim.pads) {
+      if (!pad.active || pad.big) continue;
+      const dx = pad.pos.x - car.pos.x;
+      const dz = pad.pos.z - car.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 1 || d > 18) continue;
+      if ((dx * fx + dz * fz) / (d * fl) < 0.75) continue; // only pads roughly ahead
+      const cost = d + Math.hypot(this.target.x - pad.pos.x, this.target.z - pad.pos.z) - direct;
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = pad;
+      }
+    }
+    return best ? v3.set(best.pos.x, 0, best.pos.z).clone() : null;
+  }
+
+  // Double jump: hold jump, let go, press again with no stick (so it does not flip), then keep the nose
+  // pointed at the ball. Boost on the way up if lined up, like a fast aerial.
+  startDoubleJump() {
+    this.dodge = { phase: 0, t: 0, f: 0, r: 0, jumpOnly: true, double: true };
+  }
+
   startDodge(forward, right, jumpOnly = false) {
     this.dodge = { phase: 0, t: 0, f: forward, r: right, jumpOnly };
   }
@@ -465,6 +584,42 @@ export class Bot {
     const c = this.car.controls;
     const d = this.dodge;
     d.t += dt;
+    if (d.half) {
+      // Timings measured in this physics (see the half-flip test): jump, backflip at 0.15 s, cancel at 0.42 s.
+      const car = this.car;
+      const t = d.t;
+      c.throttle = t < 0.42 ? -1 : 1;
+      if (t < 0.1) c.jump = true;
+      else if (t >= 0.15 && t < 0.2) { c.jump = true; c.pitch = 1; }
+      else if (t >= 0.2 && t < 0.42) c.pitch = 1;
+      else if (t >= 0.42) {
+        c.pitch = -1;
+        c.roll = d.roll;
+        c.boost = t > 0.55 && car.boost > 10 && car.up.y > 0.5;
+      }
+      if ((t > 0.6 && car.isOnGround) || t > 1.4) this.dodge = null;
+      return;
+    }
+    if (d.double) {
+      const car = this.car;
+      c.throttle = 1;
+      if (d.phase === 0) {
+        c.jump = true;
+        if (d.t > 0.2) { d.phase = 1; d.t = 0; }
+      } else if (d.phase === 1) {
+        if (d.t > 0.05) { d.phase = 2; d.t = 0; }
+      } else if (d.phase === 2) {
+        c.jump = true;
+        if (d.t > 0.05) { d.phase = 3; d.t = 0; }
+      } else {
+        const ball = this.game.sim.ball;
+        const to = v1.subVectors(ball.pos, car.pos).normalize().clone();
+        const align = this.orient(to, UP);
+        c.boost = align > 0.9 && car.boost > 0 && ball.pos.y > car.pos.y + 0.5;
+        if (d.t > 1.2 || (car.isOnGround && d.t > 0.2)) this.dodge = null;
+      }
+      return;
+    }
     c.throttle = 1;
     c.boost = this.state === 'kickoff' && this.car.boost > 0;
     if (d.phase === 0) {
@@ -547,7 +702,14 @@ export class Bot {
     const need = delta.length();
     const dir = delta.normalize().clone();
     const align = this.orient(dir, UP);
-    c.boost = align > 0.82 && need > 0.5 && car.boost > 0;
+    if (this.d.aerial2) {
+      // Acceleration still needed to arrive on time; boost only while it is more than half of what
+      // boost gives (feathering), so the car does not overshoot.
+      const aNeed = (2 * need) / (tLeft * tLeft);
+      c.boost = align > (this.d.aerAlign ?? 0.88) && aNeed > B_AIR * (this.d.aerFeather ?? 0.45) && car.boost > 0;
+    } else {
+      c.boost = align > 0.82 && need > 0.5 && car.boost > 0;
+    }
     c.throttle = 1;
     if (car.pos.distanceTo(ball.pos) < BALL_R + 1.3 && car.hasFlipOrJump() && this.d.dodges > 0.6) {
       this.aerial = null;

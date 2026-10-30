@@ -12,10 +12,10 @@ import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 // renderScale then scales that. "lowest" is for weak laptops: about a third of the pixels of "medium",
 // no shadows or glow, a thin crowd and a plain sky.
 export const QUALITY = {
-  lowest: { maxPixelRatio: 1, renderScale: 0.55, shadows: false, shadowSize: 0, bloom: false, fxaa: false, msaa: 0, crowd: 0.15, particles: 0.35, envMap: true, aurora: false, lightShafts: false, city: false },
-  low: { maxPixelRatio: 1, renderScale: 0.75, shadows: false, shadowSize: 0, bloom: false, fxaa: false, msaa: 0, crowd: 0.4, particles: 0.5, envMap: true, aurora: false, lightShafts: false, city: true },
-  medium: { maxPixelRatio: 1.25, renderScale: 1, shadows: true, shadowSize: 1024, bloom: true, fxaa: true, msaa: 0, crowd: 0.75, particles: 0.8, envMap: true, aurora: true, lightShafts: false, city: true },
-  high: { maxPixelRatio: 2, renderScale: 1, shadows: true, shadowSize: 2048, bloom: true, fxaa: false, msaa: 4, crowd: 1.0, particles: 1.0, envMap: true, aurora: true, lightShafts: true, city: true },
+  lowest: { grass: 0, maxPixelRatio: 1, renderScale: 0.55, shadows: false, shadowSize: 0, bloom: false, fxaa: false, msaa: 0, crowd: 0.15, particles: 0.35, envMap: true, aurora: false, lightShafts: false, city: false },
+  low: { grass: 0, maxPixelRatio: 1, renderScale: 0.75, shadows: false, shadowSize: 0, bloom: false, fxaa: false, msaa: 0, crowd: 0.4, particles: 0.5, envMap: true, aurora: false, lightShafts: false, city: true },
+  medium: { grass: 7, maxPixelRatio: 1.25, renderScale: 1, shadows: true, shadowSize: 1024, bloom: true, fxaa: true, msaa: 0, crowd: 0.75, particles: 0.8, envMap: true, aurora: true, lightShafts: false, city: true },
+  high: { grass: 12, maxPixelRatio: 2, renderScale: 1, shadows: true, shadowSize: 2048, bloom: true, fxaa: false, msaa: 4, crowd: 1.0, particles: 1.0, envMap: true, aurora: true, lightShafts: true, city: true },
 };
 // Glow around bright things (medium and high only). A wide, strong glow washed the whole picture
 // out (about 70% brighter than low quality on the default arena), so it is kept tight: lights and

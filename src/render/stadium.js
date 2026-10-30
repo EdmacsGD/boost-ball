@@ -1,6 +1,7 @@
 // Arena: field, walls, goals, stands with crowd, roof lights, sky and scenery, styled by a theme
 // (render/arenaThemes.js). Original design.
 import * as THREE from 'three';
+import { Grass } from './grass.js';
 import { mergeTree, pinnedFrom } from './mergeMeshes.js';
 import { buildRanges, buildTrees, buildIslands, buildClouds, buildTurbines, buildBridge, buildTraffic } from './scenery.js';
 import { CONFIG } from '../config.js';
@@ -238,6 +239,15 @@ export class Stadium {
     floor.receiveShadow = true;
     this.group.add(floor);
     this.floor = floor;
+
+    // Blades of grass (or snow and sand tufts) on top, swaying in the wind; not on the neon deck.
+    this.grass = null;
+    this.grassPush = [];
+    if (style !== 'grid' && TF.grass !== false) {
+      this.grass = new Grass(floorGeo, { map: turfTex, envMap: this.envMap, style, shells: this.quality.grass ?? 0 });
+      this.group.add(this.grass.mesh);
+      this.updaters.push((dt, time) => this.grass.update(time, this.grassPush));
+    }
 
     // Ramps continue the turf, tiled, darkening as they rise.
     const tile = makeGrassTile(this.renderer, style);
@@ -1528,6 +1538,12 @@ export class Stadium {
     if (this.sky) this.sky.material.uniforms.uAurora.value = q.aurora ? 1 : 0;
     if (this.shafts) this.shafts.visible = !!q.lightShafts;
     if (this.cityRing) this.cityRing.visible = !!q.city;
+    if (this.grass) this.grass.setShells(q.grass ?? 0);
+  }
+
+  // Cars and the ball that press the grass down: [{ x, z, r, s }] (meters).
+  setGrassPush(list) {
+    this.grassPush = list;
   }
 
   // ------------------------------------------------------------------ runtime

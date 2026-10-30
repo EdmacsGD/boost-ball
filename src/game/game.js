@@ -52,6 +52,8 @@ const BOT_NAMES = ['Comet', 'Volt', 'Nyx', 'Pike', 'Echo', 'Rook', 'Ember', 'Hal
 const v0 = new THREE.Vector3();
 const WHITE = new THREE.Color(1, 1, 1);
 const v1 = new THREE.Vector3();
+const gv2 = new THREE.Vector3();
+const gv3 = new THREE.Vector3();
 
 function loadSettings() {
   const defaults = { quality: 'auto', fov: 110, distance: 270, height: 100, angle: -3, stiffness: 0.45, transitionSpeed: 1.2, volume: 80, showFps: false, ballCam: true, mode: '1v1', difficulty: 'medium', car: 'strider', accent: 'white', arena: 'aurora', explosion: 'classic', rumble: true, anthemVolume: 80 };
@@ -1265,6 +1267,7 @@ export class Game {
       this.stadium.dispose();
     }
     this.stadium = new Stadium(this.renderer.renderer, this.sim.pw, this.renderer.quality, id);
+    this.grassCol = null;
     scene.add(this.stadium.group);
     scene.environment = this.stadium.envMap;
     const T = this.stadium.theme;
@@ -2016,6 +2019,23 @@ export class Game {
           this.effects.boost(wp, back, vel, p.team, dt / 2, supersonic, p.boostItem);
         }
       }
+      // Grass kicked up by the rear wheels when the car slides sideways or digs in from low speed.
+      if (ground && !demoed && !this.endlessOn && this.stadium.grass && p.renderPos.y < 0.6) {
+        const right = v1.set(0, 0, 1).applyQuaternion(p.renderQuat);
+        const slide = Math.abs(vel.dot(right));
+        const dig = car.controls && Math.abs(car.controls.throttle) > 0.8 && Math.abs(fwdSpeed) < 9 ? 1 : 0;
+        const amount = Math.min(1, Math.max(0, (slide - 3) / 8) + dig * 0.5);
+        if (amount > 0 && Math.random() < dt * 60 * amount * this.renderer.quality.particles) {
+          if (!this.grassCol) {
+            const b = this.stadium.theme.turf?.base || [30, 84, 38];
+            this.grassCol = [new THREE.Color(b[0] / 255, b[1] / 255, b[2] / 255).multiplyScalar(1.6), new THREE.Color(0.3, 0.24, 0.16)];
+          }
+          const back = gv2.set(-0.42, 0.05, (Math.random() < 0.5 ? -1 : 1) * 0.36).applyQuaternion(p.renderQuat).add(p.renderPos);
+          const kick = gv3.set(-1, 0, 0).applyQuaternion(p.renderQuat).multiplyScalar(2 + Math.random() * 3);
+          this.effects.smoke.spawn(back.x, 0.08, back.z, kick.x + (Math.random() - 0.5) * 2, 1.2 + Math.random() * 2.2, kick.z + (Math.random() - 0.5) * 2,
+            0.5 + Math.random() * 0.4, 0.16, 0.08, this.grassCol[0], this.grassCol[1], 0.9, 1.2, 9);
+        }
+      }
       // Supersonic streaks from the rear corners.
       for (let i = 0; i < 2; i++) {
         const corner = v1.copy(p.model.trailPoints[i]).applyQuaternion(p.renderQuat).add(p.renderPos);
@@ -2097,6 +2117,16 @@ export class Game {
     if (this.endlessOn) this.skyField.update(this.player.renderPos, cam);
     else {
       if (this.player && this.state !== 'home') this.stadium.setNear(this.player.renderPos, ballOn ? ballPos : null);
+      // Grass pressed down under cars on the ground and under a low ball.
+      const push = this.grassPushList || (this.grassPushList = []);
+      push.length = 0;
+      for (const p of this.players) {
+        if (push.length >= 7) break;
+        const rp = p.renderPos;
+        if (!p.car.isDemoed && rp.y < 1.2) push.push({ x: rp.x, z: rp.z, r: 1.5, s: 1 - rp.y / 1.2 });
+      }
+      if (ballOn && ballPos.y < 2.2) push.push({ x: ballPos.x, z: ballPos.z, r: 1.3, s: 1 - (ballPos.y - 0.9) / 1.3 });
+      this.stadium.setGrassPush(push);
       this.stadium.update(dt, this.time, cam);
     }
     this.updateHud(dt);
@@ -2146,12 +2176,20 @@ export class Game {
         lerpPose(sample.a.ball, sample.b.ball, sample.k, target, new THREE.Quaternion());
         const vel = new THREE.Vector3().fromArray(sample.a.ball.v);
         const toGoal = this.goalInfo.time - this.replayT;
+        // The goal being scored on: +z for blue's goals, -z for orange's.
+        const s = this.goalInfo.team === 0 ? 1 : -1;
         if (toGoal < 1.3) {
-          // Behind-the-goal view for the finish.
-          const s = this.goalInfo.team === 0 ? 1 : -1;
-          rig.updateFixed(dt, v0.set(this.goalInfo.pos.x * 0.5 + 6, 7, s * 66), target, 3);
+          // The finish: watch from the field side, in front of the goal mouth, so the camera never
+          // ends up behind the net (it used to cut to a spot behind the goal).
+          rig.updateFixed(dt, v0.set(target.x * 0.55, Math.max(4, target.y + 2.5), s * 37), target, 2.5);
         } else {
           rig.updateFollow(dt, target, vel, 10, 3.2);
+        }
+        // Never behind the goal line, whatever the ball does.
+        const lim = 47;
+        if (Math.abs(rig.pos.z) > lim) {
+          rig.pos.z = Math.sign(rig.pos.z) * lim;
+          rig.apply();
         }
       }
       return;
