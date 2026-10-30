@@ -98,6 +98,8 @@ const WarpShader = {
     }
 
     vec3 fetch(vec2 uv) {
+      // Small bends (ripples, bulges) just stretch the edge pixels; only a real pull shows the void.
+      if (uPinch < 0.05) uv = clamp(uv, vec2(0.001), vec2(0.999));
       if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {
         // The void: almost black with a faint glow and stars.
         return vec3(0.01, 0.0, 0.025) + stars(uv * 0.5 + 0.3) * 0.8;

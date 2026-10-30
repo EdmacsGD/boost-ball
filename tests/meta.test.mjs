@@ -8,10 +8,10 @@ const { ITEMS, DROP_ITEMS, UNLOCK_ITEMS, RARITY, CATEGORIES, rollDrop, key, item
 const results = [];
 const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail });
 
-// Catalog: 5-10 drop items in every category, unique keys.
+// Catalog: 5-25 drop items in every category, unique keys.
 for (const c of CATEGORIES) {
   const n = DROP_ITEMS.filter((it) => it.cat === c.id).length;
-  check(`catalog: ${c.name} has 5-10 drop items`, n >= 5 && n <= 10, `${n}`);
+  check(`catalog: ${c.name} has 5-25 drop items`, n >= 5 && n <= 25, `${n}`);
 }
 check('catalog: unique keys', new Set(ITEMS.map((it) => key(it.cat, it.id))).size === ITEMS.length);
 

@@ -75,6 +75,66 @@ export const ANTHEMS = [
     melody: ['1 - 1 - 1 - . . 3 - 3 - 5 - - -', '5 - 5 - 5 - . . 6 - 5 - 3 - - -', '4 - 4 - 6 - . . 8 - 8 - 10 - - -', '9 - - - 8 - - - 7 - - - 8 - - -'],
     drums: { k: 'x...x...x...x...', s: '....x.......x.x.', h: '..x...x...x...x.' }, bassRow: 'x...x...x...x.o.', fill: true,
   },
+  {
+    id: 'sunny', name: 'Sunny Side', blurb: 'Bright ukulele-style pop', bpm: 118, root: 62, scale: 'major', chords: [1, 5, 6, 4], end: 8,
+    lead: 'bell', pad: 'strings', bass: 'sub',
+    melody: ['3 - 5 - 6 - 5 - 3 - 1 - 2 - 3 -', '5 - - - 7 - 5 - 2 - - - . . 2 -', '1 - 3 - 6 - 8 - 6 - 5 - 3 - 1 -', '4 - - - 6 - 5 - 4 - 2 - 5 - - -'],
+    drums: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, bassRow: 'x.....x.x.....x.',
+  },
+  {
+    id: 'garage', name: 'Garage Jam', blurb: 'Loose garage rock', bpm: 150, root: 55, scale: 'major', chords: [1, 4, 1, 5], end: 8,
+    lead: 'guitar', bass: 'saw', guitar: 'x.x.x.x.x.x.x.x.',
+    melody: ['1 - 3 - 1 - 3 - 4 - 3 - 1 - - -', '4 - 6 - 4 - 6 - 8 - 6 - 4 - - -', '1 - 3 - 5 - 6 - 5 - 3 - 1 - 3 -', '5 - - - 7 - - - 9 - - - 8 - - -'],
+    drums: { k: 'x...x.x.x...x.x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' }, bassRow: 'x.x.x.x.x.x.x.x.', fill: true,
+  },
+  {
+    id: 'arcade', name: 'Arcade Hero', blurb: 'Fast 8-bit level-up', bpm: 168, root: 60, scale: 'major', chords: [1, 6, 4, 5], end: 8,
+    lead: 'square', bass: 'chip', chip: true,
+    melody: ['8 5 3 5 8 5 3 5 8 10 12 10 8 - - -', '6 3 1 3 6 3 1 3 6 8 10 8 6 - - -', '4 6 8 11 8 6 4 6 8 11 13 11 8 - - -', '5 7 9 12 9 7 5 7 9 12 - - 15 - - -'],
+    drums: { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, bassRow: 'x.x.x.x.x.x.x.x.',
+  },
+  {
+    id: 'bounce', name: 'Bounce', blurb: 'Funky slap bass', bpm: 108, root: 52, scale: 'minor', chords: [1, 4, 1, 7], end: 1,
+    lead: 'square', pad: 'strings', bass: 'saw',
+    melody: ['1 . 1 3 . 4 . 5 - - 4 . 3 . 1 .', '4 . 4 6 . 8 . 6 - - 4 . 3 . 1 .', '1 . 1 3 . 4 . 5 - - 7 . 8 . 7 .', '5 - - 4 - - 3 - 2 - - - 1 - - -'],
+    drums: { k: 'x..x..x...x..x..', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx' }, bassRow: 'x..o..x...x..o..',
+  },
+  {
+    id: 'tidal', name: 'Tidal Wave', blurb: 'Rolling synth arpeggios', bpm: 128, root: 54, scale: 'minor', chords: [1, 6, 3, 7], end: 8,
+    lead: 'saw', leadOctave: 1, arp: true, pad: 'strings', bass: 'sub',
+    melody: ['1 - - - 3 - - - 5 - - - 8 - - -', '6 - - - 8 - - - 10 - - - 8 - - -', '3 - - - 5 - - - 7 - - - 10 - - -', '7 - - - 9 - - - 11 - - - 12 - - -'],
+    drums: { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.' }, bassRow: 'x.o.x.o.x.o.x.o.',
+  },
+  {
+    id: 'stomp', name: 'Stadium Stomp', blurb: 'Stomp, stomp, clap', bpm: 92, root: 57, scale: 'minor', chords: [1, 1, 6, 5], end: 8,
+    lead: 'brass', bass: '808', timpani: 'x...x...x...x...',
+    melody: ['. . . . . . . . 1 - 1 - 3 - - -', '. . . . . . . . 5 - 5 - 3 - - -', '6 - - - 5 - - - 3 - - - 1 - - -', '5 - - - 7 - - - 8 - - - - - - -'],
+    drums: { k: 'x...x...x...x...', s: '........x.......', h: '' }, bassRow: 'x...x...x...x...',
+  },
+  {
+    id: 'starlight', name: 'Starlight', blurb: 'Dreamy bells and strings', bpm: 96, root: 64, scale: 'major', chords: [1, 3, 4, 5], end: 8,
+    lead: 'bell', leadOctave: 2, pad: 'strings', bass: 'sub',
+    melody: ['5 - - - 3 - - - 5 - 6 - 5 - - -', '7 - - - 5 - - - 3 - - - 2 - - -', '4 - - - 6 - - - 8 - 9 - 8 - - -', '7 - - - 9 - - - 12 - - - - - - -'],
+    drums: { k: 'x.......x.......', s: '........x.......', h: '..x...x...x...x.' }, bassRow: 'x.......x.......', roll: true,
+  },
+  {
+    id: 'thunder', name: 'Thunder Road', blurb: 'Galloping metal riff', bpm: 176, root: 50, scale: 'minor', chords: [1, 7, 6, 7], end: 8,
+    lead: 'guitar', bass: 'saw', guitar: 'x.xx.xx.xx.xx.xx',
+    melody: ['1 - 1 1 - 1 1 - 3 - 1 1 - 1 0 -', '7 - 7 7 - 7 7 - 9 - 7 7 - 7 5 -', '6 - 6 6 - 6 6 - 8 - 6 6 - 6 5 -', '7 - - - 9 - - - 10 - - - 12 - - -'],
+    drums: { k: 'xxx.xxx.xxx.xxx.', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, bassRow: 'x.xx.xx.xx.xx.xx', fill: true,
+  },
+  {
+    id: 'boss', name: 'Final Boss', blurb: 'Dark organ and choir hits', bpm: 140, root: 48, scale: 'minor', chords: [1, 6, 4, 5], end: 8,
+    lead: 'saw', pad: 'dark', bass: '808', timpani: 'x.......x...x...',
+    melody: ['8 - 7 - 8 - 5 - 8 - 7 - 8 - 3 -', '6 - 5 - 6 - 3 - 6 - 5 - 6 - 1 -', '4 - 6 - 8 - 11 - 10 - 8 - 6 - 4 -', '5 - - - 7 - - - 9 - - - 12 - - -'],
+    drums: { k: 'x.x.....x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, bassRow: 'x.x.....x.x.....',
+  },
+  {
+    id: 'legacy', name: 'Legacy', blurb: 'Epic orchestra with a choir-like swell', bpm: 88, root: 53, scale: 'major', chords: [1, 6, 4, 5], end: 8,
+    lead: 'brass', pad: 'strings', bass: 'sub', timpani: 'x.......x.......',
+    melody: ['1 - - - 5 - - - 8 - - - 7 - 8 -', '6 - - - 5 - - - 3 - - - 1 - - -', '4 - - - 6 - - - 8 - - - 11 - 10 -', '9 - - - 10 - - - 12 - - - - - - -'],
+    drums: { k: '', s: '', h: '' }, bassRow: 'x.......x.......', roll: true,
+  },
 ];
 
 export const anthemSpec = (id) => ANTHEMS.find((a) => a.id === id) || null;

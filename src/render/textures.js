@@ -416,6 +416,16 @@ export const BALL_SKIN_MATERIAL = {
   globe: { emissive: [1.0, 0.85, 0.5], roughness: 0.55, metalness: 0.0, halo: 0x8ac8ff },
   disco: { emissive: [1, 1, 1], roughness: 0.12, metalness: 1.0, halo: 0xffffff },
   champion: { emissive: [1.0, 0.85, 0.45], roughness: 0.18, metalness: 0.85, halo: 0xffcf5a },
+  tennis: { emissive: [1, 1, 1], roughness: 0.95, metalness: 0.0, halo: 0xeaff8a },
+  watermelon: { emissive: [1, 1, 1], roughness: 0.35, metalness: 0.0, halo: 0xa8ff9a },
+  checker: { emissive: [1, 1, 1], roughness: 0.3, metalness: 0.1, halo: 0xffffff },
+  camo: { emissive: [1, 1, 1], roughness: 0.8, metalness: 0.0, halo: 0xc8d8a0 },
+  neon: { emissive: [1, 1, 1], roughness: 0.25, metalness: 0.4, halo: 0x5affe8 },
+  planet: { emissive: [1.0, 0.9, 0.7], roughness: 0.6, metalness: 0.0, halo: 0xffd8a0 },
+  ice: { emissive: [0.6, 0.9, 1.0], roughness: 0.1, metalness: 0.2, halo: 0xbfeaff },
+  circuit: { emissive: [0.4, 1.0, 0.6], roughness: 0.4, metalness: 0.5, halo: 0x6aff9a },
+  eyeball: { emissive: [1, 1, 1], roughness: 0.15, metalness: 0.0, halo: 0xffdada },
+  sun: { emissive: [1.0, 0.75, 0.35], roughness: 0.9, metalness: 0.0, halo: 0xffb040 },
 };
 
 function hash3(x, y, z) {
@@ -582,6 +592,101 @@ export function makeBallTextures(skin = 'standard') {
           [er, eg, eb] = [line, line * 0.78, line * 0.35];
           break;
         }
+        case 'tennis': {
+          // Fuzzy yellow-green with the curved white seam.
+          const fuzz = hash3(x, y, 3) * 26 + fbm(px * 9, py * 9, pz * 9) * 20;
+          [r, g, b] = [196 + fuzz * 0.6, 222 + fuzz * 0.4, 52 + fuzz * 0.3];
+          const seam = Math.abs(py - 0.62 * Math.sin(2 * Math.atan2(pz, px)) * Math.sqrt(Math.max(0, 1 - py * py)));
+          if (seam < 0.035) [r, g, b] = [246, 246, 238];
+          [er, eg, eb] = [0, 0, 0];
+          shade = false;
+          break;
+        }
+        case 'watermelon': {
+          // Green stripes running pole to pole.
+          const st = Math.sin(lon * 9 + Math.sin(lat * 6) * 0.6);
+          const n = fbm(px * 5, py * 5, pz * 5);
+          [r, g, b] = st > 0.2 ? [30 + n * 20, 92 + n * 30, 34] : [120 + n * 30, 190 + n * 30, 80];
+          [er, eg, eb] = [0, 0, 0];
+          shade = false;
+          break;
+        }
+        case 'checker': {
+          const a = Math.floor((lon + Math.PI) / (Math.PI / 8));
+          const bnd = Math.floor((lat + Math.PI / 2) / (Math.PI / 8));
+          [r, g, b] = (a + bnd) % 2 ? [20, 20, 24] : [240, 240, 236];
+          [er, eg, eb] = [line * 0.3, line * 0.3, line * 0.3];
+          break;
+        }
+        case 'camo': {
+          const n1 = fbm(px * 3 + 2, py * 3, pz * 3);
+          const n2 = fbm(px * 5, py * 5 + 7, pz * 5);
+          if (n1 > 0.56) [r, g, b] = [52, 64, 34];
+          else if (n2 > 0.55) [r, g, b] = [110, 92, 58];
+          else if (n1 < 0.42) [r, g, b] = [24, 28, 20];
+          else [r, g, b] = [92, 112, 64];
+          [er, eg, eb] = [0, 0, 0];
+          break;
+        }
+        case 'neon': {
+          // Black panels, thick glowing seams in two colors.
+          [r, g, b] = [10, 10, 16];
+          const wide = Math.max(0, 1 - seam / 0.03);
+          [er, eg, eb] = bestPent ? [wide, wide * 0.2, wide * 0.85] : [wide * 0.1, wide, wide * 0.9];
+          break;
+        }
+        case 'planet': {
+          // Banded gas giant with a bright ring band around the middle.
+          const band = Math.sin(lat * 14 + fbm(px * 3, py * 3, pz * 3) * 4);
+          [r, g, b] = [180 + band * 30, 130 + band * 26, 80 + band * 20];
+          const ring = Math.abs(lat) < 0.07 ? 1 : 0;
+          if (ring) [r, g, b] = [240, 220, 180];
+          [er, eg, eb] = [ring * 0.6, ring * 0.5, ring * 0.3];
+          shade = false;
+          break;
+        }
+        case 'ice': {
+          const n = fbm(px * 6 + 1, py * 6, pz * 6);
+          const crack = Math.max(0, 1 - Math.abs(n - 0.5) / 0.03);
+          [r, g, b] = [150 + n * 60, 200 + n * 40, 240];
+          [er, eg, eb] = [Math.max(line, crack) * 0.5, Math.max(line, crack) * 0.85, Math.max(line, crack)];
+          break;
+        }
+        case 'circuit': {
+          [r, g, b] = [12, 40, 26];
+          const gx = Math.abs(((lon * 12) % 1 + 1) % 1 - 0.5);
+          const gy = Math.abs(((lat * 12) % 1 + 1) % 1 - 0.5);
+          const cell = hash3(Math.floor(lon * 12), Math.floor(lat * 12), 5);
+          const trace = (cell > 0.5 ? gx : gy) < 0.06 ? 1 : 0;
+          const pad = Math.hypot(gx - 0.5, gy - 0.5) < 0.12 && cell > 0.8 ? 1 : 0;
+          if (trace || pad) [r, g, b] = [200, 170, 70];
+          const lit = Math.max(line, pad);
+          [er, eg, eb] = [lit * 0.2, lit, lit * 0.5];
+          break;
+        }
+        case 'eyeball': {
+          // White ball, red veins, one big iris facing +z.
+          const n = fbm(px * 8, py * 8, pz * 8);
+          const vein = Math.max(0, 1 - Math.abs(n - 0.5) / 0.02) * (1 - pz) * 0.5;
+          [r, g, b] = [244 - vein * 30, 240 - vein * 200, 236 - vein * 200];
+          const d = Math.acos(Math.max(-1, Math.min(1, pz)));
+          if (d < 0.55) [r, g, b] = [40 + d * 120, 120 + d * 140, 70 + d * 40];
+          if (d < 0.25) [r, g, b] = [6, 6, 8];
+          if (Math.hypot(px - 0.1, py - 0.1) < 0.05 && pz > 0) [r, g, b] = [255, 255, 255];
+          [er, eg, eb] = [0, 0, 0];
+          shade = false;
+          break;
+        }
+        case 'sun': {
+          // Boiling surface that glows by itself.
+          const n = fbm(px * 5 + 4, py * 5, pz * 5);
+          const n2 = fbm(px * 14, py * 14 + 3, pz * 14);
+          const h = n * 0.7 + n2 * 0.3;
+          [r, g, b] = [255, 120 + h * 120, 20 + h * 50];
+          [er, eg, eb] = [0.9 + h * 0.1, 0.35 + h * 0.5, 0.05 + h * 0.15];
+          shade = false;
+          break;
+        }
         default:
           [r, g, b] = bestPent ? [44, 50, 62] : [236, 240, 246];
       }
@@ -654,10 +759,45 @@ export function makeLiveryTexture(team, number, { accent = '#ffffff', style = 't
         k += (along ? 16 : -16) + Math.sin(f * Math.PI) * 14 - 10;
       } else if (pattern === 'glitter') {
         if (rand() < 0.012) k += 120 + rand() * 80;
+      } else if (pattern === 'brushed') {
+        // Fine streaks along the car's length.
+        k += (hash3(0, y, 3) - 0.5) * 34 + (hash3(Math.floor(x / 40), y, 5) - 0.5) * 10;
+      } else if (pattern === 'hexmesh') {
+        const R = 10;
+        const qx = x / (R * Math.sqrt(3));
+        const qy = y / (R * 1.5);
+        const row = Math.round(qy);
+        const col = Math.round(qx - (row % 2 ? 0.5 : 0));
+        const cx = (col + (row % 2 ? 0.5 : 0)) * R * Math.sqrt(3);
+        const cy = row * R * 1.5;
+        const d = Math.hypot(x - cx, y - cy) / R;
+        k += d > 0.78 ? -38 : 8 - d * 14;
+      } else if (pattern === 'scales') {
+        // Rows of overlapping half circles, each one darker at its rim.
+        const S = 22;
+        const row = Math.floor(y / (S * 0.5));
+        const off = row % 2 ? S / 2 : 0;
+        const cx = Math.floor((x + off) / S) * S + S / 2 - off;
+        const cy = row * S * 0.5;
+        const d = Math.hypot(x - cx, y - cy) / (S * 0.62);
+        k += d < 1 ? 22 - d * 46 : -20;
+      } else if (pattern === 'pinstripe') {
+        if (y % 26 < 2) k += 70;
+      } else if (pattern === 'goldleaf') {
+        const n = hash3(Math.floor(x / 14), Math.floor(y / 14), 11);
+        if (n > 0.55) k += 34 + (hash3(x, y, 2) - 0.5) * 30;
+        else k -= 8;
       }
       img.data[i] += k;
       img.data[i + 1] += k;
       img.data[i + 2] += k;
+      if (pattern === 'goldleaf' && hash3(Math.floor(x / 14), Math.floor(y / 14), 11) > 0.55) {
+        // Gold flakes over the paint.
+        const f = 0.8 + hash3(x >> 1, y >> 1, 4) * 0.4;
+        img.data[i] = img.data[i] * 0.3 + 225 * f * 0.7;
+        img.data[i + 1] = img.data[i + 1] * 0.3 + 178 * f * 0.7;
+        img.data[i + 2] = img.data[i + 2] * 0.3 + 70 * f * 0.7;
+      }
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -883,6 +1023,197 @@ function drawDecal(ctx, style, W, H, accent, dark, rand) {
         ctx.arc(x, y, 6, 0, Math.PI * 2);
         ctx.fill();
       }
+      return true;
+    }
+    case 'dots': {
+      ctx.fillStyle = accent;
+      for (let y = 16; y < H; y += 40) {
+        for (let x = (y / 40) % 2 ? 36 : 16; x < W; x += 40) {
+          ctx.beginPath();
+          ctx.arc(x, y, 9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      return true;
+    }
+    case 'racing': {
+      // Two wide stripes over the roof with thin outer lines, and a band across the nose.
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, H * 0.36, W, H * 0.1);
+      ctx.fillRect(0, H * 0.54, W, H * 0.1);
+      ctx.fillStyle = dark;
+      for (const v of [0.34, 0.47, 0.525, 0.655]) ctx.fillRect(0, H * v, W, H * 0.012);
+      ctx.fillStyle = accent;
+      ctx.fillRect(W * 0.86, 0, W * 0.03, H);
+      return true;
+    }
+    case 'waves': {
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 10;
+      for (let v = 0.05; v < 1; v += 0.11) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 8) ctx.lineTo(x, H * v + Math.sin(x * 0.035 + v * 9) * 14);
+        ctx.stroke();
+      }
+      return true;
+    }
+    case 'zebra': {
+      ctx.fillStyle = accent;
+      for (let v = -0.1; v < 1.1; v += 0.09 + rand() * 0.05) {
+        const w = 8 + rand() * 12;
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 16) ctx.lineTo(x, H * v + Math.sin(x * 0.02 + v * 20) * 26 + x * 0.05);
+        for (let x = W; x >= 0; x -= 16) ctx.lineTo(x, H * v + Math.sin(x * 0.02 + v * 20) * 26 + x * 0.05 + w * (0.5 + 0.5 * Math.abs(Math.sin(x * 0.015 + v * 7))));
+        ctx.closePath();
+        ctx.fill();
+      }
+      return true;
+    }
+    case 'splatter': {
+      const cols = [accent, '#' + new THREE.Color(accent).offsetHSL(0.33, 0, 0).getHexString(), '#' + new THREE.Color(accent).offsetHSL(0.66, 0, 0).getHexString()];
+      for (let i = 0; i < 22; i++) {
+        ctx.fillStyle = cols[i % 3];
+        const x = rand() * W;
+        const y = rand() * H;
+        const r = 14 + rand() * 26;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        for (let k = 0; k < 9; k++) {
+          const a = rand() * Math.PI * 2;
+          const d = r * (1.2 + rand() * 1.4);
+          ctx.beginPath();
+          ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 2 + rand() * 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      return true;
+    }
+    case 'arrows': {
+      // Chevrons pointing forward down the middle and both sides.
+      ctx.fillStyle = accent;
+      for (const v of [0.12, 0.5, 0.88]) {
+        for (let x = 30; x < W; x += 70) {
+          const y = H * v;
+          const s = v === 0.5 ? 40 : 26;
+          ctx.beginPath();
+          ctx.moveTo(x, y - s);
+          ctx.lineTo(x + s * 0.8, y);
+          ctx.lineTo(x, y + s);
+          ctx.lineTo(x - s * 0.35, y + s);
+          ctx.lineTo(x + s * 0.45, y);
+          ctx.lineTo(x - s * 0.35, y - s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      return true;
+    }
+    case 'shark': {
+      // A mouth of teeth on the nose, and an eye on each side.
+      const x0 = W * 0.78;
+      ctx.fillStyle = '#7a0a14';
+      ctx.beginPath();
+      ctx.moveTo(W, H * 0.08);
+      ctx.quadraticCurveTo(x0 - 40, H * 0.5, W, H * 0.92);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#f4f4f0';
+      for (let k = 0; k < 14; k++) {
+        const t = k / 13;
+        const y = H * (0.1 + t * 0.8);
+        const xe = W - (W - x0 + 40) * Math.sin(t * Math.PI) * 0.5 - 4;
+        ctx.beginPath();
+        ctx.moveTo(xe, y - 14);
+        ctx.lineTo(xe - 30, y);
+        ctx.lineTo(xe, y + 14);
+        ctx.fill();
+      }
+      for (const v of [0.07, 0.93]) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(W * 0.66, H * v, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#05060a';
+        ctx.beginPath();
+        ctx.arc(W * 0.67, H * v, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(0, H * 0.46, x0 - 30, H * 0.08);
+      ctx.globalAlpha = 1;
+      return true;
+    }
+    case 'galaxy': {
+      const base = new THREE.Color(accent);
+      for (let i = 0; i < 14; i++) {
+        const x = rand() * W;
+        const y = rand() * H;
+        const r = 60 + rand() * 90;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        const c = base.clone().offsetHSL((rand() - 0.5) * 0.25, 0, 0);
+        g.addColorStop(0, 'rgba(' + [c.r * 255, c.g * 255, c.b * 255].map(Math.round).join(',') + ',0.55)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 260; i++) ctx.fillRect(rand() * W, rand() * H, rand() < 0.1 ? 3 : 1.5, rand() < 0.1 ? 3 : 1.5);
+      for (let i = 0; i < 6; i++) star(rand() * W, rand() * H, 6 + rand() * 6, rand());
+      return true;
+    }
+    case 'barcode': {
+      ctx.fillStyle = accent;
+      for (const [v0, v1] of [[0.02, 0.22], [0.78, 0.98]]) {
+        let x = W * 0.25;
+        while (x < W * 0.8) {
+          const w = 2 + Math.floor(rand() * 4) * 3;
+          ctx.fillRect(x, H * v0, w, H * (v1 - v0));
+          x += w + 3 + Math.floor(rand() * 3) * 3;
+        }
+      }
+      ctx.fillRect(0, H * 0.49, W, H * 0.02);
+      return true;
+    }
+    case 'dragon': {
+      // A long dragon body winding from the tail to the nose, with scales and a head on the hood.
+      ctx.strokeStyle = accent;
+      ctx.lineCap = 'round';
+      const path = (x) => H * 0.5 + Math.sin(x * 0.018) * H * 0.3;
+      for (const [w, a] of [[46, 1], [30, 0]]) {
+        ctx.lineWidth = w;
+        ctx.strokeStyle = a ? accent : dark;
+        ctx.globalAlpha = a ? 1 : 0.45;
+        ctx.beginPath();
+        for (let x = 0; x <= W * 0.82; x += 6) ctx.lineTo(x, path(x));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = accent;
+      for (let x = 10; x < W * 0.8; x += 18) {
+        const y = path(x);
+        ctx.beginPath();
+        ctx.moveTo(x, y - 22);
+        ctx.lineTo(x + 9, y - 40);
+        ctx.lineTo(x + 16, y - 20);
+        ctx.fill();
+      }
+      const hx = W * 0.84;
+      const hy = path(W * 0.82);
+      ctx.beginPath();
+      ctx.moveTo(hx - 20, hy - 34);
+      ctx.lineTo(hx + 60, hy - 14);
+      ctx.lineTo(hx + 70, hy);
+      ctx.lineTo(hx + 60, hy + 14);
+      ctx.lineTo(hx - 20, hy + 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffd34a';
+      ctx.beginPath();
+      ctx.arc(hx + 22, hy - 12, 6, 0, Math.PI * 2);
+      ctx.arc(hx + 22, hy + 12, 6, 0, Math.PI * 2);
+      ctx.fill();
       return true;
     }
     default:

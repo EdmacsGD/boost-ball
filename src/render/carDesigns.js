@@ -1247,6 +1247,443 @@ export const DESIGNS = {
       k.rbox([0.01, 0.04, 0.16], [-0.516, 0.1, 0], 'black', { r: 0.004 });
     },
   },
+
+  // ------------------------------------------------------------------ second wave
+  // Hauler (tall): pickup truck with an open bed and a roof light bar.
+  hauler: {
+    name: 'Hauler',
+    hitbox: 'tall',
+    blurb: 'Pickup truck with an open bed, a push bar and a roof light bar.',
+    span: [-0.58, 0.82, 0.38],
+    livery: 'side',
+    baseShade: 0.8,
+    wheels: { front: { r: 0.19, w: 0.17, z: 0.39 }, back: { r: 0.19, w: 0.17, z: 0.39 }, rim: 'beadlock', rimMat: 'rimBlack', tire: 'offroad', sidewall: 0.42 },
+    build(k) {
+      // Lower body all the way, then the cab on top of the front half.
+      k.shell([
+        { x: 0.8, w: 0.3, yb: 0.02, yt: 0.2, n: 6 },
+        { x: 0.76, w: 0.35, yb: 0.0, yt: 0.25, n: 7, tb: 0.1 },
+        { x: 0.4, w: 0.36, yb: 0.0, yt: 0.27, n: 8, tb: 0.1 },
+        { x: -0.5, w: 0.36, yb: 0.0, yt: 0.26, n: 8, tb: 0.08 },
+        { x: -0.57, w: 0.34, yb: 0.02, yt: 0.24, n: 7 },
+      ], { ring: 48, twoTone: { y: 0.06, dark: 0.14 } });
+      k.shell([
+        { x: 0.32, w: 0.3, yb: 0.25, yt: 0.27, n: 6 },
+        { x: 0.22, w: 0.32, yb: 0.25, yt: 0.46, n: 7, tb: 0.15 },
+        { x: -0.08, w: 0.33, yb: 0.25, yt: 0.48, n: 7, tb: 0.15 },
+        { x: -0.14, w: 0.32, yb: 0.25, yt: 0.46, n: 7 },
+      ], { ring: 44 });
+      k.rbox([0.012, 0.15, 0.56], [0.27, 0.37, 0], 'glass', { r: 0.006, rot: [0, 0, 0.55] });
+      k.sym((s) => {
+        k.rbox([0.26, 0.12, 0.008], [0.06, 0.37, s * 0.33], 'glass', { r: 0.01 });
+        k.rbox([0.012, 0.06, 0.1], [0.8, 0.17, s * 0.24], 'head', { r: 0.008 });
+        k.rbox([0.012, 0.1, 0.05], [-0.575, 0.17, s * 0.3], 'tail', { r: 0.005 });
+        k.box([0.6, 0.03, 0.03], [-0.33, 0.29, s * 0.345], 'darkMetal');
+        k.nozzle([-0.6, 0.08, s * 0.14], 0.05);
+        k.rod([0.84, 0.05, s * 0.2], [0.84, 0.25, s * 0.2], 0.014, 'black');
+      });
+      // Bed: dark floor and a tailgate edge.
+      k.box([0.58, 0.02, 0.62], [-0.32, 0.25, 0], 'black');
+      k.box([0.02, 0.05, 0.66], [-0.6, 0.255, 0], 'paintPlain');
+      k.rbox([0.04, 0.16, 0.66], [-0.16, 0.34, 0], 'darkMetal', { r: 0.01 });
+      // Push bar and grille.
+      k.rod([0.84, 0.25, -0.2], [0.84, 0.25, 0.2], 0.016, 'black');
+      k.rod([0.84, 0.05, -0.2], [0.84, 0.05, 0.2], 0.016, 'black');
+      k.rbox([0.012, 0.1, 0.36], [0.805, 0.14, 0], 'black', { r: 0.01 });
+      // Light bar.
+      k.rbox([0.05, 0.04, 0.56], [0.12, 0.505, 0], 'black', { r: 0.01 });
+      for (let i = 0; i < 6; i++) k.rbox([0.008, 0.024, 0.06], [0.147, 0.505, -0.21 + i * 0.084], 'head', { r: 0.004 });
+    },
+  },
+
+  // Breeze (standard): open-top roadster with round lamps and roll hoops.
+  breeze: {
+    name: 'Breeze',
+    hitbox: 'standard',
+    blurb: 'Open-top roadster with round lamps, two roll hoops and a chrome grin.',
+    span: [-0.6, 0.8, 0.37],
+    livery: 'twin',
+    wheels: { front: { r: 0.145, w: 0.13, z: 0.36 }, back: { r: 0.16, w: 0.15, z: 0.37 }, rim: 'mesh', rimMat: 'chrome', whitewall: true, sidewall: 0.36 },
+    build(k) {
+      k.shell([
+        { x: 0.79, w: 0.18, yb: -0.06, yt: 0.03, n: 2.8 },
+        { x: 0.68, w: 0.3, yb: -0.08, yt: 0.09, n: 3.4, tb: 0.3 },
+        { x: 0.4, w: 0.34, yb: -0.09, yt: 0.13, n: 4, tb: 0.35 },
+        { x: 0.0, w: 0.35, yb: -0.09, yt: 0.13, n: 4.2, tb: 0.35 },
+        { x: -0.35, w: 0.34, yb: -0.08, yt: 0.14, n: 4, tb: 0.35 },
+        { x: -0.55, w: 0.3, yb: -0.06, yt: 0.12, n: 3.4, tb: 0.3 },
+        { x: -0.6, w: 0.22, yb: -0.03, yt: 0.09, n: 3 },
+      ], { ring: 48, twoTone: { y: -0.04, dark: 0.1 } });
+      // Open cockpit: black seats tub.
+      k.rbox([0.36, 0.05, 0.48], [-0.08, 0.12, 0], 'black', { r: 0.03 });
+      k.sym((s) => {
+        k.rbox([0.1, 0.13, 0.15], [-0.2, 0.2, s * 0.12], 'plastic', { r: 0.03, rot: [0, 0, 0.25] });
+        const hoop = k.add(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.012, 8, 20, Math.PI), k.mats.chrome));
+        hoop.rotation.set(0, Math.PI / 2, 0);
+        hoop.position.set(-0.27, 0.15, s * 0.12);
+        k.cyl(0.05, 0.05, 0.03, [0.72, 0.08, s * 0.22], 'chrome', { axis: 'x' });
+        k.cyl(0.04, 0.04, 0.01, [0.74, 0.08, s * 0.22], 'head', { axis: 'x' });
+        k.rbox([0.012, 0.03, 0.06], [-0.6, 0.06, s * 0.22], 'tail', { r: 0.008 });
+        k.nozzle([-0.63, -0.02, s * 0.12], 0.045);
+        k.box([0.5, 0.006, 0.006], [0.1, 0.06, s * 0.352], 'chrome');
+      });
+      // Windshield frame and glass.
+      k.rbox([0.012, 0.1, 0.5], [0.16, 0.19, 0], 'glass', { r: 0.006, rot: [0, 0, 0.5] });
+      k.tube([[0.13, 0.13, -0.26], [0.19, 0.24, -0.25], [0.19, 0.24, 0.25], [0.13, 0.13, 0.26]], 0.008, 'chrome');
+      // Grille.
+      k.rbox([0.02, 0.06, 0.2], [0.785, -0.02, 0], 'chrome', { r: 0.02 });
+      for (let i = 0; i < 5; i++) k.box([0.022, 0.05, 0.006], [0.79, -0.02, -0.08 + i * 0.04], 'black');
+      k.rbox([0.03, 0.025, 0.4], [-0.6, -0.04, 0], 'chrome', { r: 0.01 });
+    },
+  },
+
+  // Gravel (hybrid): rally hatchback with a roof scoop, light pod and mud flaps.
+  gravel: {
+    name: 'Gravel',
+    hitbox: 'hybrid',
+    blurb: 'Rally hatchback with a roof scoop, a four-lamp pod and mud flaps.',
+    span: [-0.56, 0.8, 0.36],
+    livery: 'hazard',
+    wheels: { front: { r: 0.15, w: 0.14, z: 0.35 }, back: { r: 0.155, w: 0.15, z: 0.355 }, rim: 'disc', rimMat: 'rimWhite', tire: 'offroad', sidewall: 0.4 },
+    build(k) {
+      k.shell([
+        { x: 0.79, w: 0.26, yb: -0.06, yt: 0.06, n: 3.6 },
+        { x: 0.66, w: 0.34, yb: -0.08, yt: 0.13, n: 4.4, tb: 0.25 },
+        { x: 0.3, w: 0.36, yb: -0.09, yt: 0.16, n: 5, tb: 0.3 },
+        { x: -0.3, w: 0.36, yb: -0.09, yt: 0.17, n: 5, tb: 0.3 },
+        { x: -0.53, w: 0.34, yb: -0.07, yt: 0.17, n: 4.6, tb: 0.25 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      k.shell([
+        { x: 0.3, w: 0.28, yb: 0.15, yt: 0.17, n: 4 },
+        { x: 0.16, w: 0.31, yb: 0.15, yt: 0.33, n: 4.5, tb: 0.4 },
+        { x: -0.3, w: 0.31, yb: 0.16, yt: 0.35, n: 4.5, tb: 0.4 },
+        { x: -0.5, w: 0.3, yb: 0.16, yt: 0.32, n: 4.2, tb: 0.35 },
+        { x: -0.545, w: 0.27, yb: 0.17, yt: 0.25, n: 3.8 },
+      ], { ring: 44 });
+      k.rbox([0.012, 0.14, 0.5], [0.24, 0.26, 0], 'glass', { r: 0.006, rot: [0, 0, 0.75] });
+      k.rbox([0.012, 0.1, 0.46], [-0.535, 0.27, 0], 'glass', { r: 0.006, rot: [0, 0, -0.3] });
+      k.rbox([0.16, 0.04, 0.12], [0.0, 0.37, 0], 'black', { r: 0.015 });
+      k.wing(0.1, 0.018, 0.56, [-0.5, 0.35, 0], 'paintPlain', { rotZ: -0.15 });
+      k.sym((s) => {
+        k.rbox([0.32, 0.09, 0.008], [-0.1, 0.25, s * 0.316], 'glass', { r: 0.01 });
+        k.rbox([0.012, 0.035, 0.08], [0.79, 0.04, s * 0.2], 'head', { r: 0.008 });
+        k.rbox([0.012, 0.05, 0.05], [-0.555, 0.1, s * 0.28], 'tail', { r: 0.006 });
+        k.box([0.012, 0.12, 0.13], [-0.4, -0.12, s * 0.35], 'rubber');
+        k.nozzle([-0.58, -0.04, s * 0.18], 0.045);
+      });
+      // Light pod on the nose.
+      k.rbox([0.03, 0.07, 0.5], [0.8, 0.12, 0], 'black', { r: 0.015 });
+      for (let i = 0; i < 4; i++) {
+        const z = -0.18 + i * 0.12;
+        k.cyl(0.04, 0.04, 0.02, [0.817, 0.12, z], 'head', { axis: 'x' });
+      }
+      k.rbox([0.24, 0.02, 0.36], [0.62, -0.1, 0], 'darkMetal', { r: 0.01, rot: [0, 0, 0.12] });
+    },
+  },
+
+  // Doorstop (wedge): eighties wedge supercar, all sharp lines.
+  doorstop: {
+    name: 'Doorstop',
+    hitbox: 'wedge',
+    blurb: 'Eighties wedge supercar: a knife nose, louvers and a flat rear deck.',
+    span: [-0.6, 0.82, 0.4],
+    livery: 'twin',
+    wheels: { front: { r: 0.14, w: 0.13, z: 0.34 }, back: { r: 0.165, w: 0.19, z: 0.36 }, rim: 'disc', rimMat: 'rimSilver', sidewall: 0.3 },
+    build(k) {
+      k.shell([
+        { x: 0.82, w: 0.3, yb: -0.06, yt: -0.04, n: 8 },
+        { x: 0.7, w: 0.36, yb: -0.07, yt: 0.0, n: 9, tb: 0.05 },
+        { x: 0.3, w: 0.38, yb: -0.08, yt: 0.08, n: 10, tb: 0.06 },
+        { x: -0.2, w: 0.39, yb: -0.08, yt: 0.13, n: 10, tb: 0.06 },
+        { x: -0.55, w: 0.38, yb: -0.07, yt: 0.14, n: 9, tb: 0.05 },
+        { x: -0.6, w: 0.36, yb: -0.05, yt: 0.13, n: 8 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      // Low angular cabin.
+      k.shell([
+        { x: 0.3, w: 0.26, yb: 0.07, yt: 0.08, n: 6 },
+        { x: 0.1, w: 0.28, yb: 0.08, yt: 0.2, n: 6, tb: 0.3 },
+        { x: -0.18, w: 0.28, yb: 0.1, yt: 0.22, n: 6, tb: 0.3 },
+        { x: -0.3, w: 0.26, yb: 0.12, yt: 0.18, n: 6 },
+      ], { mat: 'glass', ring: 40 });
+      // Rear louvers.
+      for (let i = 0; i < 6; i++) k.box([0.03, 0.01, 0.5], [-0.34 - i * 0.04, 0.17, 0], 'black', [0, 0, -0.35]);
+      k.sym((s) => {
+        k.box([0.5, 0.012, 0.006], [0.2, -0.02, s * 0.392], 'glow');
+        k.box([0.18, 0.05, 0.012], [-0.1, 0.03, s * 0.39], 'black', [0, 0, -0.2]);
+        k.box([0.04, 0.012, 0.14], [0.79, -0.04, s * 0.2], 'head');
+        k.box([0.012, 0.03, 0.26], [-0.605, 0.07, s * 0.18], 'tail');
+        k.nozzle([-0.63, -0.01, s * 0.12], 0.05);
+        k.rbox([0.06, 0.025, 0.02], [0.1, 0.17, s * 0.3], 'black', { r: 0.006 });
+      });
+      k.wing(0.12, 0.02, 0.74, [-0.5, 0.21, 0], 'paintPlain', { rotZ: -0.08 });
+      k.sym((s) => k.box([0.03, 0.07, 0.02], [-0.5, 0.17, s * 0.3], 'black'));
+      k.box([0.12, 0.03, 0.72], [-0.57, -0.07, 0], 'carbon', [0, 0, -0.2]);
+    },
+  },
+
+  // Glider (flat): futuristic car on covered wheel pods with glowing fins.
+  glider: {
+    name: 'Glider',
+    hitbox: 'flat',
+    blurb: 'Future concept with covered wheel pods, a bubble canopy and light fins.',
+    span: [-0.62, 0.8, 0.46],
+    livery: 'roof',
+    wheels: { front: { r: 0.13, w: 0.12, z: 0.33 }, back: { r: 0.17, w: 0.2, z: 0.3 }, rim: 'turbine', rimMat: 'rimWhite', sidewall: 0.28 },
+    build(k) {
+      k.shell([
+        { x: 0.8, w: 0.06, yb: -0.02, yt: 0.0, n: 2.2 },
+        { x: 0.62, w: 0.16, yb: -0.03, yt: 0.05, n: 2.6, tb: 0.4 },
+        { x: 0.3, w: 0.22, yb: -0.04, yt: 0.1, n: 2.8, tb: 0.5 },
+        { x: -0.1, w: 0.22, yb: -0.04, yt: 0.11, n: 2.8, tb: 0.5 },
+        { x: -0.45, w: 0.18, yb: -0.02, yt: 0.09, n: 2.6, tb: 0.4 },
+        { x: -0.62, w: 0.08, yb: 0.0, yt: 0.04, n: 2.2 },
+      ], { ring: 48, steps: 7 });
+      k.sym((s) => {
+        // Pods over the wheels, joined to the body by a thin arm.
+        k.shell(L([
+          { x: 0.68, w: 0.04, yb: 0.0, yt: 0.03, n: 2.2, zc: 0.33 },
+          { x: 0.55, w: 0.09, yb: -0.01, yt: 0.1, n: 2.4, zc: 0.33, tb: 0.5 },
+          { x: 0.4, w: 0.09, yb: 0.0, yt: 0.1, n: 2.4, zc: 0.33, tb: 0.5 },
+          { x: 0.3, w: 0.03, yb: 0.03, yt: 0.06, n: 2.2, zc: 0.33 },
+        ], s), { ring: 32 });
+        k.shell(L([
+          { x: -0.18, w: 0.04, yb: 0.02, yt: 0.05, n: 2.2, zc: 0.3 },
+          { x: -0.3, w: 0.12, yb: 0.0, yt: 0.15, n: 2.4, zc: 0.3, tb: 0.5 },
+          { x: -0.5, w: 0.12, yb: 0.0, yt: 0.15, n: 2.4, zc: 0.3, tb: 0.5 },
+          { x: -0.62, w: 0.04, yb: 0.03, yt: 0.08, n: 2.2, zc: 0.3 },
+        ], s), { ring: 32 });
+        k.box([0.12, 0.012, 0.12], [0.46, 0.03, s * 0.24], 'paintPlain');
+        k.box([0.14, 0.012, 0.1], [-0.38, 0.04, s * 0.22], 'paintPlain');
+        k.box([0.2, 0.006, 0.006], [0.47, 0.1, s * 0.42], 'glow');
+        k.box([0.26, 0.006, 0.006], [-0.4, 0.15, s * 0.42], 'glow');
+        k.box([0.014, 0.008, 0.08], [0.68, 0.02, s * 0.33], 'head');
+        k.box([0.012, 0.02, 0.1], [-0.62, 0.06, s * 0.3], 'tail');
+        k.plate([[-0.25, 0], [-0.4, 0.14], [-0.54, 0.16], [-0.58, 0]], 0.012, [0, 0.08, s * 0.1], 'glow', { bevel: 0.002 });
+        k.nozzle([-0.64, 0.03, s * 0.05], 0.04);
+      });
+      k.sphere(0.16, [0.06, 0.1, 0], 'glass', { scale: [1.9, 0.8, 1] });
+      k.wing(0.12, 0.016, 0.84, [0.74, -0.015, 0], 'carbon', { rotZ: 0.05 });
+    },
+  },
+
+  // Pocket (standard): an oversized go-kart with a bare frame and a seat.
+  pocket: {
+    name: 'Pocket',
+    hitbox: 'standard',
+    blurb: 'Oversized go-kart: bare tube frame, a bucket seat and an engine out back.',
+    span: [-0.58, 0.8, 0.3],
+    livery: 'single',
+    wheels: { front: { r: 0.14, w: 0.15, z: 0.37 }, back: { r: 0.165, w: 0.2, z: 0.38 }, rim: 'disc', rimMat: 'rimGold', sidewall: 0.4, arms: true, armFrom: { front: 0.1, back: 0.12 } },
+    build(k) {
+      // Floor pan, nose cone and side pods.
+      k.rbox([1.2, 0.03, 0.42], [0.08, -0.08, 0], 'darkMetal', { r: 0.01 });
+      k.shell([
+        { x: 0.8, w: 0.18, yb: -0.07, yt: -0.01, n: 2.6 },
+        { x: 0.7, w: 0.28, yb: -0.08, yt: 0.04, n: 3, tb: 0.3 },
+        { x: 0.5, w: 0.26, yb: -0.08, yt: 0.07, n: 3, tb: 0.35 },
+        { x: 0.38, w: 0.18, yb: -0.07, yt: 0.06, n: 2.8 },
+      ], { ring: 40 });
+      k.sym((s) => {
+        k.shell(L([
+          { x: 0.3, w: 0.03, yb: -0.06, yt: -0.02, n: 2.4, zc: 0.25 },
+          { x: 0.2, w: 0.07, yb: -0.07, yt: 0.03, n: 2.8, zc: 0.25, tb: 0.4 },
+          { x: -0.2, w: 0.07, yb: -0.07, yt: 0.03, n: 2.8, zc: 0.25, tb: 0.4 },
+          { x: -0.3, w: 0.03, yb: -0.06, yt: -0.02, n: 2.4, zc: 0.25 },
+        ], s), { ring: 32 });
+        k.rod([0.45, -0.05, s * 0.16], [-0.45, -0.05, s * 0.16], 0.014, 'chrome');
+        k.rbox([0.012, 0.025, 0.05], [0.8, -0.03, s * 0.12], 'head', { r: 0.006 });
+      });
+      // Bucket seat.
+      k.rbox([0.18, 0.05, 0.26], [-0.12, -0.03, 0], 'black', { r: 0.03 });
+      k.rbox([0.05, 0.24, 0.26], [-0.22, 0.09, 0], 'black', { r: 0.03, rot: [0, 0, 0.25] });
+      // Steering column and wheel.
+      k.rod([0.3, -0.05, 0], [0.12, 0.12, 0], 0.012, 'chrome');
+      const sw = k.add(new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 24), k.mats.black));
+      sw.rotation.set(0, Math.PI / 2, 0.6);
+      sw.position.set(0.12, 0.13, 0);
+      // Engine block, exhaust and rear bumper.
+      k.rbox([0.18, 0.14, 0.2], [-0.42, 0.03, 0.12], 'darkMetal', { r: 0.02 });
+      k.cyl(0.03, 0.03, 0.12, [-0.42, 0.14, 0.12], 'chrome');
+      k.tube([[-0.38, 0.0, -0.05], [-0.5, 0.05, -0.12], [-0.6, 0.06, -0.12]], 0.018, 'chrome');
+      k.rod([-0.58, -0.04, -0.34], [-0.58, -0.04, 0.34], 0.02, 'black');
+      k.sym((s) => k.nozzle([-0.6, 0.06, s * 0.12], 0.04));
+      k.rbox([0.012, 0.03, 0.18], [-0.592, 0.02, 0], 'tail', { r: 0.006 });
+      k.rbox([0.03, 0.14, 0.04], [-0.25, 0.25, 0], 'paintPlain', { r: 0.01 });
+    },
+  },
+
+  // Enforcer (long): pursuit sedan with a light bar and a push bumper.
+  enforcer: {
+    name: 'Enforcer',
+    hitbox: 'long',
+    blurb: 'Pursuit sedan with a red and blue light bar and a steel push bumper.',
+    span: [-0.66, 0.8, 0.36],
+    livery: 'side',
+    baseShade: 0.75,
+    wheels: { front: { r: 0.14, w: 0.13, z: 0.335 }, back: { r: 0.15, w: 0.15, z: 0.345 }, rim: 'cap', rimMat: 'rimBlack', sidewall: 0.38 },
+    build(k) {
+      k.shell([
+        { x: 0.79, w: 0.28, yb: -0.05, yt: 0.04, n: 4 },
+        { x: 0.7, w: 0.34, yb: -0.07, yt: 0.09, n: 5, tb: 0.2 },
+        { x: 0.3, w: 0.355, yb: -0.08, yt: 0.11, n: 6, tb: 0.25 },
+        { x: -0.3, w: 0.355, yb: -0.08, yt: 0.12, n: 6, tb: 0.25 },
+        { x: -0.6, w: 0.34, yb: -0.07, yt: 0.12, n: 5, tb: 0.2 },
+        { x: -0.66, w: 0.3, yb: -0.05, yt: 0.1, n: 4 },
+      ], { ring: 48, twoTone: { y: -0.02, dark: 0.12 } });
+      k.shell([
+        { x: 0.28, w: 0.28, yb: 0.1, yt: 0.12, n: 4 },
+        { x: 0.12, w: 0.3, yb: 0.1, yt: 0.27, n: 4.4, tb: 0.4 },
+        { x: -0.25, w: 0.3, yb: 0.1, yt: 0.28, n: 4.4, tb: 0.4 },
+        { x: -0.4, w: 0.27, yb: 0.11, yt: 0.13, n: 4 },
+      ], { mat: 'glass', ring: 40 });
+      k.rbox([0.37, 0.012, 0.5], [-0.07, 0.275, 0], 'paintPlain', { r: 0.008 });
+      // Light bar: red on one side, blue on the other.
+      k.rbox([0.08, 0.04, 0.48], [-0.06, 0.3, 0], 'black', { r: 0.012 });
+      const red = new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.1, 0.1).multiplyScalar(2.6), toneMapped: false });
+      const blue = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.15, 0.35, 1).multiplyScalar(2.6), toneMapped: false });
+      if (Array.isArray(k.disposables)) k.disposables.push(red, blue);
+      k.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.2), red)).position.set(-0.06, 0.315, -0.12);
+      k.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.2), blue)).position.set(-0.06, 0.315, 0.12);
+      k.sym((s) => {
+        k.rbox([0.012, 0.035, 0.1], [0.79, 0.04, s * 0.22], 'head', { r: 0.008 });
+        k.rbox([0.012, 0.04, 0.1], [-0.665, 0.07, s * 0.22], 'tail', { r: 0.006 });
+        k.nozzle([-0.69, -0.03, s * 0.14], 0.045);
+        k.rbox([0.03, 0.06, 0.04], [0.28, 0.12, s * 0.37], 'black', { r: 0.008 });
+        k.rod([0.85, -0.04, s * 0.18], [0.85, 0.08, s * 0.18], 0.014, 'black');
+      });
+      k.rbox([0.05, 0.05, 0.42], [0.85, 0.02, 0], 'black', { r: 0.015 });
+      k.rbox([0.012, 0.06, 0.3], [0.795, 0.02, 0], 'black', { r: 0.01 });
+      k.cyl(0.006, 0.006, 0.18, [-0.52, 0.2, 0.25], 'black');
+    },
+  },
+
+  // Stomper (tall): monster truck, giant tires and a high body.
+  stomper: {
+    name: 'Stomper',
+    hitbox: 'tall',
+    blurb: 'Monster truck on giant tires with a raised body and a roll cage.',
+    span: [-0.58, 0.82, 0.32],
+    livery: 'hazard',
+    wheels: { front: { r: 0.23, w: 0.2, z: 0.42 }, back: { r: 0.23, w: 0.2, z: 0.42 }, rim: 'beadlock', rimMat: 'chrome', tire: 'offroad', sidewall: 0.5, arms: true, armFrom: { front: 0.14, back: 0.14 } },
+    build(k) {
+      // Frame rails and shocks under a high body.
+      k.sym((s) => {
+        k.rod([0.6, 0.08, s * 0.16], [-0.5, 0.08, s * 0.16], 0.025, 'darkMetal');
+        for (const x of [0.5, -0.34]) k.rod([x, 0.08, s * 0.16], [x - 0.03, 0.2, s * 0.32], 0.02, 'chrome');
+      });
+      k.shell([
+        { x: 0.8, w: 0.26, yb: 0.18, yt: 0.3, n: 5 },
+        { x: 0.74, w: 0.31, yb: 0.16, yt: 0.34, n: 6, tb: 0.15 },
+        { x: 0.3, w: 0.32, yb: 0.16, yt: 0.36, n: 7, tb: 0.15 },
+        { x: -0.5, w: 0.32, yb: 0.16, yt: 0.35, n: 7, tb: 0.12 },
+        { x: -0.57, w: 0.3, yb: 0.18, yt: 0.33, n: 6 },
+      ], { ring: 48, twoTone: { y: 0.2, dark: 0.14 } });
+      k.shell([
+        { x: 0.25, w: 0.27, yb: 0.34, yt: 0.36, n: 5 },
+        { x: 0.14, w: 0.28, yb: 0.34, yt: 0.52, n: 6, tb: 0.25 },
+        { x: -0.18, w: 0.28, yb: 0.34, yt: 0.53, n: 6, tb: 0.25 },
+        { x: -0.24, w: 0.27, yb: 0.35, yt: 0.4, n: 5 },
+      ], { ring: 44 });
+      k.rbox([0.012, 0.14, 0.48], [0.2, 0.44, 0], 'glass', { r: 0.006, rot: [0, 0, 0.5] });
+      k.sym((s) => {
+        k.rbox([0.24, 0.1, 0.008], [-0.03, 0.45, s * 0.283], 'glass', { r: 0.01 });
+        k.tube([[0.2, 0.53, s * 0.24], [0.1, 0.62, s * 0.22], [-0.2, 0.62, s * 0.22], [-0.3, 0.5, s * 0.24]], 0.018, 'chrome');
+        k.rbox([0.012, 0.05, 0.08], [0.8, 0.27, s * 0.18], 'head', { r: 0.008 });
+        k.rbox([0.012, 0.07, 0.05], [-0.575, 0.27, s * 0.24], 'tail', { r: 0.006 });
+        k.nozzle([-0.6, 0.22, s * 0.12], 0.05);
+        k.cyl(0.03, 0.03, 0.2, [-0.36, 0.5, s * 0.18], 'chrome');
+      });
+      k.rod([0.1, 0.62, -0.22], [0.1, 0.62, 0.22], 0.018, 'chrome');
+      k.rbox([0.18, 0.06, 0.16], [0.5, 0.385, 0], 'darkMetal', { r: 0.02 });
+      k.rbox([0.03, 0.12, 0.4], [0.82, 0.24, 0], 'black', { r: 0.015 });
+      k.box([0.4, 0.02, 0.55], [-0.36, 0.36, 0], 'black');
+    },
+  },
+
+  // Afterglow (wedge): fighter-jet styled car with intakes and twin tail fins.
+  afterglow: {
+    name: 'Afterglow',
+    hitbox: 'wedge',
+    blurb: 'Jet fighter on wheels: a pointed nose, side intakes and twin tail fins.',
+    span: [-0.62, 0.84, 0.42],
+    livery: 'twin',
+    wheels: { front: { r: 0.14, w: 0.13, z: 0.34 }, back: { r: 0.165, w: 0.19, z: 0.36 }, rim: 'turbine', rimMat: 'rimBlack', sidewall: 0.3 },
+    build(k) {
+      k.shell([
+        { x: 0.84, w: 0.02, yb: 0.0, yt: 0.01, n: 2 },
+        { x: 0.68, w: 0.1, yb: -0.04, yt: 0.06, n: 2.4, tb: 0.4 },
+        { x: 0.4, w: 0.18, yb: -0.06, yt: 0.11, n: 2.8, tb: 0.45 },
+        { x: 0.0, w: 0.22, yb: -0.07, yt: 0.13, n: 3, tb: 0.45 },
+        { x: -0.4, w: 0.22, yb: -0.06, yt: 0.12, n: 3, tb: 0.4 },
+        { x: -0.62, w: 0.16, yb: -0.03, yt: 0.09, n: 2.8 },
+      ], { ring: 48, steps: 7 });
+      // Wings out to the wheels.
+      // Swept wings between the wheels, with glowing tips.
+      k.sym((s) => {
+        k.rbox([0.5, 0.018, 0.16], [-0.06, 0.09, s * 0.27], 'paintPlain', { r: 0.006, rot: [0, s * 0.42, 0] });
+        k.box([0.2, 0.01, 0.012], [-0.2, 0.1, s * 0.36], 'glow', [0, s * 0.42, 0]);
+      });
+      k.shell([
+        { x: 0.42, w: 0.04, yb: 0.09, yt: 0.1, n: 2 },
+        { x: 0.3, w: 0.1, yb: 0.1, yt: 0.2, n: 2.4, tb: 0.5 },
+        { x: 0.05, w: 0.11, yb: 0.11, yt: 0.23, n: 2.4, tb: 0.5 },
+        { x: -0.15, w: 0.07, yb: 0.12, yt: 0.16, n: 2.2 },
+      ], { mat: 'glass' });
+      k.sym((s) => {
+        k.rbox([0.18, 0.09, 0.07], [0.12, 0.02, s * 0.22], 'black', { r: 0.02 });
+        k.plate([[-0.3, 0], [-0.46, 0.2], [-0.58, 0.21], [-0.6, 0]], 0.016, [0, 0.1, s * 0.12], 'paintPlain', { rot: [0, 0, 0], bevel: 0.003 });
+        k.box([0.12, 0.008, 0.012], [-0.5, 0.3, s * 0.12], 'glow');
+        k.box([0.012, 0.012, 0.08], [0.62, 0.02, s * 0.1], 'head');
+        k.box([0.6, 0.006, 0.006], [-0.1, -0.005, s * 0.42], 'glow');
+        k.nozzle([-0.65, 0.04, s * 0.08], 0.06, { len: 0.14 });
+      });
+      k.box([0.012, 0.03, 0.2], [-0.625, 0.08, 0], 'tail');
+    },
+  },
+
+  // Nova (flat, legendary): hypercar with light blades, a wing on tall struts and glowing seams.
+  nova: {
+    name: 'Nova',
+    hitbox: 'flat',
+    blurb: 'Hypercar with light-blade lamps, glowing seams and a wing on tall struts.',
+    span: [-0.62, 0.82, 0.46],
+    livery: 'twin',
+    wheels: { front: { r: 0.13, w: 0.13, z: 0.33 }, back: { r: 0.17, w: 0.21, z: 0.31 }, rim: 'star', rimMat: 'rimGold', sidewall: 0.28 },
+    build(k) {
+      k.shell([
+        { x: 0.82, w: 0.2, yb: -0.03, yt: -0.01, n: 3 },
+        { x: 0.7, w: 0.34, yb: -0.04, yt: 0.03, n: 3.6, tb: 0.3 },
+        { x: 0.45, w: 0.42, yb: -0.05, yt: 0.07, n: 4.4, tb: 0.45 },
+        { x: 0.1, w: 0.44, yb: -0.05, yt: 0.09, n: 4.6, tb: 0.5 },
+        { x: -0.3, w: 0.44, yb: -0.04, yt: 0.1, n: 4.6, tb: 0.5 },
+        { x: -0.55, w: 0.4, yb: -0.03, yt: 0.08, n: 4, tb: 0.4 },
+        { x: -0.62, w: 0.34, yb: -0.01, yt: 0.05, n: 3.4 },
+      ], { ring: 56, steps: 7, twoTone: { y: 0.0, dark: 0.16 } });
+      k.shell([
+        { x: 0.36, w: 0.08, yb: 0.06, yt: 0.07, n: 2.4 },
+        { x: 0.22, w: 0.18, yb: 0.06, yt: 0.17, n: 2.6, tb: 0.5 },
+        { x: -0.02, w: 0.2, yb: 0.07, yt: 0.2, n: 2.6, tb: 0.5 },
+        { x: -0.25, w: 0.15, yb: 0.08, yt: 0.15, n: 2.4, tb: 0.5 },
+        { x: -0.4, w: 0.06, yb: 0.08, yt: 0.09, n: 2.2 },
+      ], { mat: 'glass', ring: 44 });
+      k.sym((s) => {
+        // Light blades along the nose and tail.
+        k.box([0.26, 0.008, 0.012], [0.7, 0.02, s * 0.25], 'head', [0, s * 0.5, 0]);
+        k.box([0.012, 0.012, 0.32], [-0.62, 0.04, s * 0.18], 'tail');
+        // Glowing seams down the body.
+        k.box([1.0, 0.006, 0.006], [0.05, 0.07, s * 0.36], 'glow');
+        k.box([0.5, 0.006, 0.006], [0.25, 0.09, s * 0.2], 'glow');
+        // Wing struts.
+        k.box([0.06, 0.2, 0.012], [-0.5, 0.16, s * 0.24], 'carbon', [0, 0, 0.3]);
+        k.rbox([0.16, 0.05, 0.1], [0.0, 0.0, s * 0.43], 'black', { r: 0.02 });
+        k.nozzle([-0.65, 0.0, s * 0.08], 0.05, { len: 0.14 });
+      });
+      k.wing(0.16, 0.024, 0.86, [-0.54, 0.27, 0], 'carbon', { rotZ: -0.1 });
+      k.box([0.012, 0.01, 0.84], [-0.62, 0.285, 0], 'glow');
+      k.wing(0.1, 0.016, 0.9, [0.77, -0.025, 0], 'carbon', { rotZ: 0.05 });
+      k.box([0.2, 0.04, 0.8], [-0.58, -0.05, 0], 'carbon', [0, 0, -0.2]);
+    },
+  },
 };
 
 export const CAR_IDS = Object.keys(DESIGNS);

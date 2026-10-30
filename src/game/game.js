@@ -208,9 +208,10 @@ export class Game {
   }
 
   // Test hook: show one car alone in the showroom.
-  debugCar(id, { team = 0, spin = 0.6, accent = 0xffffff, cam = null } = {}) {
+  debugCar(id, { team = 0, spin = 0.6, accent = 0xffffff, cam = null, decal = 'default', finish = 'gloss', paint = 'team' } = {}) {
     const d = DESIGNS[id];
-    const model = new CarModel(d, { team, number: 7, accent, hitbox: CONFIG.hitboxes[d.hitbox] });
+    const pt = item('paint', paint);
+    const model = new CarModel(d, { team, number: 7, accent, hitbox: CONFIG.hitboxes[d.hitbox], decal, finish: item('finish', finish), paint: pt?.colors ? pt.colors[team] : null });
     this.showroom.setStage('studio');
     this.showroom.setCar(model);
     this.showroom.spin = spin;
