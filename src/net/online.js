@@ -479,7 +479,7 @@ export class Online {
       if (p.presence.car) this.game.onPeerCar(p.peer, p.presence, p.updatedAt);
     }
     this.sendAcc += dt;
-    if (this.sendAcc < 1 / (this.room.sendHz || SEND_HZ)) return;
+    if (this.sendAcc < 1 / (this.match.sendHz || this.room.sendHz || SEND_HZ)) return;
     this.sendAcc = 0;
     const patch = this.game.netOutgoing();
     if (patch) this.match.presence(patch).catch(() => {});

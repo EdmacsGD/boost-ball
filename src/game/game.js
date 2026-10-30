@@ -1002,6 +1002,21 @@ export class Game {
     return this.np ? this.np.outgoing() : null;
   }
 
+  // "PING 40 · DIRECT" in online matches (rounded to 10 ms so the text does not change every frame).
+  netLabel() {
+    if (!this.np || !this.online.match) return '';
+    let rtt = this.np.rtt;
+    if (this.np.isHost) {
+      const r = this.players.filter((p) => p.remote && p.netLead).map((p) => p.netLead * 2);
+      if (!r.length) return '';
+      rtt = r.reduce((a, b) => a + b, 0) / r.length;
+    }
+    const st = this.online.match.netStatus ? this.online.match.netStatus() : null;
+    let how = '';
+    if (st && st.total) how = st.direct === st.total ? ' · DIRECT' : st.direct ? ' · MIXED' : ' · RELAY';
+    return `PING ${Math.round(rtt * 100) * 10}${how}`;
+  }
+
   onHostSnapshot(s, at, ts) {
     if (this.np && this.np.client) this.np.hostSnapshot(s, at, ts);
   }
@@ -2144,6 +2159,7 @@ export class Game {
       if (car.hasFlipReset()) flip = 'reset';
     }
     this.hud.setChips({ ballCam: this.cameraRig.ballCam, flip, fps: this.settings.showFps ? Math.round(this.fpsSmooth) : null });
+    this.hud.setNet(this.netLabel());
     this.hud.update(dt);
   }
 }

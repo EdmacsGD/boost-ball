@@ -8,7 +8,7 @@ export class HUD {
       scoreBlue: $('scoreBlue'), scoreOrange: $('scoreOrange'), clock: $('clock'), clockBox: document.querySelector('.clock'),
       otLabel: $('otLabel'), feed: $('feed'), chatLog: $('chatLog'), boost: $('boost'), boostArc: $('boostArc'), boostNum: $('boostNum'),
       boostLabel: $('boostLabel'), speedNum: $('speedNum'), speed: document.querySelector('.speed'),
-      chipCam: $('chipCam'), chipInf: $('chipInf'), chipFlip: $('chipFlip'), chipFps: $('chipFps'),
+      chipCam: $('chipCam'), chipInf: $('chipInf'), chipFlip: $('chipFlip'), chipFps: $('chipFps'), chipNet: $('chipNet'),
       countdown: $('countdown'), banner: $('banner'), bannerMain: $('bannerMain'), bannerSub: $('bannerSub'), bannerExtra: $('bannerExtra'),
       popups: $('popups'), replayTag: $('replayTag'), hint: $('hint'), hud: $('hud'),
     };
@@ -87,6 +87,14 @@ export class HUD {
     const kmh = Math.round(ms * 3.6);
     this.set('spd', kmh, (v) => { this.el.speedNum.textContent = v; });
     this.set('ss', supersonic, (v) => this.el.speed.classList.toggle('on', v));
+  }
+
+  // Online: ping in ms and whether the updates go direct or through the server.
+  setNet(text) {
+    this.set('net', text, (v) => {
+      this.el.chipNet.hidden = !v;
+      if (v) this.el.chipNet.textContent = v;
+    });
   }
 
   setChips({ ballCam, flip, fps }) {
