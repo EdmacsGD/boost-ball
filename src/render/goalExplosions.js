@@ -1069,8 +1069,8 @@ function bigBang(fx, pos, tc) {
   fx.flash(pos, 2, T, WHITE);
   fx.later(T * 0.6, () => fx.flash(pos, 4, T * 0.4, WHITE));
   fx.later(T, () => {
-    fx.flash(pos, 70, 0.7, WHITE);
-    fx.fireball(pos, WHITE, pale, 0.5, 34, 0.8, 'shell', 0);
+    fx.flash(pos, 24, 0.4, WHITE);
+    fx.fireball(pos, pale, tc, 0.5, 24, 0.8, 'shell', 0);
     fx.later(0.1, () => fx.fireball(pos, tc, pale, 0.5, 26, 0.9, 'shell', 0));
     for (let k = 0; k < 5; k++) {
       const n = randDir(new THREE.Vector3()).clone();
@@ -1207,7 +1207,7 @@ const SCREEN = {
     return {
       dark: 0.92 * up(t, 0, 0.25) * down(t, 0.8, 0.85),
       stars: 0.6 * up(t, 0.2, 0.6) * down(t, 0.8, 0.9) + 0.9 * up(k, 0.3, 0.8) * down(k, 1.4, 2.2),
-      flash: 1.1 * pulse(k, 0, 0.45), flashColor: WHITE,
+      flash: 0.55 * pulse(k, 0, 0.35), flashColor: WHITE,
       bulge: 0.8 * pulse(k, 0, 0.7), zoom: pulse(k, 0, 0.8), chroma: 2.2 * pulse(k, 0, 1.2),
       hue: 6.283 * up(k, 0, 2.2) * down(k, 1.6, 2.2),
       ...R(k, 0.05, 1.4, 2, 0.13),
