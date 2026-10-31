@@ -231,6 +231,8 @@ export class ClipStudio {
   }
 
   unmount() {
+    if (this.offFeed) this.offFeed();
+    this.offFeed = null;
     if (this.root) this.root.remove();
     this.root = null;
     this.commentsOpen = false;
@@ -455,36 +457,45 @@ export class ClipStudio {
     this.repBtn.append(icon('flag'), el('span', '', 'Report'));
     this.delBtn = button('feed-act', '', () => this.removeClip(), 'Delete this clip');
     this.delBtn.append(icon('trash'), el('span', '', 'Delete'));
-    this.side.append(this.likeBtn, this.comBtn, this.camBtn, this.repBtn, this.delBtn);
     const nav = el('div', 'feed-nav');
     nav.append(button('feed-arrow', 'Up', () => this.step(-1), 'Previous (Up arrow)'), button('feed-arrow', 'Down', () => this.step(1), 'Next (Down arrow)'));
+    this.side.append(nav, this.likeBtn, this.comBtn, this.camBtn, this.repBtn, this.delBtn);
     this.msg = el('div', 'feed-msg');
     this.msg.hidden = true;
     this.drawer = el('div', 'feed-comments');
     this.drawer.hidden = true;
     this.counter = el('span', 'feed-count', '');
     top.appendChild(this.counter);
-    root.append(top, this.info, this.side, nav, this.msg, this.drawer);
-    // Mouse wheel and swipes move through the feed.
+    root.append(top, this.info, this.side, this.msg, this.drawer);
+    // Mouse wheel and swipes move through the feed. The feed layer lets clicks through to the
+    // game, so these listen on the window while the feed is open.
     let wheelLock = 0;
-    root.addEventListener('wheel', (e) => {
-      if (this.commentsOpen && e.target.closest('.feed-comments')) return;
+    const onWheel = (e) => {
+      if (this.active !== 'feed' || (e.target.closest && e.target.closest('.feed-comments'))) return;
       e.preventDefault();
       const now = performance.now();
       if (now < wheelLock || Math.abs(e.deltaY) < 12) return;
       wheelLock = now + 450;
       this.step(e.deltaY > 0 ? 1 : -1);
-    }, { passive: false });
+    };
     let y0 = null;
-    root.addEventListener('touchstart', (e) => {
-      y0 = e.target.closest('.feed-comments, button, input') ? null : e.touches[0].clientY;
-    }, { passive: true });
-    root.addEventListener('touchend', (e) => {
+    const onTouchStart = (e) => {
+      y0 = this.active === 'feed' && !(e.target.closest && e.target.closest('.feed-comments, button, input')) ? e.touches[0].clientY : null;
+    };
+    const onTouchEnd = (e) => {
       if (y0 === null) return;
       const dy = e.changedTouches[0].clientY - y0;
       y0 = null;
       if (Math.abs(dy) > 50) this.step(dy < 0 ? 1 : -1);
-    });
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+    this.offFeed = () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
   }
 
   message(text) {
