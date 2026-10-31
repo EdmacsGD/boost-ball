@@ -244,12 +244,13 @@ export const CONFIG = {
     // reaction: seconds between decisions; aim: aim error scale; boostUse: 0..1; maxSpeedUse: share of top speed;
     // dodges: how often they flip into the ball; aerialHeight: highest ball they go up for (m, 0 = never);
     // rotate: how reliably they rotate back on defense.
+    // rotation: team rotation in 2v2/3v3 (see roles.js; measured 53-35 in 2v2, 58-42 in 3v3 against the same bots without it).
     easy: { reaction: 0.4, aim: 1.0, boostUse: 0.3, maxSpeedUse: 0.72, dodges: 0.25, aerialHeight: 0, rotate: 0.45 },
-    medium: { reaction: 0.2, aim: 0.5, boostUse: 0.65, maxSpeedUse: 0.9, dodges: 0.6, aerialHeight: 7, rotate: 0.8 },
-    hard: { reaction: 0.07, aim: 0.1, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 0.9, aerialHeight: 12, rotate: 1.0, flipHit: 0.6, readPlay: true, smallPads: true, timedJumps: true, doubleJump: true, aerial2: true, kickFlipDist: 3.6, halfFlip: true },
+    medium: { rotation: true, reaction: 0.2, aim: 0.5, boostUse: 0.65, maxSpeedUse: 0.9, dodges: 0.6, aerialHeight: 7, rotate: 0.8 },
+    hard: { rotation: true, reaction: 0.07, aim: 0.1, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 0.9, aerialHeight: 12, rotate: 1.0, flipHit: 0.6, readPlay: true, smallPads: true, timedJumps: true, doubleJump: true, aerial2: true, kickFlipDist: 3.6, halfFlip: true },
     // Ultra: near-instant decisions, perfect aim at the corner away from the defender, flips into
     // every ground hit, speed flips, aerials up to the ceiling, ball read twice as often and further ahead.
-    ultra: { reaction: 0.025, aim: 0.0, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 1.0, aerialHeight: 17, rotate: 1.0, flipHit: 0.95, speedFlips: true, predictEvery: 0.03, predictAhead: 5, corners: true, readPlay: true, smallPads: true, timedJumps: true, doubleJump: true, cheapSaves: true, aerial2: true, kickFlipDist: 3.6, halfFlip: true },
+    ultra: { rotation: true, reaction: 0.025, aim: 0.0, boostUse: 1.0, maxSpeedUse: 1.0, dodges: 1.0, aerialHeight: 17, rotate: 1.0, flipHit: 0.95, speedFlips: true, predictEvery: 0.03, predictAhead: 5, corners: true, readPlay: true, smallPads: true, timedJumps: true, doubleJump: true, cheapSaves: true, aerial2: true, kickFlipDist: 3.6, halfFlip: true },
   },
 
   // Arenas: same field and physics, different look. Theme details live in render/arenaThemes.js.
