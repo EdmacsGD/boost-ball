@@ -34,7 +34,7 @@ export class Theater {
     this.ui = null;
     this.lastScore = null;
     window.addEventListener('keydown', (e) => {
-      if (this.game.state !== 'theater') return;
+      if (this.game.state !== 'theater' || this.clipRec) return;
       const k = e.code;
       let used = true;
       if (k === 'Escape') this.close();
@@ -53,7 +53,41 @@ export class Theater {
   }
 
   get rec() {
-    return this.game.lastMatch;
+    return this.clipRec || this.game.lastMatch;
+  }
+
+  // Play a clip (or a stretch of the last match) on a loop, with no controls bar: used by the clip
+  // editor on the end screen and by the Clips feed. cam: 'ball' or a player index.
+  openClip(rec, cam = 'ball') {
+    const g = this.game;
+    if (this.ui) this.ui.remove();
+    this.ui = null;
+    this.clipRec = rec;
+    this.t = rec.start;
+    this.playing = true;
+    this.speed = 2;
+    this.exploded = new Set();
+    this.lastScore = null;
+    g.effects.clear();
+    if (g.audio.ready) g.audio.silenceEngines();
+    if (g.state !== 'theater') g.enterState('theater');
+    g.hud.showHud(false);
+    document.body.classList.add('clipview');
+    if (g.freeCam.active) g.freeCam.stop();
+    this.cam = cam;
+    g.cameraRig.snap();
+  }
+
+  // Switch to another clip without leaving the theater (feed scrolling).
+  swapClip(rec, cam = 'ball') {
+    this.clipRec = rec;
+    this.t = rec.start;
+    this.playing = true;
+    this.exploded = new Set();
+    this.lastScore = null;
+    this.game.effects.clear();
+    this.cam = cam;
+    this.game.cameraRig.snap();
   }
 
   available() {
@@ -83,6 +117,8 @@ export class Theater {
     const g = this.game;
     if (g.freeCam.active) g.freeCam.stop();
     document.body.classList.remove('theater');
+    document.body.classList.remove('clipview');
+    this.clipRec = null;
     if (this.ui) this.ui.remove();
     this.ui = null;
     g.effects.clear();
@@ -152,7 +188,15 @@ export class Theater {
     if (!r) return;
     if (this.playing) {
       this.t += dt * SPEEDS[this.speed];
-      if (this.t >= r.end) {
+      if (this.clipRec && this.t >= r.end) {
+        // Clips loop, with a short hold on the last frame.
+        this.holdT = (this.holdT || 0) + dt;
+        this.t = r.end;
+        if (this.holdT > 0.6) {
+          this.holdT = 0;
+          this.seek(r.start);
+        }
+      } else if (this.t >= r.end) {
         this.t = r.end;
         this.playing = false;
         this.refreshUi();

@@ -35,6 +35,7 @@ const HOME_SPOT = new THREE.Vector3(0, 0, -16);
 import { Bot } from './bot.js';
 import { ReplayBuffer, lerpPose, MatchRecorder } from './replay.js';
 import { Theater } from './theater.js';
+import { ClipStudio } from './clips.js';
 import { AnthemPlayer, anthemSpec } from '../audio/anthems.js';
 import { AnthemStore } from '../meta/anthemStore.js';
 import { AnthemUploads } from '../ui/anthemEditor.js';
@@ -163,6 +164,7 @@ export class Game {
     this.cameraRig.ballCam = this.settings.ballCam;
     this.freeCam = new FreeCam(this);
     this.theater = new Theater(this);
+    this.clips = new ClipStudio(this);
 
     this.input = new Input(window);
     this.input.setBindings(this.settings.bindings);
@@ -262,14 +264,8 @@ export class Game {
     this.settings.mode = mode;
     this.settings.difficulty = difficulty;
     saveSettings(this.settings);
-    for (const p of this.players) {
-      this.sim.removeCar(p.car);
-      this.renderer.scene.remove(p.model.root);
-      p.model.dispose();
-      for (const r of p.ribbons) this.renderer.scene.remove(r.mesh);
-      if (this.audio.ready) this.audio.stopEngine(p.car.id);
-    }
-    this.players = [];
+    this.clearPlayers();
+    this.clipMarks = [];
     const perTeam = mode === '2v2' ? 2 : mode === '3v3' ? 3 : 1;
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
     const lo = this.account.loadout;
@@ -301,6 +297,17 @@ export class Game {
     this.kickoffSetup();
     document.querySelectorAll('#modeGroup button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     document.querySelectorAll('#diffGroup button').forEach((b) => b.classList.toggle('on', b.dataset.diff === difficulty));
+  }
+
+  clearPlayers() {
+    for (const p of this.players) {
+      this.sim.removeCar(p.car);
+      this.renderer.scene.remove(p.model.root);
+      p.model.dispose();
+      for (const r of p.ribbons) this.renderer.scene.remove(r.mesh);
+      if (this.audio.ready) this.audio.stopEngine(p.car.id);
+    }
+    this.players = [];
   }
 
   accentHex() {
@@ -336,6 +343,8 @@ export class Game {
     };
     // Goal explosion: yours from the garage, a random one for each bot.
     p.explosion = isPlayer ? this.account.loadout.explosion : BOT_EXPLOSIONS[Math.floor(Math.random() * BOT_EXPLOSIONS.length)];
+    p.look = look;
+    p.accent = accent;
     this.players.push(p);
     return p;
   }
@@ -997,6 +1006,7 @@ export class Game {
     this.ballModel?.setSkin(lo.ball);
     this.player = me || this.players[0];
     this.matchRec = new MatchRecorder(this.players.map((p) => p.car.id));
+    this.clipMarks = [];
     this.score = [0, 0];
     this.clock = CONFIG.game.matchSeconds;
     this.overtime = false;
@@ -1344,6 +1354,10 @@ export class Game {
   handleGlobalKeys() {
     const inp = this.input;
     if (inp.consumeAction('fullscreen')) this.toggleFullscreen();
+    if (this.clips?.active) {
+      inp.clearEdges();
+      return;
+    }
     if (this.login?.visible || !document.getElementById('welcome').hidden) {
       inp.clearEdges();
       return;
@@ -1900,6 +1914,7 @@ export class Game {
     setTimeout(() => {
       const el = document.getElementById('results');
       document.getElementById('watchBtn').hidden = !this.theater.available();
+      this.clips.refreshResultsButton();
       const w = this.score[0] > this.score[1] ? 0 : 1;
       document.getElementById('resultTitle').textContent = this.score[0] === this.score[1] ? 'DRAW' : `${CONFIG.teams[w].name} WINS`;
       const scoreEl = document.getElementById('resultScore');
@@ -1969,7 +1984,10 @@ export class Game {
   }
 
   roleFor(bot) {
-    return teamRole(this.sim.cars, bot.car, this.sim.ball.pos);
+    return teamRole(this.sim.cars, bot.car, this.sim.ball.pos, (c) => {
+      const p = this.players.find((x) => x.car === c);
+      return p ? p.bot || null : null;
+    }, this.sim.tick / 120);
   }
 
   // ------------------------------------------------------------------ visuals

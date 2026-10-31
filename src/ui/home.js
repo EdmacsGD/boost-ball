@@ -224,6 +224,11 @@ export class HomeScreen {
   }
 
   setPage(name) {
+    if (name === 'clips') {
+      // The Clips feed is full screen over the 3D scene, not a menu page.
+      this.game.clips.openFeed();
+      return;
+    }
     const was = this.page;
     if (name !== 'garage') this.stopPreview(false);
     this.page = name;

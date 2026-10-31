@@ -157,7 +157,9 @@ export class Bot {
     const goalSide = (ball.pos.z - car.pos.z) * dir;
 
     // Keep the current plan for a moment unless something urgent changed (avoids dithering).
-    const committed = now < this.commitUntil && intercept && (this.state === 'attack' || this.state === 'clear' || this.state === 'save');
+    let committed = now < this.commitUntil && intercept && (this.state === 'attack' || this.state === 'clear' || this.state === 'save');
+    // A teammate has taken the ball: give it up unless the hit is about to happen.
+    if (committed && this.d.rotation && this.role !== 'attacker' && !threat && intercept.t > 0.35) committed = false;
     if (committed && !(threat && this.state === 'attack')) {
       this.intercept = intercept;
       return;
@@ -183,6 +185,19 @@ export class Bot {
     // 3. Teammates.
     if (this.role === 'support') {
       this.state = 'shadow';
+      // Measured: helps in 2v2; in 3v3 the third car already covers the back, so the support stays close.
+      const backRoute = this.d.rotBack ?? this.game.sim.cars.filter((c) => c.team === this.team).length < 3;
+      if (this.d.rotation && backRoute && goalSide < -2) {
+        // Ahead of the ball: rotate back down the far side (back post), out of the attacker's way,
+        // picking up boost on the way when low.
+        this.state = 'retreat';
+        if (car.boost < 50 && this.detourBackBoost(ball, dir)) return;
+        const side = -Math.sign(ball.pos.x || car.pos.x || 1);
+        this.target.set(side * FIELD_X * 0.55, 0, ball.pos.z - dir * 22);
+        this.clampTarget(6);
+        this.targetSpeed = 23;
+        return;
+      }
       const back = v1.set(0, 0, ownGoalZ).sub(ball.pos).setY(0).normalize();
       this.target.copy(ball.pos).addScaledVector(back, 20).setY(0);
       this.clampTarget(4);
@@ -252,6 +267,7 @@ export class Bot {
 
   // Called by the game when this car touches the ball: re-plan right away.
   onTouch() {
+    this.lastTouchT = this.game.sim.tick / 120;
     this.commitUntil = 0;
     this.decisionTimer = Math.min(this.decisionTimer, 0.05);
   }
@@ -260,6 +276,28 @@ export class Bot {
     this.target.x = clamp(this.target.x, -FIELD_X + margin, FIELD_X - margin);
     this.target.z = clamp(this.target.z, -FIELD_Z + margin, FIELD_Z - margin);
     this.target.y = 0;
+  }
+
+  // A boost pad on the far side from the ball and behind it (toward our goal), for rotating back.
+  detourBackBoost(ball, dir) {
+    const car = this.car;
+    let best = null;
+    let bd = Infinity;
+    for (const pad of this.game.sim.pads) {
+      if (!pad.active) continue;
+      if ((ball.pos.z - pad.pos.z) * dir < 4) continue; // must be goal-side of the ball
+      if (pad.pos.x * ball.pos.x > 0 && Math.abs(ball.pos.x) > 6) continue; // not on the ball's side
+      const d = pad.pos.distanceTo(car.pos) - (pad.big ? 8 : 0);
+      if (d < bd && d < 40) {
+        bd = d;
+        best = pad;
+      }
+    }
+    if (!best) return false;
+    this.state = 'boost';
+    this.target.set(best.pos.x, 0, best.pos.z);
+    this.targetSpeed = 23;
+    return true;
   }
 
   detourForBoost(maxDist, require = false) {
