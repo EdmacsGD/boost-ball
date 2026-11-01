@@ -1363,8 +1363,6 @@ body.clipview #hud { visibility: hidden !important; }
 .feed-act:hover .clip-ic { background: rgba(30, 44, 70, 0.8); }
 .feed-act.on .clip-ic { color: #ff4d6d; border-color: rgba(255, 77, 109, 0.6); }
 .feed-act span { text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
-.feed-nav { display: grid; gap: 6px; margin-bottom: 10px; }
-.feed-arrow { font: 800 11px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; background: rgba(8, 13, 24, 0.62); border: 1px solid rgba(255, 255, 255, 0.16); width: 46px; height: 34px; cursor: pointer; }
 .feed-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100vw - 32px)); box-sizing: border-box; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 0.04em; padding: 14px 18px; background: rgba(8, 13, 24, 0.82); border: 1px solid var(--line); }
 .feed-comments {
   position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); right: calc(80px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
@@ -1402,3 +1400,117 @@ body.clipview #hud { visibility: hidden !important; }
 .trim-mark { position: absolute; bottom: -7px; width: 0; height: 0; margin-left: -5px; border: 5px solid transparent; border-bottom-color: #ff8a2a; pointer-events: none; }
 .trim-info { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
 .trim-info b { color: var(--gold); font-size: 14px; }
+
+/* Home menu always fits the window: the buttons shrink with the window height (non-fullscreen
+   browser windows are much shorter), and if it still does not fit, the menu scrolls instead of
+   running off the bottom. The side padding keeps the slanted buttons from being clipped. */
+@media (min-width: 761px) {
+  .home-nav {
+    display: flex; flex-direction: column; gap: clamp(3px, 0.7vh, 6px);
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+    max-height: none; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
+    left: max(28px, env(safe-area-inset-left, 0px)); padding: 2px 14px 2px 12px; box-sizing: border-box; width: 318px;
+    align-content: start;
+  }
+  .home-nav button { flex: 0 0 auto; padding-top: clamp(3px, 0.8vh, 7px); padding-bottom: clamp(3px, 0.8vh, 7px); }
+  .home-nav button span { font-size: clamp(14px, 2.5vh, 19px); }
+  .home-nav .nav-play { padding-top: clamp(6px, 1.4vh, 12px); padding-bottom: clamp(6px, 1.4vh, 12px); }
+  .home-nav .nav-play span { font-size: clamp(22px, 4.4vh, 34px); }
+}
+@media (min-width: 761px) and (max-height: 820px) {
+  .home-nav button:not(.nav-play) small { display: none; }
+}
+.feed-hint { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); pointer-events: none; animation: hintBob 1.6s ease-in-out infinite; }
+@keyframes hintBob { 50% { transform: translate(-50%, 4px); } }
+
+/* Clips on a player's profile */
+.pclips { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.pclip { display: grid; gap: 4px; text-align: left; padding: 10px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-left: 3px solid var(--gold); color: var(--ink); cursor: pointer; font-family: var(--display); min-width: 0; }
+.pclip:hover { background: rgba(255, 255, 255, 0.1); }
+.pclip-top { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.pclip-top b { flex: 1; min-width: 0; font-size: 15px; font-weight: 800; letter-spacing: 0.03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pclip-dur { font-size: 11px; font-weight: 700; color: var(--gold); }
+.pclip small { font-size: 10px; letter-spacing: 0.08em; color: var(--muted); }
+.pclip-counts { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; }
+.pclip-ic { width: 13px; height: 13px; color: #ff4d6d; display: inline-grid; }
+.pclip-com { margin-left: 8px; color: var(--muted); font-weight: 600; }
+
+/* Short windows: tighter menu lines, and the right-hand tiles drop their descriptions (and the tip). */
+@media (min-width: 761px) {
+  .home-nav button span { line-height: 1.05; }
+  .home-tiles { align-content: start; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+}
+@media (min-width: 761px) and (max-height: 700px) {
+  .home-nav .nav-play small { display: none; }
+  .home-nav button { padding-top: 3px; padding-bottom: 3px; }
+  .home-nav { gap: 3px; }
+  .tile small { display: none; }
+  .tile-tip { display: none; }
+  .tile { padding-top: 8px; padding-bottom: 8px; }
+  .tile b { font-size: 22px; }
+}
+@media (min-width: 761px) and (max-height: 560px) {
+  .home-nav button span { font-size: 13px; }
+  .home-nav .nav-play span { font-size: 20px; }
+  .tile b { font-size: 18px; }
+  .tile-tag { display: none; }
+}
+
+/* ---------------------------------------------------------------- touch controls (phones) */
+.foot-full { font: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 6px; }
+.foot-full:hover { color: var(--ink); }
+body.touch .foot-full kbd, body.touch .home-foot > span:first-child, body.touch .hint-drag { display: none; }
+body.touch .foot-full { font-size: 13px; font-weight: 700; color: var(--ink); background: rgba(8, 13, 24, 0.7); border: 1px solid var(--line); padding: 8px 12px; }
+.touch-ui { position: absolute; inset: 0; z-index: 20; pointer-events: none; font-family: var(--display); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.touch-zone { position: absolute; left: 0; top: 56px; bottom: 0; width: 48%; pointer-events: auto; touch-action: none; }
+.touch-zone-hint { position: absolute; left: max(28px, env(safe-area-inset-left, 0px)); bottom: calc(30px + env(safe-area-inset-bottom, 0px)); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.touch-zone.used .touch-zone-hint { display: none; }
+.touch-stick { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; background: rgba(8, 13, 24, 0.35); border: 2px solid rgba(255, 255, 255, 0.3); pointer-events: none; }
+.touch-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 255, 255, 0.75); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+.touch-pad { position: absolute; right: 0; bottom: 0; width: 46%; height: 70%; pointer-events: none; }
+.touch-btn {
+  position: absolute; display: grid; place-items: center; border-radius: 50%; pointer-events: auto; touch-action: none;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.08em; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  background: rgba(8, 13, 24, 0.45); border: 2px solid rgba(255, 255, 255, 0.4); box-sizing: border-box;
+}
+.touch-btn.down { transform: scale(0.92); background: rgba(255, 255, 255, 0.35); }
+.tb-jump { width: 92px; height: 92px; right: max(26px, env(safe-area-inset-right, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); border-color: rgba(120, 190, 255, 0.85); }
+.tb-boost { width: 82px; height: 82px; right: calc(max(26px, env(safe-area-inset-right, 0px)) + 104px); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); border-color: rgba(255, 170, 60, 0.95); }
+.tb-boost.down { background: rgba(255, 160, 40, 0.55); }
+.tb-drift { width: 62px; height: 62px; right: calc(max(26px, env(safe-area-inset-right, 0px)) + 18px); bottom: calc(142px + env(safe-area-inset-bottom, 0px)); font-size: 11px; }
+.tb-cam { width: 58px; height: 58px; right: calc(max(26px, env(safe-area-inset-right, 0px)) + 112px); bottom: calc(166px + env(safe-area-inset-bottom, 0px)); font-size: 9px; text-align: center; line-height: 1.1; }
+.tb-cam.on { border-color: var(--gold); color: var(--gold); }
+.touch-top { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); display: flex; gap: 6px; pointer-events: auto; }
+.touch-small { font: 800 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: rgba(8, 13, 24, 0.6); border: 1px solid rgba(255, 255, 255, 0.25); padding: 9px 12px; }
+.touch-rotate { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 0 24px; background: rgba(4, 7, 13, 0.92); font-size: 20px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; pointer-events: auto; }
+@media (orientation: portrait) { .touch-rotate { display: grid; } }
+/* In touch mode the boost gauge moves to the top right, out of the buttons' way, and gets smaller. */
+body.touch .boost { width: 96px; height: 96px; bottom: auto; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+body.touch .boost-num span { font-size: 30px; }
+body.touch #hint { display: none; }
+/* Touch: the camera chip is the BALL CAM button now; other chips move to the top left, under Pause. */
+body.touch #chipCam { display: none; }
+body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: auto; left: max(12px, env(safe-area-inset-left, 0px)); }
+
+/* Phones sideways (short and wide): the menu goes into two columns so all of it fits. */
+@media (min-width: 761px) and (max-height: 500px) {
+  .home-top { top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .home-logo b { font-size: 22px; }
+  .home-logo span { display: none; }
+  .player-card { transform: scale(0.6); transform-origin: top right; }
+  .home-nav {
+    top: calc(76px + env(safe-area-inset-top, 0px)); bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+    display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; gap: 4px 6px; width: 360px; align-content: start;
+  }
+  .home-nav .nav-play { grid-column: span 2; padding-top: 6px; padding-bottom: 6px; margin-bottom: 2px; }
+  .home-nav .nav-play span { font-size: 20px; }
+  .home-nav button { padding: 5px 10px 5px 12px; }
+  .home-nav button span { font-size: 13px; }
+  .home-nav button small { display: none; }
+  .home-tiles { top: calc(84px + env(safe-area-inset-top, 0px)); width: 220px; gap: 6px; }
+  .tile { padding: 6px 10px; }
+  .tile b { font-size: 16px; }
+  .tile-go { margin-top: 2px; font-size: 11px; }
+  .home-car b { font-size: 26px; }
+  .home-car p, .home-car-class { display: none; }
+}

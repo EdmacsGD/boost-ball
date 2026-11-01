@@ -328,6 +328,19 @@ export class Input {
         controls.handbrake = controls.handbrake || padRoll;
       }
     }
+    // Touch controls (phones): the joystick drives like a gamepad stick (up = forward and nose down).
+    const t = this.touch;
+    if (t && t.active && (t.x || t.y || t.jump || t.boost || t.drift)) {
+      const fwd = -t.y;
+      controls.throttle = fwd || controls.throttle;
+      controls.steer = t.x || controls.steer;
+      controls.pitch = t.y || controls.pitch;
+      controls.yaw = t.drift ? 0 : t.x || controls.yaw;
+      controls.roll = t.drift ? t.x : controls.roll;
+      controls.jump = controls.jump || t.jump;
+      controls.boost = controls.boost || t.boost;
+      controls.handbrake = controls.handbrake || t.drift;
+    }
     if (!this.enabled) controls.reset();
     return controls;
   }

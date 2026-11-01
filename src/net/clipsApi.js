@@ -15,9 +15,11 @@ async function run(q) {
 }
 
 // sort 'new' (newest first) or 'top' (most liked this week).
-export async function listClips(sort = 'new', offset = 0, limit = 10) {
+// author: only that player's clips (their profile on the Players page).
+export async function listClips(sort = 'new', offset = 0, limit = 10, author = null) {
   const sb = await supabase();
   let q = sb.from('clips').select(COLS).eq('hidden', false);
+  if (author) q = q.eq('author', author);
   if (sort === 'top') {
     q = q.gte('created_at', new Date(Date.now() - 7 * 864e5).toISOString())
       .order('like_count', { ascending: false }).order('created_at', { ascending: false });

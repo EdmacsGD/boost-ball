@@ -5,6 +5,7 @@ import { bannerCard, badgePill } from './playerCard.js';
 import { iconSvg } from './icons.js';
 import { item } from '../meta/items.js';
 import { tierOf } from '../meta/rank.js';
+import { listClips, clipsSupported } from '../net/clipsApi.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -66,9 +67,10 @@ export class PlayersPage {
     this.viewing = { loading: true };
     this.render();
     try {
-      const [profile, matches] = await Promise.all([playerById(id), playerMatches(id), loadBadges()]);
+      const clipsP = clipsSupported() ? listClips('new', 0, 30, id).catch(() => null) : Promise.resolve([]);
+      const [profile, matches, , clips] = await Promise.all([playerById(id), playerMatches(id), loadBadges(), clipsP]);
       if (token !== this.loadToken) return;
-      this.viewing = profile ? { profile, matches } : { error: 'That player was not found.' };
+      this.viewing = profile ? { profile, matches, clips } : { error: 'That player was not found.' };
     } catch (e) {
       if (token !== this.loadToken) return;
       this.viewing = { error: 'Could not load this profile. Try again.' };
@@ -177,6 +179,37 @@ export class PlayersPage {
     if (!me) body.appendChild(el('p', 'page-note', 'You are not on the list: log in with an online profile to join it.'));
   }
 
+  // The clips this player has posted; each opens the Clips feed with just their clips.
+  renderClips(body, p, clips) {
+    body.appendChild(el('span', 'field-label', clips && clips.length ? `Clips (${clips.length}${clips.length >= 30 ? '+' : ''})` : 'Clips'));
+    if (clips === null) {
+      body.appendChild(el('p', 'page-note', 'Could not load the clips.'));
+      return;
+    }
+    if (!clips.length) {
+      body.appendChild(el('p', 'page-note', 'No clips yet. Press Ctrl+Q in a game to save one, then post it.'));
+      return;
+    }
+    const grid = el('div', 'pclips');
+    clips.forEach((c, i) => {
+      const card = el('button', 'pclip');
+      card.type = 'button';
+      card.title = 'Watch';
+      const top = el('span', 'pclip-top');
+      top.append(el('b', '', c.title || 'Untitled'), el('span', 'pclip-dur', `${Math.round(c.duration)} s`));
+      const arena = c.arena ? c.arena.charAt(0).toUpperCase() + c.arena.slice(1) : '';
+      const meta = el('small', '', [c.mode ? c.mode.toUpperCase() : '', arena, when(c.created_at)].filter(Boolean).join(' · '));
+      const counts = el('span', 'pclip-counts');
+      const heart = el('i', 'pclip-ic');
+      heart.innerHTML = iconSvg('heart');
+      counts.append(heart, el('span', '', String(c.like_count)), el('span', 'pclip-com', `${c.comment_count} comments`));
+      card.append(top, meta, counts);
+      card.addEventListener('click', this.game.home.click(() => this.game.clips.openFeed({ author: p.id, name: p.name || 'PLAYER', start: i })));
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  }
+
   renderProfile(body) {
     const v = this.viewing;
     body.appendChild(this.btn('Back to the list', 'small-btn', () => {
@@ -212,6 +245,7 @@ export class PlayersPage {
       rr.appendChild(c);
     }
     body.appendChild(rr);
+    this.renderClips(body, p, v.clips);
     const head = el('span', 'field-label', 'Match history');
     body.appendChild(head);
     if (!v.matches.length) {

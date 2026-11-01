@@ -29,6 +29,7 @@ import { Account } from '../meta/account.js';
 import { item, itemsIn, isExclusive, CATEGORIES } from '../meta/items.js';
 import { LoginScreen } from '../ui/login.js';
 import { PadNav } from '../ui/padnav.js';
+import { TouchControls } from '../input/touch.js';
 
 // Where the car stands on the pitch behind the home screen menus.
 const HOME_SPOT = new THREE.Vector3(0, 0, -16);
@@ -185,6 +186,7 @@ export class Game {
     });
     this.input.rumbleOn = this.settings.rumble !== false;
     this.padNav = new PadNav(this);
+    this.touch = new TouchControls(this);
     // Controller plugged in or out: say so, switch button names, and rumble once to confirm.
     this.input.onPadChange((on, type) => {
       const name = type === 'ps' ? 'PlayStation controller' : type === 'xbox' ? 'Xbox controller' : 'Controller';
@@ -455,6 +457,15 @@ export class Game {
     $('startBtn').addEventListener('click', () => this.startMatch());
     $('resumeBtn').addEventListener('click', () => this.setPaused(false));
     $('fullBtn').addEventListener('click', () => this.toggleFullscreen());
+    $('homeFullBtn').addEventListener('click', () => this.toggleFullscreen());
+    // Fullscreen buttons say what they will do; hidden where the browser has no fullscreen (iPhone).
+    const fullLabels = () => {
+      const on = !!document.fullscreenElement;
+      $('homeFullText').textContent = on ? 'Exit fullscreen' : 'Fullscreen';
+      $('homeFullBtn').hidden = !document.fullscreenEnabled;
+    };
+    document.addEventListener('fullscreenchange', fullLabels);
+    fullLabels();
     $('restartBtn').addEventListener('click', () => {
       this.setPaused(false);
       this.setupMatch(this.mode, this.difficulty);
@@ -575,6 +586,7 @@ export class Game {
     this.input.pollPad(dt);
     this.padNav.update(this.input);
     this.handleGlobalKeys();
+    this.touch?.update();
     // Online matches never pause: the menu opens over the running game.
     if (this.paused && !this.np) {
       if (render) this.renderer.render();
@@ -1344,13 +1356,23 @@ export class Game {
   }
 
   toggleFullscreen() {
-    // Optional: some embeds refuse fullscreen, which is fine.
+    // Optional: some embeds (and iPhones) refuse fullscreen, which is fine.
     try {
-      if (document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {});
-      else document.documentElement.requestFullscreen?.()?.catch?.(() => {});
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.()?.catch?.(() => {});
+      } else {
+        const p = document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+        // On phones, also keep the screen sideways (Android allows this only in fullscreen).
+        p?.then?.(() => screen.orientation?.lock?.('landscape')?.catch?.(() => {}))?.catch?.(() => {});
+      }
     } catch {
       /* not allowed here */
     }
+  }
+
+  // Touch: the jump button skips a goal replay (like Space).
+  skipReplayByTouch() {
+    if (this.state === 'replay' && !(this.np && this.np.client) && this.stateTime > 0.4) this.finishReplay();
   }
 
   handleGlobalKeys() {

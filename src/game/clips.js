@@ -649,9 +649,13 @@ export class ClipStudio {
   }
 
   // ------------------------------------------------ feed
-  openFeed() {
+  // opts: { author, name, start } to watch one player's clips (from their profile).
+  openFeed(opts = {}) {
     const g = this.game;
     this.active = 'feed';
+    this.author = opts.author || null;
+    this.authorName = opts.name || '';
+    this.startAt = opts.start || 0;
     this.sort = this.sort || 'new';
     this.items = [];
     this.index = 0;
@@ -667,14 +671,18 @@ export class ClipStudio {
       return;
     }
     this.message('Loading clips...');
-    this.loadMore().then(() => this.show(0));
+    this.loadMore().then(async () => {
+      while (this.items.length <= this.startAt && !this.done) await this.loadMore();
+      this.show(Math.min(this.startAt, Math.max(0, this.items.length - 1)));
+    });
   }
 
   buildFeed() {
     const root = this.mount('clip-feed');
     const top = el('div', 'feed-top');
     this.tabs = ['new', 'top'].map((s) => button(`small-btn${this.sort === s ? ' on' : ''}`, s === 'new' ? 'New' : 'Top this week', () => this.setSort(s)));
-    top.append(el('b', 'feed-title', 'CLIPS'), ...this.tabs, button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
+    if (this.author) top.append(el('b', 'feed-title', `CLIPS · ${this.authorName.toUpperCase()}`), button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
+    else top.append(el('b', 'feed-title', 'CLIPS'), ...this.tabs, button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
     this.info = el('div', 'feed-info');
     this.side = el('div', 'feed-side');
     this.likeBtn = button('feed-act', '', () => this.toggleLike(), 'Like (L)');
@@ -687,16 +695,15 @@ export class ClipStudio {
     this.repBtn.append(icon('flag'), el('span', '', 'Report'));
     this.delBtn = button('feed-act', '', () => this.removeClip(), 'Delete this clip');
     this.delBtn.append(icon('trash'), el('span', '', 'Delete'));
-    const nav = el('div', 'feed-nav');
-    nav.append(button('feed-arrow', 'Up', () => this.step(-1), 'Previous (Up arrow)'), button('feed-arrow', 'Down', () => this.step(1), 'Next (Down arrow)'));
-    this.side.append(nav, this.likeBtn, this.comBtn, this.camBtn, this.repBtn, this.delBtn);
+    this.side.append(this.likeBtn, this.comBtn, this.camBtn, this.repBtn, this.delBtn);
+    this.scrollHint = el('div', 'feed-hint', 'Scroll for the next clip');
     this.msg = el('div', 'feed-msg');
     this.msg.hidden = true;
     this.drawer = el('div', 'feed-comments');
     this.drawer.hidden = true;
     this.counter = el('span', 'feed-count', '');
     top.appendChild(this.counter);
-    root.append(top, this.info, this.side, this.msg, this.drawer);
+    root.append(top, this.info, this.side, this.msg, this.drawer, this.scrollHint);
     // Mouse wheel and swipes move through the feed. The feed layer lets clicks through to the
     // game, so these listen on the window while the feed is open.
     let wheelLock = 0;
@@ -752,7 +759,7 @@ export class ClipStudio {
     if (this.loading || this.done) return;
     this.loading = true;
     try {
-      const rows = await api.listClips(this.sort, this.items.length, 10);
+      const rows = await api.listClips(this.sort, this.items.length, 10, this.author);
       if (rows.length < 10) this.done = true;
       const known = new Set(this.items.map((r) => r.id));
       this.items.push(...rows.filter((r) => !known.has(r.id)));
@@ -772,6 +779,7 @@ export class ClipStudio {
   }
 
   step(d) {
+    if (this.scrollHint) this.scrollHint.hidden = true;
     if (!this.items.length) return;
     const i = this.index + d;
     if (i < 0) return;
@@ -1035,7 +1043,13 @@ export class ClipStudio {
     this.unmount();
     this.active = null;
     g.buildArena(g.settings.arena || 'aurora');
-    g.home.page = 'main';
+    const author = this.author;
+    g.home.page = author ? 'players' : 'main';
     g.enterHome();
+    if (author) {
+      // Back to that player's profile.
+      g.home.setPage('players');
+      g.home.playersPage.open(author);
+    }
   }
 }
