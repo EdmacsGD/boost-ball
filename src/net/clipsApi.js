@@ -4,7 +4,7 @@ import { backendKind, supabase } from './backend.js';
 
 export const clipsSupported = () => backendKind() === 'supabase';
 
-const COLS = 'id,author,author_name,title,mode,arena,duration,like_count,comment_count,view_count,overlays,created_at';
+const COLS = 'id,author,author_name,title,mode,arena,duration,like_count,comment_count,view_count,overlays,thumb,created_at';
 
 async function run(q) {
   // A hung connection shows an error instead of loading forever.
@@ -75,13 +75,16 @@ export async function setLike(userId, id, on) {
 
 export async function listComments(id) {
   const sb = await supabase();
-  return run(sb.from('clip_comments').select('id,author,author_name,body,created_at').eq('clip_id', id)
+  return run(sb.from('clip_comments').select('id,author,author_name,body,gif,created_at').eq('clip_id', id)
     .order('created_at', { ascending: true }).limit(200));
 }
 
-export async function addComment(userId, id, body) {
+// gif: address of an uploaded GIF or picture (optional; then the text can be empty).
+export async function addComment(userId, id, body, gif = null) {
   const sb = await supabase();
-  return run(sb.from('clip_comments').insert({ clip_id: id, author: userId, body }).select('id,author,author_name,body,created_at').single());
+  const row = { clip_id: id, author: userId, body };
+  if (gif) row.gif = gif;
+  return run(sb.from('clip_comments').insert(row).select('id,author,author_name,body,gif,created_at').single());
 }
 
 export async function deleteComment(cid) {
@@ -140,9 +143,16 @@ export async function studio() {
 // blob: an image already made small (see shrinkPicture in clips.js). Returns its public address.
 export async function uploadPicture(userId, blob) {
   const sb = await supabase();
-  const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/jpeg' ? 'jpg' : 'webp';
+  const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif' }[blob.type] || 'webp';
   const path = `${userId}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await sb.storage.from('clip-pictures').upload(path, blob, { contentType: blob.type, upsert: false });
   if (error) throw new Error(error.message);
   return sb.storage.from('clip-pictures').getPublicUrl(path).data.publicUrl;
+}
+
+// The author sets the thumbnail of one of their clips (a frame from it, or their own picture).
+export async function setThumb(id, url) {
+  const sb = await supabase();
+  const { error } = await sb.rpc('bb_set_thumb', { p_clip: id, p_url: url });
+  if (error) throw new Error(error.message);
 }

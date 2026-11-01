@@ -221,6 +221,7 @@ export class HomeScreen {
 
   hide() {
     this.el.hidden = true;
+    $('clipsScreen').hidden = true;
   }
 
   // Locked item being previewed in the garage (seen, not owned).
@@ -249,6 +250,8 @@ export class HomeScreen {
     if (was === 'online' && name !== 'online') this.onlinePage.shown(false);
     if (name === 'online') this.onlinePage.shown(true);
     if (name === 'players' && was !== 'players') this.playersPage.shown();
+    // Clips is its own full screen page over the home screen.
+    $('clipsScreen').hidden = name !== 'clips';
     if (name === 'clips' && was !== 'clips') this.clipsPage.shown();
   }
 

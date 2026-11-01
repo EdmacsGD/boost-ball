@@ -159,6 +159,8 @@ export const views = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? 
 // { k: 'text' | 'emoji' | 'img', x, y (center, 0..1 of the screen), s (height, 0..1 of the screen), v }
 export const EMOJIS = ['😂', '🔥', '💀', '😎', '🤯', '👑', '⚽', '🚀', '💥', '😭', '🥶', '🤡', '👀', '🏆', '💯', '😤', '🙌', '🎯', '⚡', '🐐', '😱', '🤣', '👏', '💪'];
 const MAX_STICKERS = 12;
+export const TEXT_STYLES = [['classic', 'Classic'], ['meme', 'Meme'], ['neon', 'Neon'], ['fire', 'Fire'], ['box', 'Box'], ['comic', 'Comic'], ['gold', 'Gold'], ['typed', 'Typed']];
+export const TEXT_COLORS = ['#ffffff', '#ffd166', '#ff4d4d', '#3fe0e8', '#7dff6a', '#ff6fb5', '#9b6bff', '#111111'];
 
 // Draw stickers into a full-screen layer. onPick(i, event) makes them draggable (editor).
 export function renderStickers(layer, list, onPick = null, selected = -1) {
@@ -172,8 +174,10 @@ export function renderStickers(layer, list, onPick = null, selected = -1) {
       node.draggable = false;
       node.style.height = `${(st.s * 100).toFixed(2)}vh`;
     } else {
-      node = el('div', `sticker sticker-${st.k}`, st.v);
+      const style = st.k === 'text' && TEXT_STYLES.some((x) => x[0] === st.st) ? ` st-${st.st}` : st.k === 'text' ? ' st-classic' : '';
+      node = el('div', `sticker sticker-${st.k}${style}`, st.v);
       node.style.fontSize = `${(st.s * 100).toFixed(2)}vh`;
+      if (st.c && /^#[0-9a-f]{6}$/i.test(st.c)) node.style.setProperty('--c', st.c);
     }
     node.style.left = `${(st.x * 100).toFixed(2)}%`;
     node.style.top = `${(st.y * 100).toFixed(2)}%`;
@@ -388,15 +392,6 @@ export class ClipStudio {
     return this.stickers.map.get(m);
   }
 
-  drawStickers() {
-    if (!this.stLayer) return;
-    renderStickers(this.stLayer, this.curStickers(), (i, e) => this.dragSticker(i, e), this.stSel);
-    const has = this.stSel >= 0 && this.curStickers()[this.stSel];
-    this.stEdit.hidden = !has;
-    if (has) this.stSize.value = String(Math.round(this.curStickers()[this.stSel].s * 1000));
-    this.stCount.textContent = `${this.curStickers().length} / ${MAX_STICKERS}`;
-  }
-
   addSticker(st) {
     const list = this.curStickers();
     if (list.length >= MAX_STICKERS) {
@@ -405,6 +400,7 @@ export class ClipStudio {
     }
     list.push({ x: 0.5, y: 0.35 + (list.length % 4) * 0.08, ...st });
     this.stSel = list.length - 1;
+    this.stPicked = false; // style and color buttons now set up the next text, not this one
     this.drawStickers();
   }
 
@@ -412,8 +408,13 @@ export class ClipStudio {
     e.preventDefault();
     e.stopPropagation();
     this.stSel = i;
-    this.drawStickers();
+    this.stPicked = true; // clicked on: style and color buttons change this sticker
     const st = this.curStickers()[i];
+    if (st.k === 'text') {
+      this.textStyle = st.st || 'classic';
+      this.textColor = st.c || '#ffffff';
+    }
+    this.drawStickers();
     const x0 = e.clientX;
     const y0 = e.clientY;
     const sx = st.x;
@@ -449,20 +450,141 @@ export class ClipStudio {
     this.drawStrip();
     this.drawStickers();
     this.refreshEditor();
+    if (this.tab === 'post') this.ensureThumb();
+    else if (this.thumbImg) this.showThumb();
   }
 
   camKey() {
     return this.cam >= 0 ? this.cam : 'ball';
   }
 
+  drawStickers() {
+    if (!this.stLayer) return;
+    const list = this.curStickers();
+    renderStickers(this.stLayer, list, (i, e) => this.dragSticker(i, e), this.stSel);
+    const st = this.stSel >= 0 ? list[this.stSel] : null;
+    this.stEdit.hidden = !st;
+    if (st) {
+      this.stSize.value = String(Math.round(st.s * 1000));
+      this.stWhat.textContent = st.k === 'text' ? `Text: "${st.v}"` : st.k === 'emoji' ? `Emoji ${st.v}` : 'Picture';
+      this.stEditText.hidden = st.k !== 'text';
+    }
+    this.stCount.textContent = `${list.length} / ${MAX_STICKERS} stickers`;
+    for (const [id, b] of this.styleBtns) b.classList.toggle('on', id === this.textStyle);
+    for (const [c, b] of this.colorBtns) b.classList.toggle('on', c === this.textColor);
+  }
+
+  setTab(t) {
+    this.tab = t;
+    for (const [k, b] of this.tabBtns) b.classList.toggle('on', k === t);
+    for (const [k, p] of this.tabPanes) p.hidden = k !== t;
+    if (t === 'post') this.ensureThumb();
+  }
+
+  // ------------------------------------------------ thumbnails
+  // A frame of the clip as a small JPEG (with its text and emoji stickers drawn on).
+  async captureFrame(t, stickers = []) {
+    const g = this.game;
+    const th = g.theater;
+    const was = { t: th.t, playing: th.playing };
+    th.playing = false;
+    th.t = t;
+    g.effects.clear();
+    g.cameraRig.snap();
+    for (let i = 0; i < 4; i++) g.updateVisuals(1 / 60, 1);
+    g.renderer.render();
+    const src = g.renderer.renderer.domElement;
+    const W = 480;
+    const H = 270;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+    const k = Math.max(W / src.width, H / src.height);
+    const sw = W / k;
+    const sh = H / k;
+    ctx.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, W, H);
+    // Stickers: positions are fractions of the screen; the frame is the middle of the screen.
+    const fx = (x) => ((x * src.width - (src.width - sw) / 2) / sw) * W;
+    const fy = (y) => ((y * src.height - (src.height - sh) / 2) / sh) * H;
+    for (const s of stickers) {
+      if (s.k === 'img') continue;
+      // On screen the sticker is s * window height CSS px tall; the canvas has dpr pixels per CSS px.
+      const dpr = src.width / (src.clientWidth || src.width);
+      const size = s.s * window.innerHeight * dpr * (W / sw);
+      ctx.font = s.k === 'emoji' ? `${size}px sans-serif` : `italic 900 ${size}px 'Saira Game', Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (s.k === 'text') {
+        ctx.lineWidth = Math.max(2, size * 0.12);
+        ctx.strokeStyle = '#000';
+        ctx.strokeText(s.v, fx(s.x), fy(s.y));
+        ctx.fillStyle = s.c || '#fff';
+      }
+      ctx.fillText(s.v, fx(s.x), fy(s.y));
+    }
+    th.t = was.t;
+    th.playing = was.playing;
+    return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.82));
+  }
+
+  thumbOf(mark) {
+    if (!this.thumbs.has(mark)) this.thumbs.set(mark, null);
+    return this.thumbs.get(mark);
+  }
+
+  async setThumbFrame(t) {
+    const m = this.game.clipMarks[this.sel];
+    const blob = await this.captureFrame(t, this.curStickers());
+    if (!blob) return;
+    const old = this.thumbs.get(m);
+    if (old && old.url) URL.revokeObjectURL(old.url);
+    this.thumbs.set(m, { blob, url: URL.createObjectURL(blob), kind: 'frame' });
+    this.showThumb();
+  }
+
+  // Default thumbnail: a random frame from the kept part.
+  async ensureThumb() {
+    const m = this.game.clipMarks[this.sel];
+    if (!this.thumbs.get(m)) {
+      const [a, b] = this.range();
+      await this.setThumbFrame(a + (0.25 + Math.random() * 0.6) * (b - a));
+    }
+    this.showThumb();
+  }
+
+  showThumb() {
+    const t = this.thumbs.get(this.game.clipMarks[this.sel]);
+    this.thumbImg.hidden = !t;
+    if (t) this.thumbImg.src = t.url;
+  }
+
   buildEditor() {
     const g = this.game;
+    if (!this.thumbs || this.thumbs.rec !== this.source()) {
+      this.thumbs = new Map();
+      this.thumbs.rec = this.source();
+    }
+    this.textStyle = this.textStyle || 'classic';
+    this.textColor = this.textColor || '#ffffff';
     const root = this.mount('clip-editor');
     const panel = el('div', 'clip-panel');
     const head = el('div', 'clip-head');
-    head.append(el('h3', '', 'Your clips'), el('span', 'clip-help', 'Saved with Ctrl+Q. Drag the ends of the strip to trim, then post.'));
+    head.append(el('h3', '', 'Edit clip'));
     this.markRow = el('div', 'clip-chips');
-    // Trim strip: the ball's speed over time (spikes are hits), the kept part between two handles.
+    // Three steps.
+    const tabs = el('div', 'ed-tabs');
+    this.tabBtns = [['trim', '1  Trim'], ['stickers', '2  Text & stickers'], ['post', '3  Post']].map(([k, label]) => {
+      const b = button('ed-tab', label, () => this.setTab(k));
+      tabs.appendChild(b);
+      return [k, b];
+    });
+    const pTrim = el('div', 'ed-pane');
+    const pSt = el('div', 'ed-pane');
+    const pPost = el('div', 'ed-pane');
+    this.tabPanes = [['trim', pTrim], ['stickers', pSt], ['post', pPost]];
+
+    // ---- 1 Trim
     const trim = el('div', 'trim');
     this.track = el('div', 'trim-track');
     this.canvas = el('canvas', 'trim-bars');
@@ -483,11 +605,11 @@ export class ClipStudio {
     this.trimInfo = el('div', 'trim-info');
     trim.append(this.track, this.trimInfo);
     this.bindTrim();
-    const camRow = el('div', 'clip-chips');
-    camRow.appendChild(el('span', 'clip-label', 'Camera'));
+    const camRow = el('div', 'ed-row');
+    camRow.appendChild(el('span', 'ed-label', 'Camera'));
     const me = g.players.indexOf(g.player);
-    this.camBtns = [[me, 'Your car'], [-1, 'Ball']].map(([v, text]) => {
-      const b = button('small-btn', text, () => {
+    this.camBtns = [[me, 'Follow your car'], [-1, 'Follow the ball']].map(([v, text]) => {
+      const b = button('ed-btn', text, () => {
         this.cam = v;
         g.theater.cam = this.camKey();
         g.cameraRig.snap();
@@ -496,23 +618,29 @@ export class ClipStudio {
       camRow.appendChild(b);
       return [v, b];
     });
-    // Stickers: text, emoji, a picture; drag them on the screen.
-    const stRow = el('div', 'clip-chips');
-    stRow.appendChild(el('span', 'clip-label', 'Stickers'));
-    this.stCount = el('span', 'st-count', '');
-    const textIn = el('input', 'st-text');
+    pTrim.append(
+      el('p', 'ed-help', 'Drag the yellow ends to choose where the clip starts and stops. Tall bars are hard hits on the ball.'),
+      trim, camRow,
+      button('ed-next', 'Next: text & stickers', () => this.setTab('stickers')),
+    );
+
+    // ---- 2 Text & stickers
+    const textIn = el('input', 'ed-input');
     textIn.type = 'text';
     textIn.maxLength = 40;
-    textIn.placeholder = 'Text on the clip';
+    textIn.placeholder = 'Type text for the clip';
     textIn.setAttribute('aria-label', 'Text on the clip');
     const addText = () => {
       const v = textIn.value.trim();
-      if (!v) return;
+      if (!v) {
+        textIn.focus();
+        return;
+      }
       if (badWord(v)) {
         this.status.textContent = FILTER_MESSAGE;
         return;
       }
-      this.addSticker({ k: 'text', v, s: 0.07 });
+      this.addSticker({ k: 'text', v, s: 0.08, st: this.textStyle, c: this.textColor });
       textIn.value = '';
       this.status.textContent = '';
     };
@@ -520,14 +648,36 @@ export class ClipStudio {
       e.stopPropagation();
       if (e.key === 'Enter') addText();
     });
+    // Style chips show what each style looks like.
+    const styles = el('div', 'ed-styles');
+    this.styleBtns = TEXT_STYLES.map(([id, name]) => {
+      const b = button('ed-style', '', () => {
+        this.textStyle = id;
+        const st = this.stPicked ? this.curStickers()[this.stSel] : null;
+        if (st && st.k === 'text') st.st = id;
+        this.drawStickers();
+      }, name);
+      const prev = el('span', `sticker-text st-${id}`, 'Aa');
+      prev.style.setProperty('--c', this.textColor);
+      b.append(prev, el('small', '', name));
+      styles.appendChild(b);
+      return [id, b];
+    });
+    const colors = el('div', 'ed-colors');
+    this.colorBtns = TEXT_COLORS.map((c) => {
+      const b = button('ed-color', '', () => {
+        this.textColor = c;
+        const st = this.stPicked ? this.curStickers()[this.stSel] : null;
+        if (st && st.k === 'text') st.c = c;
+        for (const [, sb] of this.styleBtns) sb.firstChild.style.setProperty('--c', c);
+        this.drawStickers();
+      }, 'Text color');
+      b.style.background = c;
+      colors.appendChild(b);
+      return [c, b];
+    });
     const emojiBox = el('div', 'st-emojis');
-    emojiBox.hidden = true;
-    for (const em of EMOJIS) {
-      emojiBox.appendChild(button('st-emoji', em, () => {
-        this.addSticker({ k: 'emoji', v: em, s: 0.1 });
-        emojiBox.hidden = true;
-      }));
-    }
+    for (const em of EMOJIS) emojiBox.appendChild(button('st-emoji', em, () => this.addSticker({ k: 'emoji', v: em, s: 0.11 })));
     const file = el('input');
     file.type = 'file';
     file.accept = 'image/png,image/jpeg,image/webp,image/gif';
@@ -549,10 +699,9 @@ export class ClipStudio {
         this.status.textContent = e.message;
       }
     });
-    const tools = el('div', 'st-tools');
-    tools.append(textIn, button('small-btn', 'Add text', addText), button('small-btn', 'Emoji', () => { emojiBox.hidden = !emojiBox.hidden; }), button('small-btn', 'Picture', () => file.click()), this.stCount, file);
-    // Size and delete for the selected sticker.
-    this.stEdit = el('div', 'st-edit');
+    // The selected sticker.
+    this.stEdit = el('div', 'ed-selected');
+    this.stWhat = el('b', '', '');
     this.stSize = el('input');
     this.stSize.type = 'range';
     this.stSize.min = '30';
@@ -565,30 +714,82 @@ export class ClipStudio {
       this.drawStickers();
     });
     this.stSize.addEventListener('keydown', (e) => e.stopPropagation());
-    this.stEdit.append(el('span', 'clip-label', 'Size'), this.stSize, button('small-btn', 'Delete sticker', () => {
+    this.stEditText = el('small', '', 'Click the text on the screen, then pick a style or color above to change it.');
+    const sizeRow = el('div', 'ed-row');
+    sizeRow.append(el('span', 'ed-label', 'Size'), this.stSize);
+    this.stEdit.append(this.stWhat, sizeRow, this.stEditText, button('ed-btn danger', 'Delete sticker', () => {
       this.curStickers().splice(this.stSel, 1);
       this.stSel = -1;
       this.drawStickers();
     }));
-    stRow.append(tools, emojiBox, this.stEdit);
-    const postRow = el('div', 'clip-post');
-    this.title = el('input');
+    this.stCount = el('span', 'st-count', '');
+    const textRow = el('div', 'ed-row');
+    textRow.append(textIn, button('ed-btn primary', 'Add text', addText));
+    pSt.append(
+      el('span', 'ed-section', 'Text'), textRow, styles, colors,
+      el('span', 'ed-section', 'Emoji'), emojiBox,
+      el('span', 'ed-section', 'Picture'),
+      button('ed-btn', 'Upload a picture', () => file.click()), file,
+      el('p', 'ed-help', 'Drag stickers on the screen to move them. Click one to change its size or delete it.'),
+      this.stEdit, this.stCount,
+      button('ed-next', 'Next: post', () => this.setTab('post')),
+    );
+
+    // ---- 3 Post
+    const thumbBox = el('div', 'ed-thumb');
+    this.thumbImg = el('img');
+    this.thumbImg.alt = 'Thumbnail';
+    this.thumbImg.hidden = true;
+    thumbBox.appendChild(this.thumbImg);
+    const tfile = el('input');
+    tfile.type = 'file';
+    tfile.accept = 'image/png,image/jpeg,image/webp';
+    tfile.hidden = true;
+    tfile.addEventListener('change', async () => {
+      const f = tfile.files && tfile.files[0];
+      tfile.value = '';
+      if (!f) return;
+      try {
+        const { blob } = await shrinkPicture(f);
+        this.thumbs.set(g.clipMarks[this.sel], { blob, url: URL.createObjectURL(blob), kind: 'upload' });
+        this.showThumb();
+      } catch (e) {
+        this.status.textContent = e.message;
+      }
+    });
+    const thumbBtns = el('div', 'ed-row wrap');
+    thumbBtns.append(
+      button('ed-btn', 'Random frame', () => {
+        const [a, b] = this.range();
+        this.setThumbFrame(a + Math.random() * (b - a));
+      }),
+      button('ed-btn', 'Frame playing now', () => this.setThumbFrame(g.theater.t)),
+      button('ed-btn', 'Upload picture', () => {
+        if (!this.canPost()) {
+          this.status.textContent = 'Log in to use your own picture.';
+          return;
+        }
+        tfile.click();
+      }),
+      tfile,
+    );
+    this.title = el('input', 'ed-input');
     this.title.type = 'text';
     this.title.maxLength = 60;
-    this.title.placeholder = 'Title (optional)';
+    this.title.placeholder = 'Clip title, like "Ceiling shot from midfield"';
     this.title.setAttribute('aria-label', 'Clip title');
     this.title.addEventListener('keydown', (e) => e.stopPropagation());
-    this.postBtn = button('primary', 'Post clip', () => this.post());
-    postRow.append(this.title, this.postBtn);
+    this.postBtn = button('ed-post', 'Post clip', () => this.post());
+    pPost.append(el('span', 'ed-section', 'Thumbnail'), thumbBox, thumbBtns, el('span', 'ed-section', 'Title'), this.title, this.postBtn);
+
     this.status = el('p', 'clip-status', '');
-    const foot = el('div', 'clip-chips');
+    const foot = el('div', 'ed-row wrap');
     foot.append(
-      button('small-btn', 'Remove this clip', () => this.removeMark()),
-      button('small-btn', this.fromEnd ? 'Back to results' : 'Back to free play', () => this.closeEditor(), 'Esc'),
+      button('ed-btn', 'Remove this clip', () => this.removeMark()),
+      button('ed-btn', this.fromEnd ? 'Back to results' : 'Back to free play', () => this.closeEditor(), 'Esc'),
     );
-    panel.append(head, this.markRow, trim, camRow, stRow, postRow, this.status, foot);
+    panel.append(head, this.markRow, tabs, pTrim, pSt, pPost, this.status, foot);
     this.stLayer = el('div', 'sticker-layer edit');
-    // Clicking empty space unselects the sticker.
     root.addEventListener('pointerdown', (e) => {
       if (!e.target.closest('.sticker, .clip-panel') && this.stSel >= 0) {
         this.stSel = -1;
@@ -596,6 +797,7 @@ export class ClipStudio {
       }
     });
     root.append(this.stLayer, panel);
+    this.setTab(this.tab && this.tab !== 'post' ? this.tab : 'trim');
   }
 
   // Drag the handles (or the kept part) with the mouse or a finger; arrow keys nudge a handle.
@@ -844,12 +1046,26 @@ export class ClipStudio {
           this.status.textContent = 'Uploading pictures...';
           st.uploaded = await api.uploadPicture(g.account.online.id, st.blob);
         }
-        overlays.push({ k: st.k, x: +st.x.toFixed(4), y: +st.y.toFixed(4), s: +st.s.toFixed(4), v: st.k === 'img' ? st.uploaded : st.v });
+        const o = { k: st.k, x: +st.x.toFixed(4), y: +st.y.toFixed(4), s: +st.s.toFixed(4), v: st.k === 'img' ? st.uploaded : st.v };
+        if (st.k === 'text') {
+          o.st = st.st || 'classic';
+          o.c = st.c || '#ffffff';
+        }
+        overlays.push(o);
+      }
+      // Thumbnail: the one picked, or a random frame.
+      if (!this.thumbs.get(mark)) await this.ensureThumb();
+      const tb = this.thumbs.get(mark);
+      let thumb = null;
+      if (tb) {
+        this.status.textContent = 'Uploading the thumbnail...';
+        thumb = tb.uploaded || (tb.uploaded = await api.uploadPicture(g.account.online.id, tb.blob));
       }
       this.status.textContent = 'Posting...';
       const data = await packClip(this.source(), a, b, this.clipMeta());
       await api.postClip({
         overlays,
+        thumb,
         author: g.account.online.id,
         title,
         mode: String(g.mode || '').slice(0, 8),
@@ -903,6 +1119,32 @@ export class ClipStudio {
     };
     this.message('Loading clips...');
     begin();
+  }
+
+  // A clip without a thumbnail gets a random frame of it once someone watches it: the author's
+  // game saves it for everyone; anyone else's game keeps it for the grid while the game is open.
+  autoThumb(row, token) {
+    if (row.thumb || (this.localThumbs && this.localThumbs.has(row.id))) return;
+    setTimeout(async () => {
+      if (token !== this.showToken || this.active !== 'feed') return;
+      const th = this.game.theater;
+      const r = th.rec;
+      if (!r) return;
+      const t = r.start + (0.25 + Math.random() * 0.5) * (r.end - r.start);
+      const blob = await this.captureFrame(t, row.overlays || []).catch(() => null);
+      if (!blob) return;
+      this.localThumbs = this.localThumbs || new Map();
+      this.localThumbs.set(row.id, URL.createObjectURL(blob));
+      if (this.isMine(row) && this.canPost()) {
+        try {
+          const url = await api.uploadPicture(this.game.account.online.id, blob);
+          await api.setThumb(row.id, url);
+          row.thumb = url;
+        } catch (e) {
+          /* try again next time */
+        }
+      }
+    }, 1200);
   }
 
   // Who you follow (for the Follow buttons and the For you list).
@@ -1043,6 +1285,7 @@ export class ClipStudio {
     this.message('');
     this.playClip(clip);
     renderStickers(this.stickerLayer, row.overlays);
+    this.autoThumb(row, token);
     // A view counts after 2 seconds of watching (once per clip per visit).
     clearTimeout(this.viewTimer);
     this.viewTimer = setTimeout(() => {
@@ -1241,7 +1484,17 @@ export class ClipStudio {
     const send = el('button', 'small-btn', 'Send');
     send.type = 'submit';
     send.disabled = input.disabled;
-    form.append(input, send);
+    // GIF (or picture) you upload yourself; sent right away with whatever text is typed.
+    const gifIn = el('input');
+    gifIn.type = 'file';
+    gifIn.accept = 'image/gif,image/png,image/jpeg,image/webp';
+    gifIn.hidden = true;
+    const gifBtn = el('button', 'small-btn', 'GIF');
+    gifBtn.type = 'button';
+    gifBtn.title = 'Post a GIF or picture you upload';
+    gifBtn.disabled = input.disabled;
+    gifBtn.addEventListener('click', () => gifIn.click());
+    form.append(input, gifBtn, send, gifIn);
     d.replaceChildren(el('div', 'com-head', 'Comments'), list, form);
     const draw = (rows) => {
       list.replaceChildren();
@@ -1265,7 +1518,15 @@ export class ClipStudio {
             }
           }));
         }
-        item.append(top, el('p', '', c.body));
+        item.appendChild(top);
+        if (c.body) item.appendChild(el('p', '', c.body));
+        if (c.gif) {
+          const img = el('img', 'com-gif');
+          img.src = c.gif;
+          img.alt = 'GIF';
+          img.loading = 'lazy';
+          item.appendChild(img);
+        }
         list.appendChild(item);
       }
       list.scrollTop = list.scrollHeight;
@@ -1278,6 +1539,42 @@ export class ClipStudio {
     } catch (e) {
       list.replaceChildren(el('p', 'com-empty', `Could not load comments: ${e.message}`));
     }
+    const sendComment = async (body, gif) => {
+      const c = await api.addComment(this.game.account.online.id, row.id, body, gif);
+      rows.push(c);
+      row.comment_count++;
+      draw(rows);
+      this.renderInfo();
+    };
+    gifIn.addEventListener('change', async () => {
+      const f = gifIn.files && gifIn.files[0];
+      gifIn.value = '';
+      if (!f) return;
+      const body = input.value.trim();
+      if (badWord(body)) {
+        input.value = '';
+        input.placeholder = 'Not allowed: that has a bad word';
+        return;
+      }
+      try {
+        let blob = f;
+        if (f.type === 'image/gif') {
+          // GIFs keep their animation, so they are not shrunk: 2 MB at most.
+          if (f.size > 2 * 1024 * 1024) throw new Error('That GIF is over 2 MB.');
+        } else {
+          blob = (await shrinkPicture(f)).blob;
+        }
+        gifBtn.disabled = true;
+        input.placeholder = 'Uploading...';
+        const url = await api.uploadPicture(this.game.account.online.id, blob);
+        await sendComment(body, url);
+        input.value = '';
+        input.placeholder = 'Add a comment';
+      } catch (err) {
+        input.placeholder = err.message.includes('2 MB') ? err.message : 'Could not send the GIF';
+      }
+      gifBtn.disabled = false;
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const body = input.value.trim();
@@ -1289,12 +1586,8 @@ export class ClipStudio {
       }
       send.disabled = true;
       try {
-        const c = await api.addComment(this.game.account.online.id, row.id, body);
-        rows.push(c);
-        row.comment_count++;
+        await sendComment(body, null);
         input.value = '';
-        draw(rows);
-        this.renderInfo();
       } catch (err) {
         input.placeholder = err.message.includes('bad word') ? 'Not allowed: that has a bad word' : err.message.includes('limit') ? 'Slow down a little' : 'Could not send';
       }

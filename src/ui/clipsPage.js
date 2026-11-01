@@ -41,6 +41,22 @@ export class ClipsPage {
     this.items = [];
     this.done = false;
     this.token = 0;
+    // The home screen is still being built here, so look it up on click.
+    document.getElementById('clipsBack').addEventListener('click', (e) => game.home.click(() => game.home.setPage('main'))(e));
+    document.getElementById('clipsFeedBtn').addEventListener('click', (e) => game.home.click(() => this.openFeedAll())(e));
+  }
+
+  // Feed: scroll through clips from the start (For you order: players you follow come up more).
+  openFeedAll() {
+    const st = { mixedFrom: 0 };
+    this.studio.openFeed({
+      title: 'CLIPS · FEED',
+      loader: (offset) => this.fetch(offset, 'foryou', '', st),
+      back: () => {
+        this.game.home.setPage('clips');
+        this.render(); // thumbnails made while watching
+      },
+    });
   }
 
   get studio() {
@@ -65,14 +81,14 @@ export class ClipsPage {
 
   // One page of the current list. For you mixes in more clips from players you follow:
   // two of theirs, then one from everyone, newest first.
-  async fetch(offset) {
-    const s = this.search;
-    if (this.tab === 'following' || this.tab === 'foryou') {
+  // tab/search/state default to what the page shows; the Feed button passes its own.
+  async fetch(offset, tab = this.tab, s = this.search, state = this) {
+    if (tab === 'following' || tab === 'foryou') {
       const fol = [...(await this.studio.loadFollowing())];
-      if (this.tab === 'following') return api.listClips('new', offset, PAGE, fol, s);
+      if (tab === 'following') return api.listClips('new', offset, PAGE, fol, s);
       if (!fol.length || offset > 0) {
         // After the first page, For you goes on with everyone's clips.
-        return api.listClips('new', offset ? offset - (this.mixedFrom || 0) : 0, PAGE, null, s);
+        return api.listClips('new', offset ? offset - (state.mixedFrom || 0) : 0, PAGE, null, s);
       }
       const [mine, all] = await Promise.all([api.listClips('new', 0, PAGE, fol, s), api.listClips('new', 0, PAGE, null, s)]);
       const out = [];
@@ -85,10 +101,10 @@ export class ClipsPage {
         if (j < all.length) { seen.add(all[j].id); out.push(all[j]); j++; }
       }
       // Later pages continue the plain list after the ones already shown from it.
-      this.mixedFrom = out.length - j;
+      state.mixedFrom = out.length - j;
       return out;
     }
-    return api.listClips(this.tab, offset, PAGE, null, s);
+    return api.listClips(tab, offset, PAGE, null, s);
   }
 
   async load(reset) {
@@ -220,11 +236,20 @@ export class ClipsPage {
     const sw = arena ? arena.swatch : ['#0b1430', '#2a86ff', '#ff8a2a'];
     const thumb = el('span', 'clip-thumb');
     thumb.style.background = `linear-gradient(135deg, ${sw[0]}, ${sw[1]} 60%, ${sw[2]})`;
+    const pic = c.thumb || (this.studio.localThumbs && this.studio.localThumbs.get(c.id));
+    if (pic) {
+      const img = el('img', 'clip-thumb-img');
+      img.src = pic;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.addEventListener('error', () => img.remove());
+      thumb.appendChild(img);
+    }
     const play = el('i', 'clip-play');
     play.innerHTML = '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
     thumb.append(play, el('span', 'clip-dur', `0:${String(Math.round(c.duration)).padStart(2, '0')}`), el('span', 'clip-mode', (c.mode || '').toUpperCase()));
     const sticker = (c.overlays || []).find((o) => o.k === 'emoji' || o.k === 'text');
-    if (sticker) thumb.appendChild(el('span', 'clip-thumb-st', sticker.v));
+    if (sticker && !pic) thumb.appendChild(el('span', 'clip-thumb-st', sticker.v));
     const info = el('span', 'clip-card-info');
     info.append(
       el('b', 'clip-card-title', c.title || 'Untitled clip'),

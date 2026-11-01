@@ -230,11 +230,6 @@
       <div id="playersBody" class="players-body"></div>
     </section>
 
-    <section class="home-page wide clips-page" data-page="clips" hidden>
-      <div class="page-head"><h2>Clips</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
-      <div id="clipsBody" class="clips-body"></div>
-    </section>
-
     <section class="home-page" data-page="credits" hidden>
       <div class="page-head"><h2>Credits</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
       <div class="credits">
@@ -387,6 +382,16 @@
         </div>
       </section>
     </div>
+  </div>
+
+  <!-- Clips: full screen page -->
+  <div class="clips-screen" id="clipsScreen" hidden>
+    <header class="cs-head">
+      <button type="button" class="cs-back" id="clipsBack">Back <kbd>Esc</kbd></button>
+      <h2>CLIPS</h2>
+      <button type="button" class="cs-feed" id="clipsFeedBtn">Feed <small>scroll through clips</small></button>
+    </header>
+    <div id="clipsBody" class="clips-body"></div>
   </div>
 
   <!-- End of match -->
