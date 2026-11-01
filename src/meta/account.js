@@ -1,3 +1,4 @@
+import { badWord } from './wordFilter.js';
 // Player account: name, record, level, inventory, loadout, quests and unopened Sport Drops.
 //
 // Two places to keep it:
@@ -130,8 +131,9 @@ export class Account {
       this.email = u.email || '';
       const ref = {
         get: async () => {
-          const { data: row, error } = await sb.from('profiles').select('data').eq('id', u.id).maybeSingle();
+          const { data: row, error } = await sb.from('profiles').select('data,name_flagged').eq('id', u.id).maybeSingle();
           if (error) throw error;
+          this.nameFlagged = !!(row && row.name_flagged);
           return { exists: !!row, data: () => (row ? row.data : null) };
         },
         set: async (d) => {
@@ -322,10 +324,15 @@ export class Account {
     return true;
   }
 
+  // Returns false (and changes nothing) when the name has a word that is not allowed.
   setName(name) {
-    this.data.name = cleanName(name);
+    const n = cleanName(name);
+    if (badWord(n)) return false;
+    this.data.name = n;
+    this.nameFlagged = false;
     this.save();
     this.changed();
+    return true;
   }
 
   level() {

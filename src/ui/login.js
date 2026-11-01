@@ -1,3 +1,4 @@
+import { badWord } from '../meta/wordFilter.js';
 // Login screen: log in to the online account, create one, or play as guest.
 // On claude.ai the claude.ai sign-in is the login. On the website it is an email and password
 // (Supabase), and the profile is a row in the profiles table.
@@ -100,6 +101,10 @@ export class LoginScreen {
     const name = $('newName').value.trim();
     if (!name) {
       $('loginNote').textContent = 'Type a player name first.';
+      return;
+    }
+    if (badWord(name)) {
+      $('loginNote').textContent = 'That name has a word that is not allowed. Pick another name.';
       return;
     }
     $('createBtn').disabled = true;

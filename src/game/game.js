@@ -715,6 +715,35 @@ export class Game {
       this.onHomePage(this.home.page);
     }
     this.home.refresh();
+    this.updateNameWarning();
+  }
+
+  // Warning on the home screen while the player's name has a word that is not allowed (the server
+  // keeps such names off the leaderboard). It goes away as soon as they pick a new name.
+  updateNameWarning() {
+    let w = document.getElementById('nameWarn');
+    const show = !!(this.account.nameFlagged && this.account.mode === 'online');
+    if (!show) {
+      if (w) w.remove();
+      return;
+    }
+    if (w) return;
+    w = document.createElement('div');
+    w.id = 'nameWarn';
+    w.className = 'name-warn';
+    const t = document.createElement('p');
+    t.textContent = 'Your player name has a word that is not allowed in Boost Ball. You are hidden from the leaderboard, and your clips show "Player", until you change it.';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'small-btn';
+    b.textContent = 'Change name';
+    b.addEventListener('click', () => {
+      const n = document.getElementById('pcName');
+      n?.focus();
+      n?.select?.();
+    });
+    w.append(t, b);
+    document.getElementById('home').appendChild(w);
   }
 
   // Short message at the top of the screen (controller connected...).

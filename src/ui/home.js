@@ -12,6 +12,7 @@ import { anthemSpec } from '../audio/anthems.js';
 import { eqSwatch } from './anthemEditor.js';
 import { OnlinePage } from './onlinePage.js';
 import { PlayersPage } from './playersPage.js';
+import { ClipsPage } from './clipsPage.js';
 
 const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + Number(n).toString(16).padStart(6, '0');
@@ -105,6 +106,7 @@ export class HomeScreen {
     this.gtab = 'car';
     this.onlinePage = new OnlinePage(game);
     this.playersPage = new PlayersPage(game);
+    this.clipsPage = new ClipsPage(game);
     this.tipIndex = Math.floor(Math.random() * TIPS.length);
     const click = (fn) => () => {
       game.audio.init();
@@ -128,7 +130,13 @@ export class HomeScreen {
     }));
     $('pcAccount').addEventListener('click', click(() => game.showLogin()));
     const nameEl = $('pcName');
-    nameEl.addEventListener('change', () => game.account.setName(nameEl.value));
+    nameEl.addEventListener('change', () => {
+      if (!game.account.setName(nameEl.value)) {
+        game.toast('That name has a word that is not allowed. Pick another name.');
+        nameEl.value = game.account.data.name;
+      }
+      game.updateNameWarning();
+    });
     nameEl.addEventListener('keydown', (e) => {
       e.stopPropagation(); // typing a name must not drive the menu
       if (e.key === 'Enter' || e.key === 'Escape') nameEl.blur();
@@ -224,11 +232,6 @@ export class HomeScreen {
   }
 
   setPage(name) {
-    if (name === 'clips') {
-      // The Clips feed is full screen over the 3D scene, not a menu page.
-      this.game.clips.openFeed();
-      return;
-    }
     const was = this.page;
     if (name !== 'garage') this.stopPreview(false);
     this.page = name;
@@ -246,6 +249,7 @@ export class HomeScreen {
     if (was === 'online' && name !== 'online') this.onlinePage.shown(false);
     if (name === 'online') this.onlinePage.shown(true);
     if (name === 'players' && was !== 'players') this.playersPage.shown();
+    if (name === 'clips' && was !== 'clips') this.clipsPage.shown();
   }
 
   // ------------------------------------------------------------------ garage

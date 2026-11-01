@@ -10,6 +10,7 @@ import { THEMES } from '../render/arenaThemes.js';
 import { MatchRecorder } from './replay.js';
 import { iconSvg } from '../ui/icons.js';
 import * as api from '../net/clipsApi.js';
+import { badWord, FILTER_MESSAGE } from '../meta/wordFilter.js';
 
 const MIN_LEN = 1;
 const MAX_LEN = 30;
@@ -151,6 +152,64 @@ function ago(iso) {
 }
 const arenaName = (id) => (id ? id.charAt(0).toUpperCase() + id.slice(1) : '');
 const fmt = (sec) => `${Math.floor(Math.max(0, sec) / 60)}:${String(Math.floor(Math.max(0, sec) % 60)).padStart(2, '0')}`;
+export const viewsText = (n) => `${views(n)} view${n === 1 ? '' : 's'}`;
+export const views = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n || 0));
+
+// ------------------------------------------------------------------ stickers on clips
+// { k: 'text' | 'emoji' | 'img', x, y (center, 0..1 of the screen), s (height, 0..1 of the screen), v }
+export const EMOJIS = ['😂', '🔥', '💀', '😎', '🤯', '👑', '⚽', '🚀', '💥', '😭', '🥶', '🤡', '👀', '🏆', '💯', '😤', '🙌', '🎯', '⚡', '🐐', '😱', '🤣', '👏', '💪'];
+const MAX_STICKERS = 12;
+
+// Draw stickers into a full-screen layer. onPick(i, event) makes them draggable (editor).
+export function renderStickers(layer, list, onPick = null, selected = -1) {
+  layer.replaceChildren();
+  (list || []).forEach((st, i) => {
+    let node;
+    if (st.k === 'img') {
+      node = el('img', 'sticker sticker-img');
+      node.src = st.v;
+      node.alt = '';
+      node.draggable = false;
+      node.style.height = `${(st.s * 100).toFixed(2)}vh`;
+    } else {
+      node = el('div', `sticker sticker-${st.k}`, st.v);
+      node.style.fontSize = `${(st.s * 100).toFixed(2)}vh`;
+    }
+    node.style.left = `${(st.x * 100).toFixed(2)}%`;
+    node.style.top = `${(st.y * 100).toFixed(2)}%`;
+    if (onPick) {
+      node.classList.add('editable');
+      node.classList.toggle('sel', i === selected);
+      node.addEventListener('pointerdown', (e) => onPick(i, e));
+    }
+    layer.appendChild(node);
+  });
+}
+
+// A picture made small enough to upload quickly (longest side 384 px, WebP or PNG, under 300 KB).
+export async function shrinkPicture(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error('That file is not a picture.'));
+      i.src = url;
+    });
+    const k = Math.min(1, 384 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k));
+    c.height = Math.max(1, Math.round(img.height * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    for (const [type, q] of [['image/webp', 0.85], ['image/webp', 0.6], ['image/png', 1]]) {
+      const blob = await new Promise((r) => c.toBlob(r, type, q));
+      if (blob && blob.type === type && blob.size < 300 * 1024) return { blob, aspect: c.width / c.height };
+    }
+    throw new Error('That picture is too big.');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 // ------------------------------------------------------------------ the studio
 export class ClipStudio {
@@ -293,6 +352,8 @@ export class ClipStudio {
     this.cam = g.players.indexOf(g.player);
     if (!this.trims || this.trims.rec !== src) this.trims = { rec: src, map: new Map() };
     if (!this.posted || this.posted.rec !== src) this.posted = { rec: src, set: new Set() };
+    if (!this.stickers || this.stickers.rec !== src) this.stickers = { rec: src, map: new Map() };
+    this.stSel = -1;
     this.buildEditor();
     this.selectMark(this.sel);
     const tick = () => {
@@ -320,8 +381,65 @@ export class ClipStudio {
     return r;
   }
 
+  // Stickers of the clip being edited.
+  curStickers() {
+    const m = this.game.clipMarks[this.sel];
+    if (!this.stickers.map.has(m)) this.stickers.map.set(m, []);
+    return this.stickers.map.get(m);
+  }
+
+  drawStickers() {
+    if (!this.stLayer) return;
+    renderStickers(this.stLayer, this.curStickers(), (i, e) => this.dragSticker(i, e), this.stSel);
+    const has = this.stSel >= 0 && this.curStickers()[this.stSel];
+    this.stEdit.hidden = !has;
+    if (has) this.stSize.value = String(Math.round(this.curStickers()[this.stSel].s * 1000));
+    this.stCount.textContent = `${this.curStickers().length} / ${MAX_STICKERS}`;
+  }
+
+  addSticker(st) {
+    const list = this.curStickers();
+    if (list.length >= MAX_STICKERS) {
+      this.status.textContent = `At most ${MAX_STICKERS} stickers on a clip.`;
+      return;
+    }
+    list.push({ x: 0.5, y: 0.35 + (list.length % 4) * 0.08, ...st });
+    this.stSel = list.length - 1;
+    this.drawStickers();
+  }
+
+  dragSticker(i, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.stSel = i;
+    this.drawStickers();
+    const st = this.curStickers()[i];
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const sx = st.x;
+    const sy = st.y;
+    const move = (ev) => {
+      st.x = Math.max(0.02, Math.min(0.98, sx + (ev.clientX - x0) / window.innerWidth));
+      st.y = Math.max(0.03, Math.min(0.97, sy + (ev.clientY - y0) / window.innerHeight));
+      const node = this.stLayer.children[i];
+      if (node) {
+        node.style.left = `${(st.x * 100).toFixed(2)}%`;
+        node.style.top = `${(st.y * 100).toFixed(2)}%`;
+      }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
   selectMark(i) {
     this.sel = i;
+    this.stSel = -1;
     this.status.textContent = '';
     const [a, b] = this.range();
     this.view = new RangeView(this.source(), a, b);
@@ -329,6 +447,7 @@ export class ClipStudio {
     if (this.game.state === 'theater' && th.clipRec) th.swapClip(this.view, this.camKey());
     else th.openClip(this.view, this.camKey());
     this.drawStrip();
+    this.drawStickers();
     this.refreshEditor();
   }
 
@@ -377,12 +496,88 @@ export class ClipStudio {
       camRow.appendChild(b);
       return [v, b];
     });
+    // Stickers: text, emoji, a picture; drag them on the screen.
+    const stRow = el('div', 'clip-chips');
+    stRow.appendChild(el('span', 'clip-label', 'Stickers'));
+    this.stCount = el('span', 'st-count', '');
+    const textIn = el('input', 'st-text');
+    textIn.type = 'text';
+    textIn.maxLength = 40;
+    textIn.placeholder = 'Text on the clip';
+    textIn.setAttribute('aria-label', 'Text on the clip');
+    const addText = () => {
+      const v = textIn.value.trim();
+      if (!v) return;
+      if (badWord(v)) {
+        this.status.textContent = FILTER_MESSAGE;
+        return;
+      }
+      this.addSticker({ k: 'text', v, s: 0.07 });
+      textIn.value = '';
+      this.status.textContent = '';
+    };
+    textIn.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') addText();
+    });
+    const emojiBox = el('div', 'st-emojis');
+    emojiBox.hidden = true;
+    for (const em of EMOJIS) {
+      emojiBox.appendChild(button('st-emoji', em, () => {
+        this.addSticker({ k: 'emoji', v: em, s: 0.1 });
+        emojiBox.hidden = true;
+      }));
+    }
+    const file = el('input');
+    file.type = 'file';
+    file.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    file.hidden = true;
+    file.addEventListener('change', async () => {
+      const f = file.files && file.files[0];
+      file.value = '';
+      if (!f) return;
+      if (!this.canPost()) {
+        this.status.textContent = 'Log in to add your own pictures.';
+        return;
+      }
+      try {
+        this.status.textContent = 'Getting the picture ready...';
+        const { blob } = await shrinkPicture(f);
+        this.addSticker({ k: 'img', v: URL.createObjectURL(blob), blob, s: 0.22 });
+        this.status.textContent = 'Picture added. Only post pictures you made or are allowed to share.';
+      } catch (e) {
+        this.status.textContent = e.message;
+      }
+    });
+    const tools = el('div', 'st-tools');
+    tools.append(textIn, button('small-btn', 'Add text', addText), button('small-btn', 'Emoji', () => { emojiBox.hidden = !emojiBox.hidden; }), button('small-btn', 'Picture', () => file.click()), this.stCount, file);
+    // Size and delete for the selected sticker.
+    this.stEdit = el('div', 'st-edit');
+    this.stSize = el('input');
+    this.stSize.type = 'range';
+    this.stSize.min = '30';
+    this.stSize.max = '350';
+    this.stSize.setAttribute('aria-label', 'Sticker size');
+    this.stSize.addEventListener('input', () => {
+      const st = this.curStickers()[this.stSel];
+      if (!st) return;
+      st.s = Number(this.stSize.value) / 1000;
+      this.drawStickers();
+    });
+    this.stSize.addEventListener('keydown', (e) => e.stopPropagation());
+    this.stEdit.append(el('span', 'clip-label', 'Size'), this.stSize, button('small-btn', 'Delete sticker', () => {
+      this.curStickers().splice(this.stSel, 1);
+      this.stSel = -1;
+      this.drawStickers();
+    }));
+    stRow.append(tools, emojiBox, this.stEdit);
     const postRow = el('div', 'clip-post');
     this.title = el('input');
     this.title.type = 'text';
     this.title.maxLength = 60;
     this.title.placeholder = 'Title (optional)';
     this.title.setAttribute('aria-label', 'Clip title');
+    this.title.addEventListener('keydown', (e) => e.stopPropagation());
     this.postBtn = button('primary', 'Post clip', () => this.post());
     postRow.append(this.title, this.postBtn);
     this.status = el('p', 'clip-status', '');
@@ -391,8 +586,16 @@ export class ClipStudio {
       button('small-btn', 'Remove this clip', () => this.removeMark()),
       button('small-btn', this.fromEnd ? 'Back to results' : 'Back to free play', () => this.closeEditor(), 'Esc'),
     );
-    panel.append(head, this.markRow, trim, camRow, postRow, this.status, foot);
-    root.appendChild(panel);
+    panel.append(head, this.markRow, trim, camRow, stRow, postRow, this.status, foot);
+    this.stLayer = el('div', 'sticker-layer edit');
+    // Clicking empty space unselects the sticker.
+    root.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest('.sticker, .clip-panel') && this.stSel >= 0) {
+        this.stSel = -1;
+        this.drawStickers();
+      }
+    });
+    root.append(this.stLayer, panel);
   }
 
   // Drag the handles (or the kept part) with the mouse or a finger; arrow keys nudge a handle.
@@ -625,14 +828,30 @@ export class ClipStudio {
     }
     const mark = g.clipMarks[this.sel];
     const [a, b] = this.range();
+    const title = this.title.value.trim().slice(0, 60);
+    if (badWord(title)) {
+      this.status.textContent = FILTER_MESSAGE;
+      return;
+    }
     this.posting = true;
     this.status.textContent = '';
     this.refreshEditor();
     try {
+      // Pictures go up first; the clip keeps their public addresses.
+      const overlays = [];
+      for (const st of this.curStickers()) {
+        if (st.k === 'img' && st.blob && !st.uploaded) {
+          this.status.textContent = 'Uploading pictures...';
+          st.uploaded = await api.uploadPicture(g.account.online.id, st.blob);
+        }
+        overlays.push({ k: st.k, x: +st.x.toFixed(4), y: +st.y.toFixed(4), s: +st.s.toFixed(4), v: st.k === 'img' ? st.uploaded : st.v });
+      }
+      this.status.textContent = 'Posting...';
       const data = await packClip(this.source(), a, b, this.clipMeta());
       await api.postClip({
+        overlays,
         author: g.account.online.id,
-        title: this.title.value.trim().slice(0, 60),
+        title,
         mode: String(g.mode || '').slice(0, 8),
         arena: g.stadium ? g.stadium.arenaId : '',
         duration: Math.max(0.5, Math.min(31, b - a)),
@@ -642,26 +861,29 @@ export class ClipStudio {
       this.status.textContent = 'Posted. Find it in Clips on the main menu.';
       this.title.value = '';
     } catch (e) {
-      this.status.textContent = `Could not post: ${e.message}`;
+      this.status.textContent = e.message.includes('bad word') ? FILTER_MESSAGE : `Could not post: ${e.message}`;
     }
     this.posting = false;
     this.refreshEditor();
   }
 
   // ------------------------------------------------ feed
-  // opts: { author, name, start } to watch one player's clips (from their profile).
+  // Plays a list of clips full screen, one at a time (scroll for the next one).
+  // opts: { title, items (already loaded rows), start (index), loader(offset) -> more rows,
+  //         back() (where Back goes after the home screen is shown again) }
   openFeed(opts = {}) {
     const g = this.game;
     this.active = 'feed';
-    this.author = opts.author || null;
-    this.authorName = opts.name || '';
+    this.feedTitle = opts.title || 'CLIPS';
+    this.loader = opts.loader || ((off) => api.listClips('new', off, 10));
+    this.backFn = opts.back || null;
+    this.items = (opts.items || []).slice();
     this.startAt = opts.start || 0;
-    this.sort = this.sort || 'new';
-    this.items = [];
     this.index = 0;
     this.liked = new Set();
     this.cache = new Map();
-    this.done = false;
+    this.viewed = this.viewed || new Set();
+    this.done = !!opts.items && !opts.loader;
     this.loading = false;
     this.staged = false;
     this.buildFeed();
@@ -670,21 +892,35 @@ export class ClipStudio {
       this.message('Clips work on the website version of the game: edmacsgd.github.io/boost-ball');
       return;
     }
-    this.message('Loading clips...');
-    this.loadMore().then(async () => {
+    this.loadFollowing();
+    const begin = async () => {
+      if (this.canPost() && this.items.length) {
+        const s = await api.likedSet(g.account.online.id, this.items.map((r) => r.id)).catch(() => new Set());
+        for (const id of s) this.liked.add(id);
+      }
       while (this.items.length <= this.startAt && !this.done) await this.loadMore();
       this.show(Math.min(this.startAt, Math.max(0, this.items.length - 1)));
-    });
+    };
+    this.message('Loading clips...');
+    begin();
+  }
+
+  // Who you follow (for the Follow buttons and the For you list).
+  async loadFollowing(force = false) {
+    if (this.following && !force) return this.following;
+    const a = this.game.account;
+    this.following = new Set(this.canPost() ? await api.myFollowing(a.online.id).catch(() => []) : []);
+    return this.following;
   }
 
   buildFeed() {
     const root = this.mount('clip-feed');
     const top = el('div', 'feed-top');
-    this.tabs = ['new', 'top'].map((s) => button(`small-btn${this.sort === s ? ' on' : ''}`, s === 'new' ? 'New' : 'Top this week', () => this.setSort(s)));
-    if (this.author) top.append(el('b', 'feed-title', `CLIPS · ${this.authorName.toUpperCase()}`), button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
-    else top.append(el('b', 'feed-title', 'CLIPS'), ...this.tabs, button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
+    top.append(el('b', 'feed-title', this.feedTitle), button('small-btn feed-close', 'Back', () => this.closeFeed(), 'Esc'));
+    this.stickerLayer = el('div', 'sticker-layer');
     this.info = el('div', 'feed-info');
     this.side = el('div', 'feed-side');
+    this.followBtn = button('feed-follow', 'Follow', () => this.toggleFollow(), 'Follow this player: their clips come up more often');
     this.likeBtn = button('feed-act', '', () => this.toggleLike(), 'Like (L)');
     this.likeBtn.append(icon('heart'), el('span', '', '0'));
     this.comBtn = button('feed-act', '', () => this.toggleComments(), 'Comments (C)');
@@ -703,7 +939,7 @@ export class ClipStudio {
     this.drawer.hidden = true;
     this.counter = el('span', 'feed-count', '');
     top.appendChild(this.counter);
-    root.append(top, this.info, this.side, this.msg, this.drawer, this.scrollHint);
+    root.append(this.stickerLayer, top, this.info, this.side, this.msg, this.drawer, this.scrollHint);
     // Mouse wheel and swipes move through the feed. The feed layer lets clicks through to the
     // game, so these listen on the window while the feed is open.
     let wheelLock = 0;
@@ -744,22 +980,11 @@ export class ClipStudio {
     this.info.hidden = empty;
   }
 
-  setSort(s) {
-    if (this.sort === s) return;
-    this.sort = s;
-    for (const b of this.tabs) b.classList.toggle('on', b.textContent === (s === 'new' ? 'New' : 'Top this week'));
-    this.items = [];
-    this.index = 0;
-    this.done = false;
-    this.closeComments();
-    this.loadMore().then(() => this.show(0));
-  }
-
   async loadMore() {
     if (this.loading || this.done) return;
     this.loading = true;
     try {
-      const rows = await api.listClips(this.sort, this.items.length, 10, this.author);
+      const rows = await this.loader(this.items.length);
       if (rows.length < 10) this.done = true;
       const known = new Set(this.items.map((r) => r.id));
       this.items.push(...rows.filter((r) => !known.has(r.id)));
@@ -802,6 +1027,7 @@ export class ClipStudio {
     this.index = i;
     const row = this.items[i];
     this.closeComments();
+    this.stickerLayer.replaceChildren();
     this.renderInfo();
     this.message('Loading clip...');
     const token = (this.showToken = (this.showToken || 0) + 1);
@@ -816,6 +1042,17 @@ export class ClipStudio {
     if (token !== this.showToken || this.active !== 'feed') return;
     this.message('');
     this.playClip(clip);
+    renderStickers(this.stickerLayer, row.overlays);
+    // A view counts after 2 seconds of watching (once per clip per visit).
+    clearTimeout(this.viewTimer);
+    this.viewTimer = setTimeout(() => {
+      if (this.active !== 'feed' || this.items[this.index] !== row || this.viewed.has(row.id)) return;
+      this.viewed.add(row.id);
+      api.viewClip(row.id).then((v) => {
+        if (typeof v === 'number') row.view_count = v;
+        if (this.items[this.index] === row) this.renderInfo();
+      }).catch(() => {});
+    }, 2000);
     // Get the next ones ready.
     for (const r of this.items.slice(i + 1, i + 3)) this.fetchClip(r).catch(() => {});
     if (i >= this.items.length - 3) this.loadMore();
@@ -871,10 +1108,17 @@ export class ClipStudio {
     const row = this.items[this.index];
     if (!row) return;
     this.counter.textContent = `${this.index + 1} / ${this.items.length}${this.done ? '' : '+'}`;
-    const by = el('b', 'feed-author', row.author_name || 'Player');
+    const by = el('div', 'feed-by');
+    by.append(el('b', 'feed-author', row.author_name || 'Player'));
+    if (!this.isMine(row)) {
+      const on = !!(this.following && this.following.has(row.author));
+      this.followBtn.textContent = on ? 'Following' : 'Follow';
+      this.followBtn.classList.toggle('on', on);
+      by.append(this.followBtn);
+    }
     const title = el('p', 'feed-cliptitle', row.title || '');
     title.hidden = !row.title;
-    const sub = el('small', '', [row.mode ? row.mode.toUpperCase() : '', arenaName(row.arena), `${Math.round(row.duration)} s`, ago(row.created_at)].filter(Boolean).join('  ·  '));
+    const sub = el('small', '', [viewsText(row.view_count), row.mode ? row.mode.toUpperCase() : '', arenaName(row.arena), `${Math.round(row.duration)} s`, ago(row.created_at)].filter(Boolean).join('  ·  '));
     this.info.replaceChildren(by, title, sub);
     const liked = this.liked.has(row.id);
     this.likeBtn.classList.toggle('on', liked);
@@ -893,6 +1137,23 @@ export class ClipStudio {
       if (this.msg && this.msg.textContent === `Log in to ${what}.`) this.message('');
     }, 2200);
     return true;
+  }
+
+  async toggleFollow() {
+    const row = this.items[this.index];
+    if (!row || this.isMine(row) || this.needLogin('follow players')) return;
+    await this.loadFollowing();
+    const on = !this.following.has(row.author);
+    if (on) this.following.add(row.author);
+    else this.following.delete(row.author);
+    this.renderInfo();
+    try {
+      await api.setFollow(this.game.account.online.id, row.author, on);
+    } catch (e) {
+      if (on) this.following.delete(row.author);
+      else this.following.add(row.author);
+      this.renderInfo();
+    }
   }
 
   async toggleLike() {
@@ -1021,6 +1282,11 @@ export class ClipStudio {
       e.preventDefault();
       const body = input.value.trim();
       if (!body || send.disabled) return;
+      if (badWord(body)) {
+        input.value = '';
+        input.placeholder = 'Not allowed: that has a bad word';
+        return;
+      }
       send.disabled = true;
       try {
         const c = await api.addComment(this.game.account.online.id, row.id, body);
@@ -1030,7 +1296,7 @@ export class ClipStudio {
         draw(rows);
         this.renderInfo();
       } catch (err) {
-        input.placeholder = err.message.includes('limit') ? 'Slow down a little' : 'Could not send';
+        input.placeholder = err.message.includes('bad word') ? 'Not allowed: that has a bad word' : err.message.includes('limit') ? 'Slow down a little' : 'Could not send';
       }
       send.disabled = false;
       input.focus();
@@ -1040,16 +1306,14 @@ export class ClipStudio {
   closeFeed() {
     const g = this.game;
     this.showToken = (this.showToken || 0) + 1;
+    clearTimeout(this.viewTimer);
     this.unmount();
     this.active = null;
     g.buildArena(g.settings.arena || 'aurora');
-    const author = this.author;
-    g.home.page = author ? 'players' : 'main';
+    const back = this.backFn;
+    this.backFn = null;
     g.enterHome();
-    if (author) {
-      // Back to that player's profile.
-      g.home.setPage('players');
-      g.home.playersPage.open(author);
-    }
+    if (back) back();
   }
+
 }

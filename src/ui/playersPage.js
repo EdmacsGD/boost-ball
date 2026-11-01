@@ -5,7 +5,7 @@ import { bannerCard, badgePill } from './playerCard.js';
 import { iconSvg } from './icons.js';
 import { item } from '../meta/items.js';
 import { tierOf } from '../meta/rank.js';
-import { listClips, clipsSupported } from '../net/clipsApi.js';
+import { listClips, clipsSupported, followerCount, setFollow } from '../net/clipsApi.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -68,9 +68,10 @@ export class PlayersPage {
     this.render();
     try {
       const clipsP = clipsSupported() ? listClips('new', 0, 30, id).catch(() => null) : Promise.resolve([]);
-      const [profile, matches, , clips] = await Promise.all([playerById(id), playerMatches(id), loadBadges(), clipsP]);
+      const folP = clipsSupported() ? followerCount(id).catch(() => null) : Promise.resolve(null);
+      const [profile, matches, , clips, followers] = await Promise.all([playerById(id), playerMatches(id), loadBadges(), clipsP, folP, this.game.clips.loadFollowing(true)]);
       if (token !== this.loadToken) return;
-      this.viewing = profile ? { profile, matches, clips } : { error: 'That player was not found.' };
+      this.viewing = profile ? { profile, matches, clips, followers } : { error: 'That player was not found.' };
     } catch (e) {
       if (token !== this.loadToken) return;
       this.viewing = { error: 'Could not load this profile. Try again.' };
@@ -179,6 +180,36 @@ export class PlayersPage {
     if (!me) body.appendChild(el('p', 'page-note', 'You are not on the list: log in with an online profile to join it.'));
   }
 
+  // Followers, and a Follow button (not on your own profile).
+  followRow(p, v) {
+    const row = el('div', 'follow-row');
+    const n = v.followers;
+    const count = el('span', 'follow-count', n === null || n === undefined ? '' : `${n} follower${n === 1 ? '' : 's'}`);
+    row.appendChild(count);
+    const clips = this.game.clips;
+    if (p.id !== this.myId) {
+      const on = !!(clips.following && clips.following.has(p.id));
+      const b = this.btn(on ? 'Following' : 'Follow', `small-btn follow-btn${on ? ' on' : ''}`, async () => {
+        if (!clips.canPost()) {
+          this.game.toast('Log in to follow players.');
+          return;
+        }
+        const now = !clips.following.has(p.id);
+        try {
+          await setFollow(this.game.account.online.id, p.id, now);
+          if (now) clips.following.add(p.id);
+          else clips.following.delete(p.id);
+          v.followers = Math.max(0, (v.followers || 0) + (now ? 1 : -1));
+          this.render();
+        } catch (e) {
+          this.game.toast('Could not change that right now.');
+        }
+      });
+      row.appendChild(b);
+    }
+    return row;
+  }
+
   // The clips this player has posted; each opens the Clips feed with just their clips.
   renderClips(body, p, clips) {
     body.appendChild(el('span', 'field-label', clips && clips.length ? `Clips (${clips.length}${clips.length >= 30 ? '+' : ''})` : 'Clips'));
@@ -204,7 +235,16 @@ export class PlayersPage {
       heart.innerHTML = iconSvg('heart');
       counts.append(heart, el('span', '', String(c.like_count)), el('span', 'pclip-com', `${c.comment_count} comments`));
       card.append(top, meta, counts);
-      card.addEventListener('click', this.game.home.click(() => this.game.clips.openFeed({ author: p.id, name: p.name || 'PLAYER', start: i })));
+      card.addEventListener('click', this.game.home.click(() => this.game.clips.openFeed({
+        title: `CLIPS · ${(p.name || 'PLAYER').toUpperCase()}`,
+        items: clips,
+        start: i,
+        loader: clips.length >= 30 ? (off) => listClips('new', off, 10, p.id) : null,
+        back: () => {
+          this.game.home.setPage('players');
+          this.open(p.id);
+        },
+      })));
       grid.appendChild(card);
     });
     body.appendChild(grid);
@@ -227,6 +267,7 @@ export class PlayersPage {
     }
     const p = v.profile;
     body.appendChild(bannerCard({ name: p.name, title: p.title, icon: p.icon, banner: p.banner, level: p.level, badge: badgeOf(p.id) }, 'big'));
+    if (clipsSupported()) body.appendChild(this.followRow(p, v));
     const stats = el('div', 'pstats');
     const winRate = p.matches ? `${Math.round((p.wins / p.matches) * 100)}%` : '-';
     for (const [label, value] of [['Matches', p.matches], ['Wins', p.wins], ['Win rate', winRate], ['Goals', p.goals], ['Play time', formatPlaytime(p.playtime)]]) {

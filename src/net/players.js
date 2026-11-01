@@ -17,7 +17,8 @@ export const SORTS = {
 export async function topPlayers(sort = 'playtime', search = '', limit = 100) {
   const sb = await supabase();
   const col = (SORTS[sort] || SORTS.playtime).col;
-  let q = sb.from('profiles').select(COLS).order(col, { ascending: false }).order('updated_at', { ascending: false }).limit(limit);
+  // Names with a word that is not allowed are left off the list until the player changes them.
+  let q = sb.from('profiles').select(COLS).eq('name_flagged', false).order(col, { ascending: false }).order('updated_at', { ascending: false }).limit(limit);
   const s = String(search || '').trim().replace(/[%_,()\\]/g, '').slice(0, 16);
   if (s) q = q.ilike('name', `%${s}%`);
   const { data, error } = await q;
