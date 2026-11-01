@@ -7,7 +7,9 @@ export const clipsSupported = () => backendKind() === 'supabase';
 const COLS = 'id,author,author_name,title,mode,arena,duration,like_count,comment_count,created_at';
 
 async function run(q) {
-  const { data, error } = await q;
+  // A hung connection shows an error instead of loading forever.
+  const res = await Promise.race([q, new Promise((r) => setTimeout(() => r({ error: { message: 'no answer from the server (check your connection)' } }), 15000))]);
+  const { data, error } = res;
   if (error) throw new Error(error.message || 'Request failed');
   return data;
 }

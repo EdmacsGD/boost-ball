@@ -666,6 +666,7 @@ export class ClipStudio {
       this.message('Clips work on the website version of the game: edmacsgd.github.io/boost-ball');
       return;
     }
+    this.message('Loading clips...');
     this.loadMore().then(() => this.show(0));
   }
 
