@@ -86,7 +86,10 @@ export class Input {
         return;
       }
       const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA');
-      if (!typing && (this.boundCodes.has(e.code) || e.code === 'Tab')) e.preventDefault();
+      // Reload (Ctrl+R, Ctrl+Shift+R, Cmd+R, F5) always reaches the browser, even though R is a game
+      // key. Other Ctrl combos stay blocked so Ctrl-as-boost + W never closes the tab.
+      const reload = ((e.ctrlKey || e.metaKey) && e.code === 'KeyR') || e.code === 'F5';
+      if (!typing && !reload && (this.boundCodes.has(e.code) || e.code === 'Tab')) e.preventDefault();
       if (e.repeat) return;
       press(e.code);
     });
