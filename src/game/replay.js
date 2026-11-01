@@ -86,7 +86,9 @@ export function lerpPose(a, b, k, outPos, outQuat) {
 const HEAD = 11;
 const CAR_F = 10;
 export class MatchRecorder {
-  constructor(carIds, rate = 30) {
+  // keepSeconds > 0: keep only about that much (free play records forever, so it rolls).
+  constructor(carIds, rate = 30, keepSeconds = 0) {
+    this.keep = keepSeconds > 0 ? Math.ceil(keepSeconds * rate) : 0;
     this.ids = carIds.slice();
     this.stride = HEAD + carIds.length * CAR_F;
     this.interval = 1 / rate;
@@ -127,6 +129,15 @@ export class MatchRecorder {
       d[o++] = c.forwardSpeed;
     }
     this.count++;
+    // Rolling: drop the oldest frames, but never what a saved clip needs (pin = earliest time wanted).
+    if (this.keep && this.count > this.keep * 1.5 && (this.pin === undefined || this.indexAt(this.pin) > 0)) {
+      let drop = this.count - this.keep;
+      if (this.pin !== undefined) drop = Math.min(drop, this.indexAt(this.pin));
+      this.data.copyWithin(0, drop * this.stride, this.count * this.stride);
+      this.count -= drop;
+      const t0 = this.data[0];
+      this.goals = this.goals.filter((g) => g.t >= t0);
+    }
   }
 
   addGoal(g) {

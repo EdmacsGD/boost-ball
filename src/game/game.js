@@ -293,7 +293,8 @@ export class Game {
     this.zeroSeconds = false;
     this.hud.setScore(0, 0);
     this.matchTime = 0;
-    this.matchRec = mode !== 'free' ? new MatchRecorder(this.players.map((p) => p.car.id)) : null;
+    // Free play keeps a rolling minute, for clips (Ctrl+Q); matches keep everything for the replay.
+    this.matchRec = new MatchRecorder(this.players.map((p) => p.car.id), 30, mode === 'free' ? 60 : 0);
     this.kickoffSetup();
     document.querySelectorAll('#modeGroup button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     document.querySelectorAll('#diffGroup button').forEach((b) => b.classList.toggle('on', b.dataset.diff === difficulty));
@@ -546,6 +547,7 @@ export class Game {
       document.querySelector('.tabpane[data-pane="controls"]').appendChild(document.getElementById('controlsBlock'));
     }
     if (p && this.audio.ready) this.audio.silenceEngines();
+    if (p) this.clips.refreshPauseButton();
     this.lastFrame = performance.now();
   }
 

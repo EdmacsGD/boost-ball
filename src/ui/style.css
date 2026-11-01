@@ -1386,3 +1386,19 @@ body.clipview #hud { visibility: hidden !important; }
   .clip-label { width: 100%; }
   .clip-panel { top: auto; transform: none; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: calc(100vw - 32px); max-height: 55%; }
 }
+/* Trim strip (clip editor): drag the two handles like a phone's video trimmer. */
+.trim { display: grid; gap: 6px; }
+.trim-track { position: relative; height: 48px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); touch-action: none; cursor: pointer; }
+.trim-bars { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.trim-shade { position: absolute; top: 0; bottom: 0; background: rgba(2, 4, 8, 0.62); pointer-events: none; }
+.trim-sel { position: absolute; top: -2px; bottom: -2px; border-top: 3px solid var(--gold); border-bottom: 3px solid var(--gold); cursor: grab; }
+.trim-track.dragging .trim-sel { cursor: grabbing; }
+.trim-h { position: absolute; top: -2px; bottom: -2px; width: 16px; margin-left: -8px; background: var(--gold); cursor: ew-resize; display: grid; place-items: center; z-index: 2; outline: none; }
+.trim-h.a { border-radius: 6px 0 0 6px; margin-left: -14px; }
+.trim-h.b { border-radius: 0 6px 6px 0; margin-left: -2px; }
+.trim-h i { width: 3px; height: 16px; border-radius: 2px; background: rgba(26, 13, 0, 0.6); }
+.trim-h:focus-visible { box-shadow: 0 0 0 2px #fff; }
+.trim-play { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 6px rgba(0, 0, 0, 0.8); pointer-events: none; z-index: 1; }
+.trim-mark { position: absolute; bottom: -7px; width: 0; height: 0; margin-left: -5px; border: 5px solid transparent; border-bottom-color: #ff8a2a; pointer-events: none; }
+.trim-info { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+.trim-info b { color: var(--gold); font-size: 14px; }

@@ -11,7 +11,8 @@ import { MatchRecorder } from './replay.js';
 import { iconSvg } from '../ui/icons.js';
 import * as api from '../net/clipsApi.js';
 
-const LENGTHS = [5, 10, 15, 20, 30];
+const MIN_LEN = 1;
+const MAX_LEN = 30;
 const MAX_MARKS = 20;
 const AFTER = 1.5; // seconds kept after the Ctrl+Q press (the follow-through, the explosion)
 
@@ -195,9 +196,10 @@ export class ClipStudio {
   mark() {
     const g = this.game;
     const rec = g.matchRec;
-    const inMatch = rec && rec.count > 0 && ['play', 'goal', 'replay', 'countdown'].includes(g.state);
-    if (!inMatch) {
-      if (g.state === 'play' && g.mode === 'free') g.hud.popup('CLIPS: PLAY A MATCH');
+    const live = rec && rec.count > 0 && ['play', 'goal', 'replay', 'countdown'].includes(g.state);
+    if (!live) return;
+    if (g.endlessOn) {
+      g.hud.popup('CLIPS: NOT IN THE SKY FIELD');
       return;
     }
     if (g.clipMarks.length >= MAX_MARKS) {
@@ -205,7 +207,8 @@ export class ClipStudio {
       return;
     }
     g.clipMarks.push(rec.end);
-    g.hud.popup(`CLIP SAVED (${g.clipMarks.length})`);
+    this.repin();
+    g.hud.popup(g.mode === 'free' ? `CLIP SAVED (${g.clipMarks.length}) · ESC TO EDIT` : `CLIP SAVED (${g.clipMarks.length})`);
     g.audio.play?.('click');
   }
 
@@ -214,6 +217,23 @@ export class ClipStudio {
     if (!b) return;
     const n = (this.game.clipMarks || []).length;
     b.hidden = !n || !this.game.lastMatch;
+    b.textContent = `Your clips (${n})`;
+  }
+
+  // Free play: the clips are edited from the pause menu (there is no end screen).
+  refreshPauseButton() {
+    const b = document.getElementById('pauseClipsBtn');
+    if (!b) return;
+    const g = this.game;
+    if (!this.pauseHooked) {
+      this.pauseHooked = true;
+      b.addEventListener('click', () => {
+        g.setPaused(false);
+        this.openEditor();
+      });
+    }
+    const n = this.liveMarks().length;
+    b.hidden = !(g.mode === 'free' && !g.np && n);
     b.textContent = `Your clips (${n})`;
   }
 
@@ -233,6 +253,8 @@ export class ClipStudio {
   unmount() {
     if (this.offFeed) this.offFeed();
     this.offFeed = null;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = 0;
     if (this.root) this.root.remove();
     this.root = null;
     this.commentsOpen = false;
@@ -243,33 +265,70 @@ export class ClipStudio {
     return api.clipsSupported() && a.signedIn && a.online && a.online.id;
   }
 
-  // ------------------------------------------------ editor (end of match)
+  // ------------------------------------------------ editor
+  // The recording the clips come from: the finished match on the end screen, or the rolling
+  // free play recording.
+  source() {
+    const g = this.game;
+    return g.state === 'ended' || (this.active === 'edit' && this.fromEnd) ? g.lastMatch : g.matchRec;
+  }
+
+  // Marks still inside the recording (free play only keeps the last minute).
+  liveMarks() {
+    const g = this.game;
+    const rec = g.state === 'ended' ? g.lastMatch : g.matchRec;
+    if (!rec || !rec.count) return [];
+    g.clipMarks = (g.clipMarks || []).filter((m) => m > rec.start + 1);
+    return g.clipMarks;
+  }
+
   openEditor() {
     const g = this.game;
-    if (!g.lastMatch || !(g.clipMarks || []).length) return;
+    this.fromEnd = g.state === 'ended';
+    const src = this.source();
+    if (!src || !this.liveMarks().length) return;
     document.getElementById('results').hidden = true;
     this.active = 'edit';
-    this.sel = 0;
-    this.len = 10;
+    this.sel = g.clipMarks.length - 1; // the newest
     this.cam = g.players.indexOf(g.player);
-    this.posted = this.posted && this.posted.rec === g.lastMatch ? this.posted : { rec: g.lastMatch, set: new Set() };
+    if (!this.trims || this.trims.rec !== src) this.trims = { rec: src, map: new Map() };
+    if (!this.posted || this.posted.rec !== src) this.posted = { rec: src, set: new Set() };
     this.buildEditor();
-    this.playSelection();
+    this.selectMark(this.sel);
+    const tick = () => {
+      this.raf = requestAnimationFrame(tick);
+      this.drawPlayhead();
+    };
+    this.raf = requestAnimationFrame(tick);
+  }
+
+  // The stretch of recording the trim strip shows for a mark: up to 30 s before it, 5 s after.
+  windowFor(m) {
+    const src = this.source();
+    return [Math.max(src.start, m - MAX_LEN), Math.min(src.end, m + 5)];
   }
 
   range() {
-    const rec = this.game.lastMatch;
     const m = this.game.clipMarks[this.sel];
-    const end = Math.min(rec.end, m + AFTER);
-    const start = Math.max(rec.start, end - this.len);
-    return [start, end];
+    let r = this.trims.map.get(m);
+    if (!r) {
+      const [wa, wb] = this.windowFor(m);
+      const b = Math.min(wb, m + AFTER);
+      r = [Math.max(wa, b - 10), b];
+      this.trims.map.set(m, r);
+    }
+    return r;
   }
 
-  playSelection() {
+  selectMark(i) {
+    this.sel = i;
+    this.status.textContent = '';
     const [a, b] = this.range();
-    const view = new RangeView(this.game.lastMatch, a, b);
-    if (this.game.state === 'theater' && this.game.theater.clipRec) this.game.theater.swapClip(view, this.camKey());
-    else this.game.theater.openClip(view, this.camKey());
+    this.view = new RangeView(this.source(), a, b);
+    const th = this.game.theater;
+    if (this.game.state === 'theater' && th.clipRec) th.swapClip(this.view, this.camKey());
+    else th.openClip(this.view, this.camKey());
+    this.drawStrip();
     this.refreshEditor();
   }
 
@@ -282,18 +341,29 @@ export class ClipStudio {
     const root = this.mount('clip-editor');
     const panel = el('div', 'clip-panel');
     const head = el('div', 'clip-head');
-    head.append(el('h3', '', 'Your clips'), el('span', 'clip-help', 'Saved with Ctrl+Q during the match. Pick one, set the length, post it.'));
+    head.append(el('h3', '', 'Your clips'), el('span', 'clip-help', 'Saved with Ctrl+Q. Drag the ends of the strip to trim, then post.'));
     this.markRow = el('div', 'clip-chips');
-    const lenRow = el('div', 'clip-chips');
-    lenRow.appendChild(el('span', 'clip-label', 'Length'));
-    this.lenBtns = LENGTHS.map((s) => {
-      const b = button('small-btn', `${s} s`, () => {
-        this.len = s;
-        this.playSelection();
-      });
-      lenRow.appendChild(b);
-      return [s, b];
-    });
+    // Trim strip: the ball's speed over time (spikes are hits), the kept part between two handles.
+    const trim = el('div', 'trim');
+    this.track = el('div', 'trim-track');
+    this.canvas = el('canvas', 'trim-bars');
+    this.shadeL = el('div', 'trim-shade');
+    this.shadeR = el('div', 'trim-shade');
+    this.selBox = el('div', 'trim-sel');
+    this.hA = el('div', 'trim-h a');
+    this.hB = el('div', 'trim-h b');
+    for (const [h, label] of [[this.hA, 'Clip start'], [this.hB, 'Clip end']]) {
+      h.tabIndex = 0;
+      h.setAttribute('role', 'slider');
+      h.setAttribute('aria-label', label);
+      h.appendChild(el('i'));
+    }
+    this.playhead = el('div', 'trim-play');
+    this.markTick = el('div', 'trim-mark');
+    this.track.append(this.canvas, this.shadeL, this.shadeR, this.selBox, this.markTick, this.playhead, this.hA, this.hB);
+    this.trimInfo = el('div', 'trim-info');
+    trim.append(this.track, this.trimInfo);
+    this.bindTrim();
     const camRow = el('div', 'clip-chips');
     camRow.appendChild(el('span', 'clip-label', 'Camera'));
     const me = g.players.indexOf(g.player);
@@ -319,49 +389,208 @@ export class ClipStudio {
     const foot = el('div', 'clip-chips');
     foot.append(
       button('small-btn', 'Remove this clip', () => this.removeMark()),
-      button('small-btn', 'Back to results', () => this.closeEditor(), 'Esc'),
+      button('small-btn', this.fromEnd ? 'Back to results' : 'Back to free play', () => this.closeEditor(), 'Esc'),
     );
-    panel.append(head, this.markRow, lenRow, camRow, postRow, this.status, foot);
+    panel.append(head, this.markRow, trim, camRow, postRow, this.status, foot);
     root.appendChild(panel);
+  }
+
+  // Drag the handles (or the kept part) with the mouse or a finger; arrow keys nudge a handle.
+  bindTrim() {
+    const tAt = (x) => {
+      const r = this.track.getBoundingClientRect();
+      const [wa, wb] = this.windowFor(this.game.clipMarks[this.sel]);
+      return wa + Math.max(0, Math.min(1, (x - r.left) / r.width)) * (wb - wa);
+    };
+    const th = this.game.theater;
+    let drag = null;
+    const apply = (a, b, show) => {
+      const m = this.game.clipMarks[this.sel];
+      const [wa, wb] = this.windowFor(m);
+      a = Math.max(wa, a);
+      b = Math.min(wb, b);
+      this.trims.map.set(m, [a, b]);
+      this.view.start = a;
+      this.view.end = b;
+      this.view.goals = this.view.rec.goals.filter((g) => g.t >= a && g.t <= b);
+      // While dragging, show the frame under the handle (like a phone's video trimmer).
+      th.playing = false;
+      th.t = show;
+      this.game.effects.clear();
+      this.layoutStrip();
+    };
+    const start = (e, kind) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const [a, b] = this.range();
+      drag = { kind, a, b, t0: tAt(e.clientX), id: e.pointerId };
+      this.track.setPointerCapture?.(e.pointerId);
+      this.track.classList.add('dragging');
+    };
+    this.hA.addEventListener('pointerdown', (e) => start(e, 'a'));
+    this.hB.addEventListener('pointerdown', (e) => start(e, 'b'));
+    this.selBox.addEventListener('pointerdown', (e) => start(e, 'move'));
+    this.track.addEventListener('pointerdown', (e) => {
+      // A tap outside the kept part moves the nearer handle there.
+      if (drag) return;
+      const t = tAt(e.clientX);
+      const [a, b] = this.range();
+      start(e, Math.abs(t - a) < Math.abs(t - b) ? 'a' : 'b');
+      this.track.dispatchEvent(new PointerEvent('pointermove', { clientX: e.clientX, pointerId: e.pointerId }));
+    });
+    this.track.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const t = tAt(e.clientX);
+      if (drag.kind === 'a') {
+        const a = Math.min(t, drag.b - MIN_LEN);
+        apply(Math.max(a, drag.b - MAX_LEN), drag.b, Math.max(a, drag.b - MAX_LEN));
+      } else if (drag.kind === 'b') {
+        const b = Math.max(t, drag.a + MIN_LEN);
+        apply(drag.a, Math.min(b, drag.a + MAX_LEN), Math.min(b, drag.a + MAX_LEN) - 0.05);
+      } else {
+        const [wa, wb] = this.windowFor(this.game.clipMarks[this.sel]);
+        const len = drag.b - drag.a;
+        const a = Math.max(wa, Math.min(wb - len, drag.a + (t - drag.t0)));
+        apply(a, a + len, a);
+      }
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      this.track.classList.remove('dragging');
+      th.seek(this.view.start);
+      th.playing = true;
+    };
+    this.track.addEventListener('pointerup', end);
+    this.track.addEventListener('pointercancel', end);
+    for (const [h, kind] of [[this.hA, 'a'], [this.hB, 'b']]) {
+      h.addEventListener('keydown', (e) => {
+        if (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') return;
+        e.preventDefault();
+        e.stopPropagation();
+        const d = (e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1);
+        const [a, b] = this.range();
+        if (kind === 'a') apply(Math.max(b - MAX_LEN, Math.min(b - MIN_LEN, a + d)), b, a + d);
+        else apply(a, Math.min(a + MAX_LEN, Math.max(a + MIN_LEN, b + d)), b + d - 0.05);
+        clearTimeout(this.keyTimer);
+        this.keyTimer = setTimeout(end, 500);
+        drag = drag || { kind };
+      });
+    }
+  }
+
+  // Ball speed bars for the window, so hits and shots are easy to find on the strip.
+  drawStrip() {
+    const c = this.canvas;
+    const w = Math.max(1, Math.round(this.track.clientWidth || 320));
+    const h = Math.max(1, Math.round(this.track.clientHeight || 44));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = w * dpr;
+    c.height = h * dpr;
+    const ctx = c.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+    const src = this.source();
+    const [wa, wb] = this.windowFor(this.game.clipMarks[this.sel]);
+    const bars = Math.max(10, Math.floor(w / 4));
+    ctx.fillStyle = 'rgba(160, 196, 255, 0.55)';
+    for (let i = 0; i < bars; i++) {
+      const t = wa + ((i + 0.5) / bars) * (wb - wa);
+      const s = src.sample(t);
+      if (!s) continue;
+      const v = s.a.ball.v;
+      const sp = Math.hypot(v[0], v[1], v[2]);
+      const bh = Math.max(2, Math.min(1, sp / 40) * (h - 8));
+      ctx.fillRect(i * (w / bars) + 0.5, h - 4 - bh, Math.max(1, w / bars - 1.5), bh);
+    }
+    // Goals.
+    ctx.fillStyle = '#ffd166';
+    for (const gl of src.goals) {
+      if (gl.t < wa || gl.t > wb) continue;
+      const x = ((gl.t - wa) / (wb - wa)) * w;
+      ctx.fillRect(x - 1, 0, 2, h);
+    }
+    this.layoutStrip();
+  }
+
+  layoutStrip() {
+    const m = this.game.clipMarks[this.sel];
+    const [wa, wb] = this.windowFor(m);
+    const [a, b] = this.range();
+    const pct = (t) => `${(((t - wa) / Math.max(0.01, wb - wa)) * 100).toFixed(3)}%`;
+    this.selBox.style.left = pct(a);
+    this.selBox.style.right = `${(100 - parseFloat(pct(b))).toFixed(3)}%`;
+    this.shadeL.style.left = '0';
+    this.shadeL.style.width = pct(a);
+    this.shadeR.style.left = pct(b);
+    this.shadeR.style.right = '0';
+    this.hA.style.left = pct(a);
+    this.hB.style.left = pct(b);
+    this.markTick.style.left = pct(m);
+    this.hA.setAttribute('aria-valuetext', `${(a - wa).toFixed(1)} s`);
+    this.hB.setAttribute('aria-valuetext', `${(b - wa).toFixed(1)} s`);
+    const src = this.source();
+    this.trimInfo.replaceChildren(
+      el('span', '', `${fmt(a - src.start)} to ${fmt(b - src.start)}`),
+      el('b', '', `${(b - a).toFixed(1)} s`),
+    );
+  }
+
+  drawPlayhead() {
+    if (this.active !== 'edit' || !this.playhead) return;
+    const [wa, wb] = this.windowFor(this.game.clipMarks[this.sel]);
+    const t = this.game.theater.t;
+    this.playhead.style.left = `${(((t - wa) / Math.max(0.01, wb - wa)) * 100).toFixed(3)}%`;
   }
 
   refreshEditor() {
     if (this.active !== 'edit' || !this.root) return;
     const g = this.game;
-    const rec = g.lastMatch;
+    const src = this.source();
     this.markRow.replaceChildren(el('span', 'clip-label', 'Clip'));
     g.clipMarks.forEach((m, i) => {
       const done = this.posted.set.has(m);
-      const b = button(`small-btn${i === this.sel ? ' on' : ''}`, `${i + 1} · ${fmt(m - rec.start)}${done ? ' · posted' : ''}`, () => {
-        this.sel = i;
-        this.status.textContent = '';
-        this.playSelection();
-      });
+      const b = button(`small-btn${i === this.sel ? ' on' : ''}`, `${i + 1} · ${fmt(m - src.start)}${done ? ' · posted' : ''}`, () => this.selectMark(i));
       this.markRow.appendChild(b);
     });
-    for (const [s, b] of this.lenBtns) b.classList.toggle('on', s === this.len);
     for (const [v, b] of this.camBtns) b.classList.toggle('on', v === this.cam);
     const done = this.posted.set.has(g.clipMarks[this.sel]);
     this.postBtn.disabled = !!this.posting || done;
     this.postBtn.textContent = done ? 'Posted' : this.posting ? 'Posting...' : 'Post clip';
   }
 
+  // Free play's rolling recording keeps everything from 30 s before the oldest saved clip.
+  repin() {
+    const g = this.game;
+    const rec = g.matchRec;
+    if (!rec || !rec.keep) return;
+    rec.pin = g.clipMarks.length ? Math.min(...g.clipMarks) - MAX_LEN : undefined;
+  }
+
   removeMark() {
     const g = this.game;
     g.clipMarks.splice(this.sel, 1);
+    this.repin();
     if (!g.clipMarks.length) {
       this.closeEditor();
       return;
     }
-    this.sel = Math.min(this.sel, g.clipMarks.length - 1);
-    this.playSelection();
+    this.selectMark(Math.min(this.sel, g.clipMarks.length - 1));
   }
 
   closeEditor() {
     const g = this.game;
     this.unmount();
     this.active = null;
-    if (g.state === 'theater') g.theater.close();
+    if (g.state === 'theater') {
+      if (this.fromEnd) {
+        g.theater.close();
+      } else {
+        // Back to free play where it was (the car has not moved; the physics waited).
+        g.enterState('play');
+        g.cameraRig.snap();
+      }
+    }
     this.refreshResultsButton();
   }
 
@@ -400,7 +629,7 @@ export class ClipStudio {
     this.status.textContent = '';
     this.refreshEditor();
     try {
-      const data = await packClip(g.lastMatch, a, b, this.clipMeta());
+      const data = await packClip(this.source(), a, b, this.clipMeta());
       await api.postClip({
         author: g.account.online.id,
         title: this.title.value.trim().slice(0, 60),
