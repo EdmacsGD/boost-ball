@@ -169,6 +169,7 @@ export class Game {
 
     this.input = new Input(window);
     this.input.setBindings(this.settings.bindings);
+    this.input.setPadBindings(this.settings.padBindings);
     this.audio = new AudioEngine();
     this.audio.volume = this.settings.volume / 100;
     this.anthemStore = new AnthemStore();
@@ -180,8 +181,9 @@ export class Game {
     this.input.onAnyInput(() => this.audio.init());
 
     this.bindMenus();
-    this.renderBindings = setupBindings(this.input, (b) => {
+    this.renderBindings = setupBindings(this.input, (b, pb) => {
       this.settings.bindings = b;
+      this.settings.padBindings = pb;
       saveSettings(this.settings);
     });
     this.input.rumbleOn = this.settings.rumble !== false;
@@ -1428,7 +1430,7 @@ export class Game {
       if (this.home.page !== 'main') this.home.setPage('main');
       return;
     }
-    if (inp.consume('Escape') || inp.consumeAction('pause') || inp.consumePad('start')) {
+    if (inp.consume('Escape') || inp.consumeAction('pause')) {
       if (!document.getElementById('results').hidden) return;
       this.setPaused(!this.paused);
     }
@@ -1438,11 +1440,11 @@ export class Game {
       if (inp.consume('Enter') || inp.consumePad('start')) this.startMatch();
       return;
     }
-    if (inp.consumeAction('ballCam') || inp.consumePad('y')) {
+    if (inp.consumeAction('ballCam')) {
       this.cameraRig.ballCam = !this.cameraRig.ballCam;
       this.audio.play('click');
     }
-    if (inp.consumeAction('freeCam') || (this.mode === 'free' && !this.np && inp.consumePad('r3'))) this.freeCam.toggle();
+    if (inp.consumeAction('freeCam')) this.freeCam.toggle();
     if (inp.consumeAction('unlimited')) {
       if (!this.boostCheatAllowed()) {
         if (this.state === 'play' || this.state === 'countdown') this.hud.popup('UNLIMITED BOOST: PRACTICE ONLY');
@@ -1462,7 +1464,7 @@ export class Game {
         if (inp.consume(`Digit${k}`) || inp.consume(`Numpad${k}`)) this.np.say(k - 1);
       }
     }
-    if ((inp.consumeAction('reset') || inp.consumePad('back')) && !this.np && (this.state === 'play' || this.state === 'goal')) {
+    if (inp.consumeAction('reset') && !this.np && (this.state === 'play' || this.state === 'goal')) {
       // Reset only in free play and the Sky Field. In a match it was a free teleport home (a cheap
       // save), so matches have no reset at all.
       if (this.mode === 'free') {
@@ -1471,7 +1473,7 @@ export class Game {
         this.sim.freezeCars = false;
       }
     }
-    if (this.state === 'replay' && !(this.np && this.np.client) && this.stateTime > 0.4 && (inp.consume('Space') || inp.consumeAction('jump') || inp.consume('Enter') || inp.consumePad('a'))) {
+    if (this.state === 'replay' && !(this.np && this.np.client) && this.stateTime > 0.4 && (inp.consume('Space') || inp.consumeAction('jump') || inp.consume('Enter'))) {
       this.finishReplay();
     }
   }

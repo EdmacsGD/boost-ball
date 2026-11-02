@@ -3,9 +3,10 @@
 // Keyboard and mouse use rebindable actions (two slots each, see ACTIONS). Mouse buttons are stored as
 // 'Mouse0' (left), 'Mouse1' (middle) and 'Mouse2' (right). Esc always pauses, so a bad binding can't
 // lock anyone out of the menu.
-// Gamepad (fixed layout; PlayStation names in brackets): left stick, RT [R2] throttle, LT [L2] reverse,
-// A [Cross] jump, B [Circle] boost, X [Square] powerslide / air roll, LB/RB [L1/R1] air roll left/right,
-// Y [Triangle] camera, Back [Create] reset, Start [Options] pause. In menus: D-pad or left stick moves,
+// Gamepad (defaults, all rebindable in Controls except the left stick; PlayStation names in brackets):
+// left stick steers, RT [R2] throttle, LT [L2] reverse, A [Cross] jump, B [Circle] boost,
+// X [Square] powerslide / air roll, LB/RB [L1/R1] air roll left/right, Y [Triangle] camera,
+// Back [Create] reset, Start [Options] pause. In menus (fixed): D-pad or left stick moves,
 // A [Cross] selects, B [Circle] goes back. Works with PS5 DualSense, PS4, Xbox and most other pads.
 
 export const ACTIONS = [
@@ -30,6 +31,25 @@ export const ACTIONS = [
   { id: 'practice3', label: 'Free play: shoot ball at you', keys: ['Digit3', 'Numpad3'], pad: '' },
   { id: 'practice4', label: 'Free play: ball straight up', keys: ['Digit4', 'Numpad4'], pad: '' },
 ];
+
+// Controller buttons per action (standard button numbers, -1 = none). Steering, pitch and yaw stay
+// on the left stick. Menus always use A / Cross to select and B / Circle to go back.
+export const PAD_DEFAULTS = {
+  forward: 7, back: 6, jump: 0, boost: 1, powerslide: 2, airRoll: 2, rollLeft: 4, rollRight: 5,
+  ballCam: 3, unlimited: -1, freeCam: 11, reset: 8, pause: 9, fullscreen: -1,
+  practice1: -1, practice2: -1, practice3: -1, practice4: -1,
+};
+export const PAD_FIXED = { left: 'Left stick', right: 'Left stick' };
+const PAD_KEYS = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'l3', 'r3', 'up', 'down', 'left', 'right', 'home', 'touch'];
+const XBOX_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home', 'Touchpad'];
+const SONY_NAMES = ['Cross', 'Circle', 'Square', 'Triangle', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'PS', 'Touchpad'];
+export function padButtonName(i, type) {
+  if (!(i >= 0)) return '-';
+  return (type === 'ps' ? SONY_NAMES : XBOX_NAMES)[i] || `Button ${i}`;
+}
+export function defaultPadBindings() {
+  return { ...PAD_DEFAULTS };
+}
 
 export function defaultBindings() {
   const b = {};
@@ -60,6 +80,8 @@ export class Input {
     this.keys = new Set(); // held codes (keys and mouse buttons)
     this.pressed = new Set(); // pressed since last poll (edge)
     this.bindings = defaultBindings();
+    this.padBindings = defaultPadBindings();
+    this.padCaptureFn = null; // set while the controls menu waits for a controller button
     this.boundCodes = new Set();
     this.setBindings(this.bindings);
     this.captureFn = null; // set while the controls menu waits for a key
@@ -150,6 +172,28 @@ export class Input {
   }
 
   // Calls fn(code) with the next key or mouse button, once. Escape cancels (fn gets null).
+  setPadBindings(b) {
+    this.padBindings = { ...defaultPadBindings(), ...(b || {}) };
+    for (const k of Object.keys(this.padBindings)) {
+      const v = Number(this.padBindings[k]);
+      this.padBindings[k] = Number.isInteger(v) && v >= -1 && v < 18 ? v : -1;
+    }
+  }
+
+  // The next controller button (its number) goes to fn; Esc or another click cancels (fn(null)).
+  capturePad(fn) {
+    this.padCaptureFn = fn;
+    this.lastPad = {}; // a button already held does not count until it is pressed again
+    const st = this.padState;
+    if (st) PAD_KEYS.forEach((n, i) => { this.lastPad[n] = st.b[i]; });
+  }
+
+  cancelPadCapture() {
+    const fn = this.padCaptureFn;
+    this.padCaptureFn = null;
+    if (fn) fn(null);
+  }
+
   captureNext(fn) {
     this.keys.clear();
     this.captureFn = (code) => {
@@ -181,6 +225,12 @@ export class Input {
     const b = this.bindings[action];
     if (!b) return false;
     let hit = false;
+    // The controller button bound to this action counts too.
+    const pi = this.padBindings[action];
+    if (pi >= 0 && this.padPressed.has(PAD_KEYS[pi])) {
+      this.padPressed.delete(PAD_KEYS[pi]);
+      hit = true;
+    }
     for (const code of b) {
       if (code && this.pressed.has(code)) {
         this.pressed.delete(code);
@@ -245,6 +295,13 @@ export class Input {
     for (let i = 0; i < names.length; i++) {
       const now = st.b[i];
       if (now && !this.lastPad[names[i]]) {
+        if (this.padCaptureFn) {
+          const fn = this.padCaptureFn;
+          this.padCaptureFn = null;
+          this.lastPad[names[i]] = now;
+          fn(i);
+          continue;
+        }
         this.padPressed.add(names[i]);
         this.fireAny();
       }
@@ -313,19 +370,25 @@ export class Input {
       const dz = (v) => (Math.abs(v) < 0.12 ? 0 : (v - Math.sign(v) * 0.12) / 0.88);
       const lx = dz(st.lx);
       const ly = dz(st.ly);
-      const b = (i) => st.b[i];
-      const padThrottle = st.v[7] - st.v[6];
-      const padRoll = b(2);
-      if (Math.abs(padThrottle) > 0.02 || Math.abs(lx) > 0 || Math.abs(ly) > 0 || b(0) || b(1) || b(2) || b(4) || b(5)) {
+      // Buttons through the player's controller bindings (see PAD_DEFAULTS).
+      const pb = this.padBindings;
+      const on = (a) => pb[a] >= 0 && !!st.b[pb[a]];
+      const val = (a) => (pb[a] >= 0 ? st.v[pb[a]] || (st.b[pb[a]] ? 1 : 0) : 0);
+      const padThrottle = val('forward') - val('back');
+      const padRoll = on('airRoll');
+      const rollL = on('rollLeft');
+      const rollR = on('rollRight');
+      const any = on('jump') || on('boost') || padRoll || on('powerslide') || rollL || rollR;
+      if (Math.abs(padThrottle) > 0.02 || Math.abs(lx) > 0 || Math.abs(ly) > 0 || any) {
         controls.throttle = Math.abs(padThrottle) > 0.02 ? padThrottle : controls.throttle;
         controls.steer = lx || controls.steer;
         controls.pitch = ly ? ly : controls.pitch; // stick down = nose up
         controls.yaw = padRoll ? 0 : lx || controls.yaw;
-        const bumpers = (b(5) ? 1 : 0) - (b(4) ? 1 : 0);
-        controls.roll = padRoll ? lx : bumpers || controls.roll;
-        controls.jump = controls.jump || b(0);
-        controls.boost = controls.boost || b(1);
-        controls.handbrake = controls.handbrake || padRoll;
+        const bumpers = (rollR ? 1 : 0) - (rollL ? 1 : 0);
+        controls.roll = padRoll ? lx || bumpers : bumpers || controls.roll;
+        controls.jump = controls.jump || on('jump');
+        controls.boost = controls.boost || on('boost');
+        controls.handbrake = controls.handbrake || on('powerslide');
       }
     }
     // Touch controls (phones): the joystick drives like a gamepad stick (up = forward and nose down).
@@ -346,9 +409,12 @@ export class Input {
   }
 }
 
+// Xbox first: "Xbox Wireless Controller" also contains "Wireless Controller" (the PS4 pad's name).
+const XBOX_RE = /045e|xbox|xinput/i;
+const SONY_RE = /054c|dualsense|dualshock|playstation|wireless controller/i;
 export function padTypeOf(id = '') {
-  if (/054c|dualsense|dualshock|playstation|wireless controller/i.test(id)) return 'ps';
-  if (/045e|xbox|xinput/i.test(id)) return 'xbox';
+  if (XBOX_RE.test(id)) return 'xbox';
+  if (SONY_RE.test(id)) return 'ps';
   return 'generic';
 }
 
@@ -359,7 +425,7 @@ function normalizePad(gp) {
   const b = new Array(18).fill(false);
   const v = new Array(18).fill(0);
   const get = (i) => gp.buttons[i];
-  if (gp.mapping === 'standard' || !/054c|dualsense|dualshock|wireless controller/i.test(gp.id)) {
+  if (gp.mapping === 'standard' || XBOX_RE.test(gp.id) || !SONY_RE.test(gp.id)) {
     for (let i = 0; i < 18; i++) {
       const btn = get(i);
       if (!btn) continue;
