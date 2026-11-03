@@ -189,7 +189,7 @@ export const CONFIG = {
   arena: {
     extentX: 4096,
     extentY: 5120,
-    height: 2150, // original 2044; raised about 1 m for more air room
+    height: 2044, // same as the original
     cornerPlane: 8064, // |x| + |y| = 8064
     floorRampRadius: 256,
     ceilingRampRadius: 384,
