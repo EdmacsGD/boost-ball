@@ -254,11 +254,17 @@ export class Stadium {
     const rampGeo = surfaceGeometry(S, ['ramp'], (v) => [v.u / 600, v.z / 600]);
     const rampMat = new THREE.MeshStandardMaterial({
       map: tile,
-      roughness: Math.min(0.92, surf.roughness + 0.05),
-      metalness: surf.metalness,
+      // Matte: at the low angle you see it from, a shinier ramp mirrored the sky (a purple band
+      // in the dusk arenas) instead of looking like the turf it continues.
+      roughness: 1,
+      metalness: 0,
       color: TF.rampColor,
       envMap: this.envMap,
-      envMapIntensity: surf.env * 0.85,
+      envMapIntensity: surf.env * 0.3,
+      // The ramp faces away from most lights; without this it read as a dark band before the wall.
+      emissive: 0xffffff,
+      emissiveMap: tile,
+      emissiveIntensity: 0.12,
     });
     const ramp = new THREE.Mesh(rampGeo, rampMat);
     ramp.receiveShadow = true;
@@ -334,6 +340,7 @@ export class Stadium {
         uPulse: { value: new THREE.Vector2(0, 0) },
         uMid: { value: col3(this.theme.walls.mid) },
         uGlow: { value: this.theme.walls.glow },
+        uCar: { value: new THREE.Vector3(0, -100, 0) },
       },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
@@ -356,6 +363,7 @@ export class Stadium {
         uniform vec2 uPulse;
         uniform vec3 uMid;
         uniform float uGlow;
+        uniform vec3 uCar;
         varying vec2 vUv;
         varying vec3 vWorld;
         varying vec3 vNormal;
@@ -379,8 +387,12 @@ export class Stadium {
           float fres = pow(1.0 - abs(dot(V, normalize(vNormal))), 3.0);
           float fadeTop = 1.0 - 0.55 * smoothstep(6.0, 19.0, h);
           float bottom = exp(-max(h - 2.7, 0.0) * 0.9) * step(2.55, h);
-          float alpha = 0.035 + line * (0.07 + 0.2 * fadeTop) + fres * 0.08 + bottom * 0.22 + twinkle * 0.12 * fadeTop;
-          vec3 c = col * (0.18 + (line * (0.9 + pulse * 2.0) + bottom * 1.6 + twinkle * 1.2) * uGlow);
+          // Near the car the wall shows clearly: on the glass alone there was nothing close by to
+          // see moving, so driving up the wall looked slow while the speed stayed the same.
+          float dc = length(vWorld - uCar);
+          float near = exp(-dc * dc / 60.0);
+          float alpha = 0.035 + line * (0.07 + 0.2 * fadeTop + near * 0.55) + near * 0.1 + fres * 0.08 + bottom * 0.22 + twinkle * 0.12 * fadeTop;
+          vec3 c = col * (0.18 + near * 0.4 + (line * (0.9 + pulse * 2.0 + near * 1.4) + bottom * 1.6 + twinkle * 1.2) * uGlow);
           alpha = clamp(alpha * (1.0 + pulse), 0.0, 0.9);
           gl_FragColor = vec4(c, alpha);
           ${OUT_F}
@@ -1561,6 +1573,7 @@ export class Stadium {
 
   // Car and ball positions for the ceiling glow (meters, three axes).
   setNear(car, ball) {
+    if (this.wallMat) this.wallMat.uniforms.uCar.value.copy(car);
     if (!this.ceilMat) return;
     this.ceilMat.uniforms.uCar.value.copy(car);
     if (ball) this.ceilMat.uniforms.uBall.value.copy(ball);
