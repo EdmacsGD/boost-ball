@@ -1,11 +1,11 @@
 // Single bot, no opponent: how quickly and how often does it score from random setups?
 import * as THREE from 'three';
-import { initPhysics } from '../src/physics/world.js';
-import { Simulation } from '../src/physics/sim.js';
-import { Bot } from '../src/game/bot.js';
-import { teamRole } from '../src/game/roles.js';
-import { rl, UU, mulberry32 } from '../src/util/math.js';
-import { CONFIG } from '../src/config.js';
+import { initPhysics } from '../../src/physics/world.js';
+import { Simulation } from '../../src/physics/sim.js';
+import { Bot } from '../../src/game/bot.js';
+import { teamRole } from '../../src/game/roles.js';
+import { rl, UU, mulberry32 } from '../../src/util/math.js';
+import { CONFIG } from '../../src/config.js';
 await initPhysics();
 const diff = process.argv[2] || 'hard';
 const N = Number(process.argv[3] || 12);

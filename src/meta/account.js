@@ -479,6 +479,11 @@ export class Account {
     return this.online.rpc('bb_online_create', { p_mode: mode, p_players: players });
   }
 
+  // The host left a ranked match we were in: the host takes the loss, it does not count for us.
+  rankedAbandon(id) {
+    return this.online.rpc('bb_online_abandon', { p_match: id }).catch(() => null);
+  }
+
   rankedJoin(id) {
     return this.online.rpc('bb_online_join', { p_match: id });
   }
@@ -522,7 +527,8 @@ export class Account {
   // Website account: quests count here, everything else is decided by the server. `server` resolves
   // to { stats, levels, elo: [before, after] | null, void, error } once the server has the result.
   recordOnServer({ won, draw, goals, mvp, score, history, ranked }) {
-    const xp = score + (won ? 200 : draw ? 100 : 50);
+    // Same rule as the server: a bot match counts at most 300 points of XP.
+    const xp = (history && history.online ? score : Math.min(score, 300)) + (won ? 200 : draw ? 100 : 50);
     const quests = [...this.event('matches', 1), ...(won ? this.event('wins', 1) : []), ...(mvp ? this.event('mvp', 1) : [])];
     const h = history || {};
     const report = {
@@ -547,7 +553,9 @@ export class Account {
         return this.online.rpc('bb_finish_match', { p_ticket: t, p: report });
       }).then((st) => ({
         levels: this.applyServerStats(st),
-        elo: st && Number.isFinite(st.elo_after) ? [st.elo_before, st.elo_after] : null,
+        elo: st && !st.capped && Number.isFinite(st.elo_after) ? [st.elo_before, st.elo_after] : null,
+        bot: !!(st && st.bot_rating),
+        capped: !!(st && st.capped),
       }));
     } else {
       server = Promise.reject(new Error(h.online ? 'not ranked' : 'no ticket'));

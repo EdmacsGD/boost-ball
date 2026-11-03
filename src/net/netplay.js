@@ -14,6 +14,38 @@ import { encodeCar, decodeCar, encodeBall, decodeBall } from './codec.js';
 export const QUICK_CHAT = ['Nice shot!', 'What a save!', 'Great pass!', 'Thanks!', 'Sorry!', 'gg'];
 
 const G = CONFIG.physics.gravityZ * UU; // m/s^2, negative
+
+// Every page runs its own car, so a changed page could send any state. Limits on what we accept:
+// speed and spin no higher than the physics allows, the car inside the arena (goals included),
+// and no jumps further than the car could drive since its last update. A jump is accepted after
+// half a second of them in a row (a respawn, a kickoff, or our copy fell behind).
+const MAX_V = CONFIG.physics.carMaxSpeed * UU * 1.02;
+const MAX_W = CONFIG.physics.carMaxAngSpeed * 1.02;
+const AX = CONFIG.arena.extentX * UU;
+const AZ = (CONFIG.arena.extentY + CONFIG.arena.goalDepth) * UU;
+const AY = CONFIG.arena.height * UU;
+export function sanePeerCar(p, s, at) {
+  const clampLen = (a, max) => {
+    const l = Math.hypot(a[0], a[1], a[2]);
+    if (l > max) for (let i = 0; i < 3; i++) a[i] *= max / l;
+  };
+  clampLen(s.v, MAX_V);
+  clampLen(s.w, MAX_W);
+  s.p[0] = Math.max(-AX, Math.min(AX, s.p[0]));
+  s.p[1] = Math.max(0, Math.min(AY, s.p[1]));
+  s.p[2] = Math.max(-AZ, Math.min(AZ, s.p[2]));
+  const last = p.net;
+  if (last && !last.demoed && !s.demoed && Number.isFinite(p.netAt)) {
+    const dt = Math.max(0, (at - p.netAt) / 1000);
+    const d = Math.hypot(s.p[0] - last.p[0], s.p[1] - last.p[1], s.p[2] - last.p[2]);
+    if (d > MAX_V * dt * 1.5 + 3) {
+      p.netJumpSince = p.netJumpSince || at;
+      if (at - p.netJumpSince < 500) return false;
+    }
+  }
+  p.netJumpSince = 0;
+  return true;
+}
 const PHASES = { countdown: 'cd', play: 'pl', goal: 'gl', replay: 'rp', ended: 'en' };
 const v0 = new THREE.Vector3();
 const v1 = new THREE.Vector3();
@@ -108,6 +140,7 @@ export class NetPlay {
     if (!p || p.netAt === at) return;
     const s = decodeCar(pr.car);
     if (!s) return;
+    if (!sanePeerCar(p, s, at)) return;
     p.net = s;
     p.netAt = at;
     p.netT = this.sentAt(peer, at, Number(pr.ts));

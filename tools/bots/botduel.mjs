@@ -1,8 +1,8 @@
 // Bot vs bot matches (not part of npm test). Usage: node tests/botduel.mjs ultra hard [minutes] [mode]
-import { initPhysics } from '../src/physics/world.js';
-import { Simulation } from '../src/physics/sim.js';
-import { Bot } from '../src/game/bot.js';
-import { CONFIG } from '../src/config.js';
+import { initPhysics } from '../../src/physics/world.js';
+import { Simulation } from '../../src/physics/sim.js';
+import { Bot } from '../../src/game/bot.js';
+import { CONFIG } from '../../src/config.js';
 
 await initPhysics();
 const [A = 'ultra', B = 'hard', minutes = '5', mode = '1v1'] = process.argv.slice(2);

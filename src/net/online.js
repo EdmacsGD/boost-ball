@@ -314,7 +314,15 @@ export class Online {
     if (this.role === 'client') {
       if (host) this.hostPeer = host.peer;
       if (this.hostPeer && ch.left.some((p) => p.peer === this.hostPeer)) {
-        this.game.toast('The host left the match');
+        const g = this.game;
+        // Ranked and still running: tell the server, so the host takes the loss and the match
+        // does not count for us.
+        const rid = g.np && g.np.rankedId && !g.recorded && g.state !== 'ended' ? g.np.rankedId : null;
+        if (rid) {
+          g.recorded = true;
+          g.toast('The host left: the match does not count for you, the host takes the loss');
+          g.account.rankedAbandon(rid).then((r) => { if (r && r.stats) g.account.applyServerStats(r.stats); });
+        } else g.toast('The host left the match');
         this.leave();
         return;
       }

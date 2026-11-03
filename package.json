@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:pages": "vite build --mode pages",
     "preview": "vite preview",
     "test": "node tests/physics.test.mjs && node tests/camera.test.mjs && node tests/meta.test.mjs && node tests/goal.test.mjs && node tests/flick.test.mjs && node tests/wall.test.mjs && node tests/clips.test.mjs && node tests/filter.test.mjs && node tests/input.test.mjs"
   },

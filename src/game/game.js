@@ -983,10 +983,14 @@ export class Game {
       }
       if (r.levels) extra.push(`LEVEL UP: +${r.levels} DROP${r.levels > 1 ? 'S' : ''}`);
       if (!r.error) {
-        if (r.elo) {
+        if (r.capped) extra.push('DAILY LIMIT: ONLY 20 BOT MATCHES A DAY COUNT');
+        else if (r.elo) {
           const d = r.elo[1] - r.elo[0];
-          extra.push(`${mode} RATING ${r.elo[0]} > ${r.elo[1]} (${d >= 0 ? '+' : ''}${d}) ${tierOf(r.elo[1]).name.toUpperCase()}`);
-        } else if (ranked && r.void) extra.push('RANKED RESULT DID NOT COUNT (SCORES DID NOT MATCH)');
+          // Bot matches have their own rating; the public Rank moves only against people.
+          if (r.bot) extra.push(`${mode} BOT RATING ${r.elo[0]} > ${r.elo[1]} (${d >= 0 ? '+' : ''}${d})`);
+          else extra.push(`${mode} RATING ${r.elo[0]} > ${r.elo[1]} (${d >= 0 ? '+' : ''}${d}) ${tierOf(r.elo[1]).name.toUpperCase()}`);
+        } else if (ranked && r.void && r.hostLeft) extra.push('THE HOST LEFT: THIS MATCH DID NOT COUNT FOR YOU');
+        else if (ranked && r.void) extra.push('RANKED RESULT DID NOT COUNT (SCORES DID NOT MATCH)');
         else if (ranked && r.waiting) extra.push('RATING UPDATES WHEN THE OTHER PLAYERS REPORT');
       }
       if (!extra.length) extra.push('RESULT SAVED');

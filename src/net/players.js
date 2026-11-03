@@ -18,7 +18,10 @@ export async function topPlayers(sort = 'playtime', search = '', limit = 100) {
   const sb = await supabase();
   const col = (SORTS[sort] || SORTS.playtime).col;
   // Names with a word that is not allowed are left off the list until the player changes them.
-  let q = sb.from('profiles').select(COLS).eq('name_flagged', false).order(col, { ascending: false }).order('updated_at', { ascending: false }).limit(limit);
+  let q = sb.from('profiles').select(COLS).eq('name_flagged', false);
+  // Rank lists: only players who played ranked against people in that mode.
+  if (SORTS[sort] && SORTS[sort].rating) q = q.gt(`ranked_${SORTS[sort].rating}`, 0);
+  q = q.order(col, { ascending: false }).order('updated_at', { ascending: false }).limit(limit);
   const s = String(search || '').trim().replace(/[%_,()\\]/g, '').slice(0, 16);
   if (s) q = q.ilike('name', `%${s}%`);
   const { data, error } = await q;

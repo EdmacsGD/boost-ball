@@ -1,8 +1,8 @@
-import { initPhysics } from '../src/physics/world.js';
-import { Simulation } from '../src/physics/sim.js';
-import { Bot } from '../src/game/bot.js';
-import { teamRole } from '../src/game/roles.js';
-import { UU } from '../src/util/math.js';
+import { initPhysics } from '../../src/physics/world.js';
+import { Simulation } from '../../src/physics/sim.js';
+import { Bot } from '../../src/game/bot.js';
+import { teamRole } from '../../src/game/roles.js';
+import { UU } from '../../src/util/math.js';
 await initPhysics();
 const sim = new Simulation();
 const game = { sim, roleFor: (bot) => teamRole(sim.cars, bot.car, sim.ball.pos) };

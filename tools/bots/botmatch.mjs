@@ -1,9 +1,9 @@
 // Bot-vs-bot matches without rendering, to tune the AI. Usage: node tests/botmatch.mjs [mode] [diffBlue] [diffOrange] [minutes]
-import { initPhysics } from '../src/physics/world.js';
-import { Simulation } from '../src/physics/sim.js';
-import { Bot } from '../src/game/bot.js';
-import { teamRole } from '../src/game/roles.js';
-import { UU } from '../src/util/math.js';
+import { initPhysics } from '../../src/physics/world.js';
+import { Simulation } from '../../src/physics/sim.js';
+import { Bot } from '../../src/game/bot.js';
+import { teamRole } from '../../src/game/roles.js';
+import { UU } from '../../src/util/math.js';
 
 await initPhysics();
 const mode = process.argv[2] || '1v1';
@@ -11,7 +11,7 @@ const dB = process.argv[3] || 'medium';
 const dO = process.argv[4] || 'medium';
 const minutes = Number(process.argv[5] || 2);
 const per = mode === '3v3' ? 3 : mode === '2v2' ? 2 : 1;
-import { CONFIG } from '../src/config.js';
+import { CONFIG } from '../../src/config.js';
 if (process.env.OVR_BLUE) CONFIG.bots.custom_b = { ...CONFIG.bots[dB], ...JSON.parse(process.env.OVR_BLUE) };
 const sim = new Simulation();
 const game = { sim, roleFor: (bot) => teamRole(sim.cars, bot.car, sim.ball.pos) };

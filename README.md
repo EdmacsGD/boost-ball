@@ -7,15 +7,16 @@ physics, github.com/ZealanL/RocketSim).
 
 ## Play
 
-- Hosted: open the published artifact link.
-- Offline: open `boost-ball.html` (the single-file build) in Chrome. It needs no server.
+- Website: https://edmacsgd.github.io/boost-ball/ (accounts, online play, leaderboards, clips).
+- Offline: build it (below) and open `dist/index.html` in Chrome. It needs no server and plays as a guest.
 - From source (needs Node 18+):
 
 ```
 npm install
-npm run dev      # dev server with hot reload
-npm run build    # single self-contained file in dist/index.html
-npm test         # physics checks against reference numbers
+npm run dev          # dev server with hot reload
+npm run build        # single self-contained file in dist/index.html (offline file, claude.ai artifact)
+npm run build:pages  # the website build in dist-pages/ (split files, so the libraries stay cached)
+npm test             # physics, camera, goal, wall, input, clips and word filter checks
 ```
 
 ## What's in it
@@ -79,7 +80,7 @@ Aurora Arena, Solstice Park, Neon District, Frostbite Bowl, Dune Canyon, Sky Hav
 
 ## Ultra bots
 
-The Ultra difficulty decides 40 times a second, aims for the post farther from the defender, flips into almost every ground hit, speed-flips on long runs, goes for aerials up to the ceiling, reads the ball 5 s ahead, and backs off to defend when the opponent will reach the ball first instead of diving in. No cheats: same car, same boost. In bot-vs-bot tests (`node tests/botduel.mjs ultra hard 10`) it outscored Hard by about 1.4 to 1.8 times.
+The Ultra difficulty decides 40 times a second, aims for the post farther from the defender, flips into almost every ground hit, speed-flips on long runs, goes for aerials up to the ceiling, reads the ball 5 s ahead, and backs off to defend when the opponent will reach the ball first instead of diving in. No cheats: same car, same boost. In bot-vs-bot tests (`node tools/bots/botduel.mjs ultra hard 10`) it outscored Hard by about 1.4 to 1.8 times.
 
 ## Match replay
 
@@ -147,14 +148,23 @@ button (Esc cancels, Backspace clears). Two keys per action. Defaults:
 
 ## Website
 
-The game is one HTML file: `docs/index.html` is the built game, served by GitHub Pages
-(Settings > Pages > Deploy from a branch > `main` / `docs`). To change it: edit `src/`, run
-`npm install` and `npm run build`, then copy `dist/index.html` to `docs/index.html`.
+`docs/` is the built website, served by GitHub Pages (Settings > Pages > Deploy from a branch >
+`main` / `docs`). To change it: edit `src/`, run `npm install` and `npm run build:pages`, then
+replace `docs/index.html` and `docs/assets/` with the contents of `dist-pages/` (keep `docs/.nojekyll`).
+three.js, Rapier and Supabase are separate files there, so after an update a returning player only
+downloads the game code again (about 200 KB gzipped) instead of the whole 6 MB.
 
 On the website, profiles and online play use Supabase (project `boost-ball`, settings in
-`src/net/backend-config.js`; the publishable key there is meant to be public). The database has one
-table, `profiles` (id, name, data, updated_at), with row level security: each logged-in player can
-read and change only their own row. Online play uses Supabase Realtime: Presence for who is in a
+`src/net/backend-config.js`; the publishable key there is meant to be public). The SQL is in
+`supabase/`, numbered in the order it was applied. Every table has row level security, and stats,
+XP and ratings are only changed by server functions, never written by the page.
+
+Fair play (`supabase/010_fair_play.sql`): bot matches move a separate bot rating, and the Rank
+leaderboards list only players with ranked matches against people. A bot match gives at most 300
+points of XP plus the win bonus, and only 20 bot matches a day count. Online, the same opponents
+again and again in 24 hours give less and less Rank, and a host who leaves a ranked match takes the
+loss while it does not count for the others. Each page also limits the speed, spin and position it
+accepts for other players' cars. Online play uses Supabase Realtime: Presence for who is in a
 lobby or match, Broadcast for car and ball updates (12 a second per player, because the free plan
 allows 100 Realtime messages a second for the whole project).
 
@@ -174,10 +184,10 @@ src/input/, src/audio/, src/ui/   keyboard/gamepad, procedural sound, HUD, home 
 tests/physics.test.mjs   50 checks: speeds, jump heights, flips, ball bounce, hits, demos, flip resets, all hitboxes
 tests/meta.test.mjs      26 checks: item catalog, drop odds, no duplicates, quests, levels, saves
 tests/flick.test.mjs     4 checks: musty flick (and its timing window) and a front flick launch the ball
-tests/wall.test.mjs      4 checks: a ball rolled into the wall rides up it and stays on it
+tests/wall.test.mjs      7 checks: a ball rolled into the wall rides up it and stays on it
 tests/goal.test.mjs      19 checks: shots into every part of the goal score and stay inside, rounded edges, no lip
 tests/camera.test.mjs    34 camera checks: framing, floor clearance, turn rates, wall roll, toggle timing
-tests/botmatch.mjs       headless bot-vs-bot match with stats: node tests/botmatch.mjs 2v2 medium hard 3
+tools/bots/botmatch.mjs  headless bot-vs-bot match with stats: node tools/bots/botmatch.mjs 2v2 medium hard 3
 ```
 
 Physics runs at a fixed 120 ticks per second like the original; rendering interpolates between ticks.
