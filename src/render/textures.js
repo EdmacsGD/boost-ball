@@ -362,17 +362,23 @@ export function makeHexNetTexture() {
 
 // Scrolling LED ribbon text.
 export function makeRibbonTexture(lines) {
-  const W = 2048;
   const H = 128;
+  const FONT = '800 76px "Saira Game", "Arial Narrow", Arial, sans-serif';
+  // One sequence plus a gap after each item must fit. Long names (about 2200 px of text) did not fit
+  // in 2048 px, so the gaps went negative and the words overlapped ("BOOST BALBLUE"). Widen the
+  // strip instead; tex.userData.aspect tells the ribbon mesh how long one tile is.
+  const probe = canvas(8, 8).getContext('2d');
+  probe.font = FONT;
+  const widths = lines.map((l) => probe.measureText(l.text).width);
+  const seq = widths.reduce((a, b) => a + b, 0);
+  const W = seq + lines.length * 90 <= 2048 ? 2048 : 4096;
   const c = canvas(W, H);
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#05070c';
   ctx.fillRect(0, 0, W, H);
-  ctx.font = '800 76px "Saira Game", "Arial Narrow", Arial, sans-serif';
+  ctx.font = FONT;
   ctx.textBaseline = 'middle';
-  // Measure one sequence, repeat it a whole number of times and spread the gaps so it tiles seamlessly.
-  const widths = lines.map((l) => ctx.measureText(l.text).width);
-  const seq = widths.reduce((a, b) => a + b, 0);
+  // Repeat the sequence a whole number of times and spread the gaps so it tiles seamlessly.
   const reps = Math.max(1, Math.floor(W / (seq + lines.length * 90)));
   const gap = (W - reps * seq) / (reps * lines.length);
   let x = gap / 2;
@@ -401,6 +407,7 @@ export function makeRibbonTexture(lines) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.anisotropy = 8;
+  tex.userData.aspect = W / H;
   return tex;
 }
 

@@ -136,7 +136,8 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--panel);
+  background: rgba(6, 10, 20, 0.82);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   border: 1px solid var(--line);
   padding: 5px 12px;
   font-size: 14px;
@@ -380,6 +381,8 @@ body {
   inset: 0;
   pointer-events: none;
   font-family: var(--display);
+  /* Darker on the left, so the logo and menu stay readable over the busy stadium. */
+  background: linear-gradient(90deg, rgba(4, 8, 18, 0.55) 0%, rgba(4, 8, 18, 0.25) 26%, rgba(4, 8, 18, 0) 42%);
   padding-left: max(28px, env(safe-area-inset-left, 0px));
   padding-right: max(28px, env(safe-area-inset-right, 0px));
 }
@@ -671,7 +674,7 @@ table.binds td { padding: 4px 8px 4px 0; }
   color: transparent;
   filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.6));
 }
-.home-logo span { margin-top: 6px; font-size: 10px; letter-spacing: 0.42em; color: #b9c6d8; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+.home-logo span { margin-top: 6px; font-size: 10px; letter-spacing: 0.42em; color: #dbe5f2; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
 
 .player-card {
   display: flex;

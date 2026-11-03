@@ -748,7 +748,8 @@ export class Stadium {
         const X = x - nx * dOut;
         const Z = z - nz * dOut;
         rp.push(X, y0, Z, X, y1, Z);
-        ru.push(s / ((y1 - y0) * 16), 0, s / ((y1 - y0) * 16), 1);
+        const tile = (y1 - y0) * (ribbonTex.userData.aspect || 16);
+        ru.push(s / tile, 0, s / tile, 1);
         if (i < segs) {
           const a = i * 2;
           ri.push(a, a + 2, a + 3, a, a + 3, a + 1);

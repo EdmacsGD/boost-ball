@@ -1656,6 +1656,8 @@ export class Game {
             if (this.np) this.np.myTouch();
             const k = Math.min(1, e.strength / 2500);
             this.input.rumble(0.15 + 0.6 * k, 0.4 + 0.4 * k, 70 + 90 * k);
+            // A hard hit of your own gives a short camera kick (goals use 0.5 and up).
+            if (e.strength > 1500) this.effects.shake = Math.max(this.effects.shake, 0.1 + 0.25 * Math.min(1, (e.strength - 1500) / 2500));
             this.quest('touches');
             if (!p.car.isOnGround && ball.pos.y > 2.5) this.quest('aerials');
           }
