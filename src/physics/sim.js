@@ -128,7 +128,13 @@ export class Simulation {
   // little rolling loss allow. Hits (ball, cars) are left alone.
   rampAssist(car) {
     if (car.isDemoed || car.netDriven || !car.snapVel) return;
-    const prev = car.snapVel.length();
+    // Braking, reversing and powersliding slow the car on purpose.
+    const c = car.controls;
+    if (c.throttle < 0 || c.handbrake) return;
+    // Compare with the speed at the end of the last tick: most of the loss in the bend happens in the
+    // car's own tire and suspension forces, before this tick's velocity snapshot is taken.
+    const ref = car.endVel || car.snapVel;
+    const prev = ref.length();
     if (prev < 4 || car.numWheelsInContact < 3) return;
     let onCurve = false;
     for (const w of car.wheels) {
@@ -141,7 +147,7 @@ export class Simulation {
     car.readState();
     const now = car.vel.length();
     if (now < 0.1) return;
-    const dir = v0.copy(car.snapVel).divideScalar(prev);
+    const dir = v0.copy(ref).divideScalar(prev);
     let accel = -Math.abs(CONFIG.physics.gravityZ) * UU * dir.y; // gravity along the motion
     if (car.isBoosting && car.boost > 0) accel += CONFIG.boost.accelGround * UU * Math.max(0, car.fwd.dot(dir));
     accel -= 0.6; // allowed rolling loss (m/s^2)
@@ -201,6 +207,7 @@ export class Simulation {
     for (const car of this.cars) {
       car.postTick();
       car.finishTick();
+      car.endVel = (car.endVel || new THREE.Vector3()).copy(car.vel);
       if (!car.isDemoed && this.padsEnabled) for (const pad of this.pads) this.checkPad(pad, car);
     }
     for (const pad of this.pads) {

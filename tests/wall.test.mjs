@@ -66,6 +66,48 @@ for (const [vx, vy] of [[1800, 0], [2400, 0], [1500, 1500], [2000, 800]]) {
   check('car boosting up the wall keeps its speed in the curve', before - minV < 1.3, `${before.toFixed(1)} -> lowest ${minV.toFixed(1)} m/s`);
 }
 
+// Without boost at top speed, and rolling back down: the bend itself takes almost nothing beyond
+// gravity (before the fix it took about 65 J/kg going up, about 3 m/s, and 15 J/kg coming down).
+{
+  const THREE = await import('three');
+  const g = Math.abs(CONFIG.physics.gravityZ) * UU;
+  const WX = CONFIG.arena.extentX * UU;
+  const run = (setup, control, stop) => {
+    const s3 = new Simulation();
+    s3.goalDetection = false;
+    const car = s3.addCar(0, 'standard');
+    s3.setupKickoff();
+    setup(car, THREE);
+    let pv = null;
+    let ph = null;
+    let loss = 0;
+    const st = { phase: 'up', maxH: 0 };
+    for (let i = 0; i < 900; i++) {
+      car.controls.reset();
+      control(car, st);
+      s3.step();
+      const v = car.vel.length();
+      const h = car.pos.y;
+      st.maxH = Math.max(st.maxH, h);
+      if (pv !== null && car.numWheelsInContact >= 3 && h > 0.21 && h < 2.6 && st.phase !== 'skip') loss += -(0.5 * (v * v - pv * pv) + g * (h - ph));
+      pv = v;
+      ph = h;
+      if (stop(car, st)) break;
+    }
+    return loss;
+  };
+  const up = run((car, T) => { car.place(new T.Vector3(WX - 12, 0.2, -6), 0, 100); car.body.setLinvel({ x: 22, y: 0, z: 0 }, true); car.readState(); },
+    (car) => { car.controls.throttle = 1; }, (car) => car.pos.y > 4);
+  check('no boost at 22 m/s: the bend takes almost no speed beyond gravity', up < 10, `${up.toFixed(1)} J/kg`);
+  const down = run((car, T) => { car.place(new T.Vector3(WX - 12, 0.2, 0), 0, 100); car.body.setLinvel({ x: 16, y: 0, z: 0 }, true); car.readState(); },
+    (car, st) => {
+      car.controls.throttle = st.phase === 'up' && car.pos.y < 5 ? 1 : 0;
+      if (st.phase === 'up' && car.pos.y > 1 && car.vel.y < -0.05) st.phase = 'down';
+    },
+    (car, st) => st.phase === 'down' && car.pos.y < 0.22);
+  check('rolling back down the wall: the bend takes almost nothing', down < 5, `${down.toFixed(1)} J/kg (going up and down)`);
+}
+
 let pass = 0;
 for (const r of results) {
   if (r.ok) pass++;
