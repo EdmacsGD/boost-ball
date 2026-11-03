@@ -185,6 +185,12 @@ export class Bot {
     // 3. Teammates.
     if (this.role === 'support') {
       this.state = 'shadow';
+      // Ball deep in our end (2v2 has no goalie): the support covers the net instead of going
+      // wide or for boost. Measured: the net was empty 10-15% of the time without this.
+      if (this.d.rotation && ballDistToOwnGoal < (this.d.coverDist ?? 55) && !this.hasGoalie()) {
+        this.setDefend(ball, ownGoalZ, dir, carDistToOwnGoal);
+        return;
+      }
       // Measured: helps in 2v2; in 3v3 the third car already covers the back, so the support stays close.
       const backRoute = this.d.rotBack ?? this.game.sim.cars.filter((c) => c.team === this.team).length < 3;
       if (this.d.rotation && backRoute && goalSide < -2) {
@@ -238,6 +244,11 @@ export class Bot {
     this.state = 'chase';
     this.target.copy(ball.pos).setY(0);
     this.targetSpeed = 20;
+  }
+
+  // 3v3: the third car is the goalie (see roles.js), so the support does not need to cover the net.
+  hasGoalie() {
+    return this.game.sim.cars.filter((c) => c.team === this.team && !c.isDemoed).length >= 3;
   }
 
   // Go back to the far post; once there, face the ball from in front of the goal.

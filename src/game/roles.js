@@ -26,7 +26,7 @@ export function teamRole(cars, car, ballPos, botOf = null, now = 0) {
     if (rotation) {
       const b = botOf(c);
       if (!b) {
-        s -= 0.3; // a person on the team: let them have it
+        s -= 0.6; // a person on the team: let them have it (0.3 still crowded them)
       } else {
         if (b.dodge || b.aerial || (COMMIT_STATES.has(b.state) && now < b.commitUntil + 0.25)) s -= me.d.rotCommit ?? 0.5;
         if (b.role === 'attacker') s -= me.d.rotHold ?? 0.25;
