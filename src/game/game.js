@@ -606,12 +606,17 @@ export class Game {
     }
 
     const stepping = this.state === 'play' || this.state === 'countdown' || this.state === 'goal';
-    // Under 25 fps for 5 s in a match: tell the player once which setting helps.
-    if (stepping && !this.testMode && !this.lowFpsTold) {
+    // A fixed graphics setting under 25 fps for 5 s in a match: lower it one step and say so.
+    // (Auto already adjusts itself in the renderer.)
+    if (stepping && !this.testMode && this.settings.quality !== 'auto') {
       this.lowFpsTime = this.fpsSmooth < 25 ? (this.lowFpsTime || 0) + dt : 0;
-      if (this.lowFpsTime > 5 && this.renderer.qualityName !== 'lowest') {
-        this.lowFpsTold = true;
-        this.toast(`Low frame rate (${Math.round(this.fpsSmooth)} FPS): Settings > Graphics > Low or Lowest makes the game smoother`);
+      const down = { high: 'medium', medium: 'low', low: 'lowest' }[this.settings.quality];
+      if (this.lowFpsTime > 5 && down) {
+        this.lowFpsTime = 0;
+        const fps = Math.round(this.fpsSmooth);
+        this.setGraphics(down);
+        this.fpsSmooth = 30; // measure again from here
+        this.toast(`Low frame rate (${fps} FPS): graphics lowered to ${down[0].toUpperCase() + down.slice(1)}. Change it in Settings.`);
       }
     }
     if (stepping) {

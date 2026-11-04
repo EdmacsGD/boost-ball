@@ -32,7 +32,9 @@ export function guessWeakDevice(renderer) {
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
     const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
     const weakGpu = /mali|powervr|adreno|swiftshader|llvmpipe|software|intel.*\b(hd|uhd) graphics/i.test(name);
-    return weakGpu || (navigator.hardwareConcurrency || 8) <= 4;
+    // Chromebooks: most have a small integrated GPU (one ran this game at 10-20 fps on Medium).
+    const chromebook = /\bCrOS\b/.test(navigator.userAgent || '');
+    return weakGpu || chromebook || (navigator.hardwareConcurrency || 8) <= 4;
   } catch {
     return false;
   }
@@ -182,8 +184,9 @@ export class Renderer {
       this.dynamicScale = scale;
       this.resize();
     }
-    // Persistent slowness at the lowest scale: drop a quality level.
-    if (median > 1 / 40 && this.dynamicScale <= 0.56 && STEP_DOWN[this.qualityName]) {
+    // Persistent slowness at the lowest scale, or far too slow (under 30 fps) at any scale: drop a
+    // quality level right away instead of waiting for the size steps first.
+    if (((median > 1 / 40 && this.dynamicScale <= 0.56) || median > 1 / 30) && STEP_DOWN[this.qualityName]) {
       this.setQuality(STEP_DOWN[this.qualityName]);
       this.dynamicScale = 0.8;
       this.resize();
