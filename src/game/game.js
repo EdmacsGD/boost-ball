@@ -49,7 +49,11 @@ import { FreeCam } from './freeCam.js';
 import { tierOf } from '../meta/rank.js';
 
 const TICK = 1 / CONFIG.game.tickRate;
-const MAX_TICKS_PER_FRAME = 5;
+// At most 12 physics ticks per frame: the game keeps real speed down to 10 fps. It was 5 (real speed
+// only down to 24 fps), and a Chromebook running at 12-20 fps played in slow motion: the car looked
+// like it slowed down (worst near the walls, where the stands cost the most to draw) while the
+// km/h stayed the same, because the km/h is the car's speed in game time.
+const MAX_TICKS_PER_FRAME = 12;
 const BOT_NAMES = ['Comet', 'Volt', 'Nyx', 'Pike', 'Echo', 'Rook', 'Ember', 'Halo', 'Quill', 'Sable', 'Drift', 'Juno'];
 const v0 = new THREE.Vector3();
 const WHITE = new THREE.Color(1, 1, 1);
@@ -602,15 +606,23 @@ export class Game {
     }
 
     const stepping = this.state === 'play' || this.state === 'countdown' || this.state === 'goal';
+    // Under 25 fps for 5 s in a match: tell the player once which setting helps.
+    if (stepping && !this.testMode && !this.lowFpsTold) {
+      this.lowFpsTime = this.fpsSmooth < 25 ? (this.lowFpsTime || 0) + dt : 0;
+      if (this.lowFpsTime > 5 && this.renderer.qualityName !== 'lowest') {
+        this.lowFpsTold = true;
+        this.toast(`Low frame rate (${Math.round(this.fpsSmooth)} FPS): Settings > Graphics > Low or Lowest makes the game smoother`);
+      }
+    }
     if (stepping) {
       // Player input.
       const pc = this.player.car.controls;
       if (this.paused || this.freeCam.active) pc.reset(); // free camera: the car waits
       else this.input.read(pc);
-      this.acc += dt;
+      // A single long hitch (tab switch, garbage collection) counts as at most 0.1 s, and leftover
+      // time is dropped when the cap is hit, so a slow frame never snowballs into seconds of lag.
+      this.acc += Math.min(dt, MAX_TICKS_PER_FRAME * TICK);
       let steps = 0;
-      // At most 5 physics ticks per frame (enough for full speed down to 24 fps). More would make a
-      // slow frame slower still: on a weak laptop one hitch turned into several seconds of lag.
       while (this.acc >= TICK && steps < MAX_TICKS_PER_FRAME) {
         this.tick();
         this.acc -= TICK;
