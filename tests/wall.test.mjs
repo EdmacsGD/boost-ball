@@ -108,6 +108,29 @@ for (const [vx, vy] of [[1800, 0], [2400, 0], [1500, 1500], [2000, 800]]) {
   check('rolling back down the wall: the bend takes almost nothing', down < 5, `${down.toFixed(1)} J/kg (going up and down)`);
 }
 
+// The car must really move as fast as its speed says, all the way through the bend. (The velocity
+// alone hid a stall: the position crawled at 5% of the speed while the velocity stayed at the top.)
+{
+  let worst = 1, lostMax = 0, where = '';
+  for (const hb of Object.keys(CONFIG.hitboxes)) for (const ang of [0, 30]) for (const boost of [false, true]) {
+    const sim = new Simulation(); sim.goalDetection = false; const car = sim.addCar(0, hb);
+    car.place(rl(4096 - 3400, -1000, 17), ang * Math.PI / 180); sim.ball.place(rl(-3000, 4000, 92));
+    for (let i = 0; i < 60; i++) { car.controls.reset(); sim.step(); }
+    const prev = car.pos.clone(); let lost = 0;
+    for (let i = 0; i < 480; i++) {
+      car.controls.reset(); car.controls.throttle = 1; car.controls.boost = boost; if (boost) car.boost = 100;
+      prev.copy(car.pos); sim.step();
+      const v = car.vel.length(), moved = car.pos.distanceTo(prev) * 120;
+      if (4096 - car.pos.x / UU < 350 && car.pos.y / UU < 600 && v > 3) {
+        if (moved / v < worst) { worst = moved / v; where = `${hb}, ${ang} deg, ${boost ? 'boost' : 'no boost'}`; }
+        lost += Math.max(0, v - moved) / 120 / UU;
+      }
+    }
+    lostMax = Math.max(lostMax, lost);
+  }
+  check('through the bend the car really moves as fast as its speed (all hitboxes)', worst > 0.6 && lostMax < 90, `slowest tick ${(worst * 100).toFixed(0)}% of the shown speed (${where}), most distance lost ${lostMax.toFixed(0)} uu`);
+}
+
 let pass = 0;
 for (const r of results) {
   if (r.ok) pass++;

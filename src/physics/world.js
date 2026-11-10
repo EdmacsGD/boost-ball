@@ -48,6 +48,12 @@ export class PhysicsWorld {
     // Generate contacts up to 25 cm before objects touch. Without this a car at full speed sinks
     // ~7 cm into the ball before the solver sees it, and the overlap fires the hit push twice.
     this.world.integrationParameters.normalizedPredictionDistance = 0.25;
+    // Up to 4 sub-steps per tick when something hits. With the default of 1, a fast body that touches
+    // a surface is only moved up to the moment of impact for that tick and keeps its velocity: a car
+    // at boost speed whose nose met the wall curve crawled at about 5% of its speed for up to half a
+    // second while the speed display stayed at the top (it also happened sliding on the roof and
+    // flying into walls). With 4, the rest of the tick is played out after the impact.
+    this.world.integrationParameters.maxCcdSubsteps = 4;
     this.eventQueue = new R.EventQueue(true);
 
     const { surfaces, footprint, floorPoly } = buildArenaSurfaces();
