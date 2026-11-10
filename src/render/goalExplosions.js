@@ -55,6 +55,7 @@ function smokeBurst(fx, pos, n, s0, s1, life, size0, size1, c0, c1, alpha, { lif
 
 // Direction from the goal toward the field.
 const fieldDir = (pos) => new THREE.Vector3(0, 0, -Math.sign(pos.z) || 1);
+const CROSSBAR = 6.43; // goal height, m
 
 function classic(fx, pos, tc) {
   const { hot, deep, pale } = palette(tc);
@@ -600,38 +601,245 @@ function heartbeat(fx, pos, tc) {
   fx.fireball(pos, red, pink, 0.4, 4, 0.5, 'plasma', 0.5);
 }
 
+// Phoenix: one fire bird bursts out of the goal, climbs, swoops low over the field leaving a trail
+// of embers, then climbs again and burns out in a shower of sparks over midfield.
 function phoenix(fx, pos, tc) {
-  const fire = new THREE.Color(1, 0.45, 0.1).lerp(tc, 0.2);
-  const gold = new THREE.Color(1, 0.82, 0.3);
+  const fire = new THREE.Color(1, 0.42, 0.08).lerp(tc, 0.15);
+  const gold = new THREE.Color(1, 0.84, 0.35);
+  const ember = new THREE.Color(0.9, 0.15, 0.03);
   const dir = fieldDir(pos);
   const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
-  const body = pos.clone().add(v.set(0, 2, 0));
-  fx.fireball(body, fire, gold, 0.5, 4, 1, 'plasma', 3);
-  fx.flash(body, 20, 0.8, fire);
-  // Two wings sweep out and up: streams of fire that rise in arcs.
-  for (let s = 0; s < 18; s++) {
-    fx.later(s * 0.035, () => {
-      for (const w of [1, -1]) {
-        const t = s / 18;
-        const n = Math.round(14 * fx.quality.particles) + 2;
-        for (let k = 0; k < n; k++) {
-          const spread = t * 9;
-          const vx = side.x * w * spread;
-          const vz = side.z * w * spread;
-          const vy = 6 + Math.sin(t * Math.PI) * 7 - t * 3;
-          fx.glow.spawn(body.x, body.y, body.z, vx + rnd(-0.8, 0.8), vy + rnd(-0.8, 0.8), vz + rnd(-0.8, 0.8) + dir.z * 2, rnd(0.9, 1.4), 0.6, 0.08, k % 2 ? gold : fire, fx.colors.ember, 1, 1.2, 4);
-        }
+  const at = (f, u, s) => pos.clone().addScaledVector(dir, f).addScaledVector(UP, u).addScaledVector(side, s);
+  const path = new THREE.CatmullRomCurve3([
+    at(-1, 1, 0), at(3, 8, 0), at(12, 15, 5), at(24, 8, 3), at(33, 3.2, -3), at(42, 4, -1), at(50, 17, 2),
+  ], false, 'centripetal');
+  const T = 3.8;
+
+  // Bird, built along +z (Object3D.lookAt points +z at the target).
+  const g = new THREE.Group();
+  const mats = [];
+  const glowMat = (color, opacity = 1) => {
+    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+    mats.push(m);
+    return m;
+  };
+  const geos = [];
+  const keep = (geo) => (geos.push(geo), geo);
+  const body = new THREE.Mesh(keep(new THREE.SphereGeometry(1, 16, 10)), glowMat(gold.clone().lerp(fire, 0.45), 0.9));
+  body.scale.set(0.55, 0.5, 1.9);
+  const head = new THREE.Mesh(keep(new THREE.SphereGeometry(0.42, 12, 8)), glowMat(gold, 0.95));
+  head.position.set(0, 0.35, 2.0);
+  const crest = new THREE.Mesh(keep(new THREE.ConeGeometry(0.16, 1.3, 6)), glowMat(fire));
+  crest.position.set(0, 0.75, 1.55);
+  crest.rotation.x = -2.2;
+  g.add(body, head, crest);
+  // Wings: a fan of feathers, gold at the root and red at the tips (vertex colors).
+  function wingGeo() {
+    const pts = [[0, 0], [1.5, 0.9], [3.5, 1.3], [5.6, 1.0], [7.4, 0.2], [6.6, -0.5], [5.4, -1.3], [4.0, -1.6], [2.6, -2.1], [1.2, -1.6], [0.2, -0.9]];
+    const posA = [], colA = [];
+    const cRoot = gold, cTip = ember;
+    for (let i = 1; i < pts.length - 1; i++) {
+      for (const [x, z] of [[0, 0], pts[i], pts[i + 1]]) {
+        posA.push(x, 0, z * 0.9);
+        const t = Math.min(1, Math.hypot(x, z) / 7.4);
+        const c = cRoot.clone().lerp(fire, Math.min(1, t * 2.2)).lerp(cTip, Math.min(1, Math.max(0, t - 0.4) * 1.8)).multiplyScalar(0.85);
+        colA.push(c.r, c.g, c.b);
       }
-    });
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(posA, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colA, 3));
+    return keep(geo);
   }
-  // Head and tail.
-  fx.later(0.3, () => {
-    burst(fx, body.clone().add(v.set(0, 5, 0)), 80, 2, 6, 1, 0.5, 0.1, gold, fire, { grav: 2 });
-    streakBurst(fx, body, 120, 10, 30, 0.8, () => (Math.random() < 0.5 ? gold : fire), { lift: 0.8 });
+  const wMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  mats.push(wMat);
+  const wings = [1, -1].map((s) => {
+    const pivot = new THREE.Group();
+    const m = new THREE.Mesh(wingGeo(), wMat);
+    m.scale.x = s;
+    pivot.add(m);
+    pivot.position.set(s * 0.35, 0.15, 0.3);
+    g.add(pivot);
+    return { pivot, s };
   });
-  smokeBurst(fx, pos, 60, 2, 6, 3, 1.5, 5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.45, { lift: 0.8, grav: -1.5 });
-  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 18, 0.8, fire, 0.9, 0.9);
-  fx.shake = Math.max(fx.shake, 1.1);
+  // Tail: three long feathers.
+  const tails = [-0.35, 0, 0.35].map((a, i) => {
+    const m = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.7, 4.2)), glowMat(i === 1 ? fire : ember, 0.85));
+    m.geometry.translate(0, -2.1, 0);
+    m.rotation.x = Math.PI / 2;
+    const pivot = new THREE.Group();
+    pivot.position.set(0, 0, -1.6);
+    pivot.rotation.y = a;
+    pivot.add(m);
+    g.add(pivot);
+    return pivot;
+  });
+  g.position.copy(path.getPoint(0));
+  g.scale.setScalar(0.01);
+
+  // Burst out of the goal.
+  fx.fireball(pos.clone().add(v.set(0, 1.5, 0)), fire, gold, 0.5, 4.5, 0.9, 'plasma', 3);
+  fx.flash(pos.clone().add(v.set(0, 2, 0)), 22, 0.7, fire);
+  smokeBurst(fx, pos, 50, 2, 6, 2.6, 1.5, 5, fx.colors.smokeExpl, fx.colors.smokeDark, 0.4, { lift: 0.8, grav: -1.5 });
+  fx.ring(v2.set(pos.x, 0.06, pos.z), UP, 1, 16, 0.8, fire, 0.9, 0.9);
+  fx.shake = Math.max(fx.shake, 1.0);
+
+  const look = new THREE.Vector3();
+  const tip = new THREE.Vector3();
+  let done = false;
+  fx.temp(g, T + 0.05, (dt, age) => {
+    const t = Math.min(1, age / T);
+    // Fast out of the goal, slower through the swoop, fast up at the end.
+    const u = t < 0.25 ? t * 1.25 : t < 0.75 ? 0.3125 + (t - 0.25) * 0.95 : 0.7875 + (t - 0.75) * 0.85;
+    path.getPoint(Math.min(1, u), g.position);
+    path.getPoint(Math.min(1, u + 0.01), look);
+    if (look.distanceToSquared(g.position) > 1e-6) g.lookAt(look);
+    // Bank into the turns.
+    const tan = path.getTangent(Math.min(1, u));
+    g.rotateZ(-tan.dot(side) * 0.9);
+    g.scale.setScalar(Math.min(1, age / 0.35) * 2.1);
+    // Big slow flaps while climbing, gliding in the swoop.
+    const glide = u > 0.42 && u < 0.72;
+    const flap = Math.sin(age * (glide ? 4 : 10)) * (glide ? 0.12 : 0.65) + (glide ? -0.05 : 0.1);
+    for (const w of wings) w.pivot.rotation.z = w.s * flap;
+    tails.forEach((p, i) => (p.rotation.x = Math.sin(age * 7 + i) * 0.15));
+    // Ember trail from the wing tips and the tail.
+    const n = Math.max(1, Math.round(5 * fx.quality.particles));
+    for (const w of wings) {
+      tip.set(w.s * 7, 0, -0.4).applyMatrix4(w.pivot.matrixWorld);
+      for (let k = 0; k < n; k++) fx.glow.spawn(tip.x, tip.y, tip.z, rnd(-1, 1), rnd(-1.5, 0.5), rnd(-1, 1), rnd(0.5, 1.1), 0.5, 0.05, k % 2 ? gold : fire, ember, 1, 1.5, 3);
+    }
+    tip.set(0, 0, -5).applyMatrix4(g.matrixWorld);
+    for (let k = 0; k < n * 2; k++) fx.glow.spawn(tip.x, tip.y, tip.z, rnd(-1.5, 1.5), rnd(-2, 1), rnd(-1.5, 1.5), rnd(0.8, 1.6), 0.7, 0.08, fire, ember, 1, 1.2, 5);
+    // Low over the field: sparks rain onto the grass.
+    if (glide && Math.random() < 0.5) streakBurst(fx, g.position, 6, 4, 10, 0.6, () => (Math.random() < 0.5 ? gold : fire), { lift: -0.6 });
+    // The end: it bursts into a shower of sparks.
+    if (!done && age > T - 0.08) {
+      done = true;
+      const p = g.position.clone();
+      fx.flash(p, 26, 0.6, gold);
+      fx.fireball(p, fire, gold, 0.8, 6, 0.9, 'plasma', 1);
+      burst(fx, p, 220, 4, 16, 1.6, 0.7, 0.06, () => (Math.random() < 0.5 ? gold : fire), ember, { grav: 5 });
+      streakBurst(fx, p, 160, 12, 34, 1.1, () => (Math.random() < 0.5 ? gold : fire), { lift: 0.2 });
+      fx.ring(p, dir, 1, 20, 0.8, gold, 0.9, 0.85);
+      g.visible = false;
+    }
+  });
+  fx.later(T + 0.2, () => { geos.forEach((x) => x.dispose()); mats.forEach((m) => m.dispose()); });
+}
+
+// Kraken: glowing tentacles burst up out of the goal, two hook over the crossbar and the rest wave
+// at the field, then they all sink back down in a splash of light.
+function kraken(fx, pos, tc) {
+  const { pale, deep } = palette(tc);
+  const skin = new THREE.Color(0.2, 0.05, 0.28).lerp(tc, 0.25);
+  const glowC = tc.clone().lerp(new THREE.Color(0.2, 1, 0.85), 0.35);
+  const dir = fieldDir(pos);
+  const side = new THREE.Vector3().crossVectors(dir, UP).normalize();
+  const H = CROSSBAR;
+  const N = 44; // segments per tentacle
+  // Bases on the floor at the back of the goal. They come out under the crossbar, then rise in front
+  // of the goal: the two "grab" ones hook back over the crossbar, the others curl toward the field.
+  const arms = [
+    { x: -6.6, back: 3.5, len: 15, grab: false, curl: 1.1, ph: 0.0 },
+    { x: -2.4, back: 4.0, len: 15.5, grab: true, ph: 1.3 },
+    { x: 2.4, back: 4.0, len: 15.5, grab: true, ph: 2.1 },
+    { x: 6.6, back: 3.5, len: 15, grab: false, curl: 1.1, ph: 3.0 },
+    { x: -4.5, back: 2.5, len: 17, grab: false, curl: 0.7, ph: 4.2, spread: -1 },
+    { x: 4.5, back: 2.5, len: 17, grab: false, curl: 0.7, ph: 5.1, spread: 1 },
+  ];
+  const geo = new THREE.SphereGeometry(1, 12, 8);
+  const mat = new THREE.MeshStandardMaterial({ color: skin, emissive: glowC, emissiveIntensity: 0.3, roughness: 0.3, metalness: 0.15 });
+  const sucker = new THREE.MeshBasicMaterial({ color: pale, toneMapped: false });
+  const mesh = new THREE.InstancedMesh(geo, mat, arms.length * N);
+  const SUCK = Math.floor(N / 3);
+  const dots = new THREE.InstancedMesh(geo, sucker, arms.length * SUCK);
+  mesh.frustumCulled = false;
+  dots.frustumCulled = false;
+  const grp = new THREE.Group();
+  grp.add(mesh, dots);
+  const T = 3.4;
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const sc = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  const prev = new THREE.Vector3();
+  const fwd = new THREE.Vector3();
+  const nrm = new THREE.Vector3();
+  const inner = new THREE.Vector3();
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  const floor = pos.clone().addScaledVector(dir, -2.5).setY(0.1);
+  fx.flash(floor.clone().setY(2), 24, 0.6, glowC);
+  smokeBurst(fx, floor, 50, 2, 6, 2.2, 1.5, 5, pale, deep, 0.35, { lift: 0.9, grav: -1 });
+  streakBurst(fx, floor, 120, 8, 20, 0.9, () => (Math.random() < 0.5 ? pale : glowC), { lift: 1.2 });
+  fx.ring(v2.set(floor.x, 0.06, floor.z), UP, 1, 14, 0.8, glowC, 0.9, 0.85);
+  fx.shake = Math.max(fx.shake, 1.2);
+
+  let splashed = false;
+  fx.temp(grp, T + 0.05, (dt, age) => {
+    // Shoot out fast, hold, then pull back in.
+    const grow = smooth(0, 0.7, age) * (1 - smooth(2.3, T, age));
+    let k = 0, d = 0;
+    for (const a of arms) {
+      const L = a.len * grow;
+      const ds = Math.max(0.001, L / N);
+      p.copy(pos).addScaledVector(side, a.x).addScaledVector(dir, -a.back).setY(0.3);
+      // Heading in the field/up plane: 0 = toward the field, PI/2 = up, PI = back over the goal.
+      const sExit = a.back + 1.2; // out from under the crossbar
+      const hook = smooth(0.5, 1.1, age);
+      for (let i = 0; i < N; i++) {
+        const sArc = (i + 0.5) * ds;
+        let ang = 0.08 + (Math.PI / 2 - 0.08) * smooth(sExit, sExit + 2, sArc);
+        if (a.grab) {
+          // Up to just above the crossbar, then hook back over it.
+          ang += (Math.PI * 0.92 - Math.PI / 2) * hook * smooth(sExit + H - 0.5, sExit + H + 2.2, sArc);
+          ang += Math.sin(age * 4 + a.ph) * 0.05 * smooth(sExit + H, a.len, sArc);
+        } else {
+          // Curl toward the field near the tip, waving.
+          const tipPart = smooth(sExit + 3, a.len, sArc);
+          ang -= a.curl * tipPart * (0.7 + 0.3 * Math.sin(age * 2.5 + a.ph));
+          ang += Math.sin(age * 3.2 + sArc * 0.6 + a.ph) * 0.35 * tipPart;
+        }
+        prev.copy(p);
+        nrm.copy(dir).multiplyScalar(Math.cos(ang)).addScaledVector(UP, Math.sin(ang));
+        p.addScaledVector(nrm, ds);
+        if (a.spread) p.addScaledVector(side, a.spread * ds * 0.35 * smooth(sExit, sExit + 4, sArc));
+        p.addScaledVector(side, Math.sin(age * 2.4 + sArc * 0.4 + a.ph) * 0.02 * sArc / Math.max(1, a.len) * 6);
+        const f = i / (N - 1);
+        const r = (0.72 * (1 - f * 0.88) + 0.06) * (0.5 + 0.5 * grow);
+        fwd.copy(p).sub(prev);
+        if (fwd.lengthSq() < 1e-8) fwd.copy(UP);
+        fwd.normalize();
+        q.setFromUnitVectors(UP, fwd);
+        sc.set(r, Math.max(r, ds * 0.8), r);
+        m4.compose(p, q, sc);
+        mesh.setMatrixAt(k++, m4);
+        // Suckers on the inner side of the curl.
+        if (i % 3 === 1 && d < dots.count) {
+          inner.crossVectors(fwd, side).normalize();
+          if (!a.grab) inner.negate();
+          v.copy(p).addScaledVector(inner, r * 0.78);
+          sc.setScalar(r * 0.3);
+          m4.compose(v, q, sc);
+          dots.setMatrixAt(d++, m4);
+        }
+        if (i === N - 1 && grow > 0.3 && Math.random() < 0.4 * fx.quality.particles) fx.glow.spawn(p.x, p.y, p.z, rnd(-1, 1), rnd(-1, 0.5), rnd(-1, 1), rnd(0.5, 1), 0.35, 0.05, pale, glowC, 1, 1, 6);
+      }
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    dots.instanceMatrix.needsUpdate = true;
+    mat.emissiveIntensity = 0.25 + 0.15 * Math.sin(age * 8);
+    if (!splashed && age > 2.55) {
+      splashed = true;
+      fx.flash(floor.clone().setY(1.5), 28, 0.7, glowC);
+      burst(fx, floor.clone().setY(1), 200, 4, 14, 1.4, 0.6, 0.06, () => (Math.random() < 0.5 ? pale : glowC), deep, { lift: 1.1, grav: 9 });
+      streakBurst(fx, floor, 140, 10, 26, 1, () => (Math.random() < 0.5 ? pale : glowC), { lift: 1.4 });
+      fx.ring(v2.set(floor.x, 0.06, floor.z), UP, 1, 22, 0.9, pale, 0.9, 0.85);
+      fx.shake = Math.max(fx.shake, 0.8);
+    }
+  });
+  fx.later(T + 0.2, () => { geo.dispose(); mat.dispose(); sucker.dispose(); mesh.dispose(); dots.dispose(); });
 }
 
 function galaxy(fx, pos, tc) {
@@ -1177,7 +1385,7 @@ const SCREEN = {
     return { flash: 0.18 * f, chroma: 0.5 * f, ...R(t, 1.1, 0.7, 1.2, 0.07), bulge: 0.2 * pulse(t, 1.1, 0.4) };
   }, tc),
   heartbeat: (sf, pos) => sf.add(pos, 1.8, (t) => ({ bulge: 0.2 * pulse(t, 0, 0.25) + 0.3 * pulse(t, 0.38, 0.3), vig: 0.6 * pulse(t, 0, 0.35) + 0.8 * pulse(t, 0.38, 0.6), flash: 0.2 * pulse(t, 0.38, 0.2) }), new THREE.Color(1, 0.2, 0.35)),
-  phoenix: (sf, pos) => sf.add(pos, 2.6, (t) => ({ haze: 1.3 * up(t, 0, 0.3) * down(t, 1.6, 2.6), vig: 0.7 * up(t, 0, 0.3) * down(t, 1.4, 2.6), tintA: 0.2 * up(t, 0, 0.3) * down(t, 1.2, 2.4), flash: 0.5 * pulse(t, 0, 0.4) }), FIRE),
+  phoenix: (sf, pos) => sf.add(pos, 2.6, (t) => ({ haze: 0.25 * up(t, 0, 0.3) * down(t, 1.6, 2.6), vig: 0.7 * up(t, 0, 0.3) * down(t, 1.4, 2.6), tintA: 0.2 * up(t, 0, 0.3) * down(t, 1.2, 2.4), flash: 0.5 * pulse(t, 0, 0.4) }), FIRE),
   galaxy: (sf, pos, tc) => sf.add(pos, 2.4, (t) => ({ dark: 0.55 * up(t, 0, 0.4) * down(t, 1.4, 1.6), stars: 1.2 * up(t, 0, 0.4) * down(t, 1.4, 1.8), swirl: 2.2 * up(t, 0, 1.4) * down(t, 1.4, 1.7), flash: 0.6 * pulse(t, 1.4, 0.35), flashColor: WHITE, ...R(t, 1.4, 0.9, 1.6, 0.08) }), VIOLET),
   aurora: (sf, pos) => sf.add(pos, 2.8, (t) => ({ vig: 0.8 * up(t, 0, 0.4) * down(t, 1.8, 2.8), tintA: 0.15 * up(t, 0, 0.4) * down(t, 1.8, 2.8), hue: 0.4 * Math.sin(t * 2.5) * down(t, 1.5, 2.8), haze: 0.4 * down(t, 1, 2.8) }), new THREE.Color(0.25, 1, 0.55)),
   eclipse: (sf, pos, tc) => sf.add(pos, 2.4, (t) => {
@@ -1241,7 +1449,8 @@ export const GOAL_EXPLOSIONS = [
   { id: 'petals', name: 'Petals', blurb: 'A cloud of petals flutters down.', fn: petals },
   { id: 'cometshower', name: 'Comet Shower', blurb: 'Nine comets rain into the goal.', fn: cometShower },
   { id: 'heartbeat', name: 'Heartbeat', blurb: 'Two heart-shaped pulses.', fn: heartbeat },
-  { id: 'phoenix', name: 'Phoenix', blurb: 'A fire bird spreads its wings.', fn: phoenix },
+  { id: 'phoenix', name: 'Phoenix', blurb: 'A fire bird flies out of the goal and swoops over the field.', fn: phoenix },
+  { id: 'kraken', name: 'Kraken', blurb: 'Glowing tentacles burst out and grab the crossbar.', fn: kraken },
   { id: 'galaxy', name: 'Galaxy', blurb: 'A spinning spiral of stars, then a flash.', fn: galaxy },
   { id: 'aurora', name: 'Aurora', blurb: 'Curtains of northern lights rise and wave.', fn: aurora },
   { id: 'eclipse', name: 'Eclipse', blurb: 'A dark moon covers a blazing sun, then it blows.', fn: eclipse },

@@ -2268,7 +2268,7 @@ export class Game {
       const ep = this.explPreview;
       ep.t += dt;
       rig.updateFixed(dt, ep.cam, ep.target, 50);
-      if (ep.t > 3.6) {
+      if (ep.t > 4.6) {
         this.explPreview = null;
         this.onHomePage(this.home.page);
       }
