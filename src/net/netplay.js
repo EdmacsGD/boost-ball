@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
+import { COLLIDER_GROUPS } from '../physics/world.js';
 import { encodeCar, decodeCar, encodeBall, decodeBall } from './codec.js';
 
 // Quick chat: number keys 1-6 in online matches. Only the index travels, so nobody can send text.
@@ -49,6 +50,7 @@ export function sanePeerCar(p, s, at) {
 const PHASES = { countdown: 'cd', play: 'pl', goal: 'gl', replay: 'rp', ended: 'en' };
 const v0 = new THREE.Vector3();
 const v1 = new THREE.Vector3();
+const v2 = new THREE.Vector3();
 const q0 = new THREE.Quaternion();
 const q1 = new THREE.Quaternion();
 const qi = new THREE.Quaternion();
@@ -71,6 +73,10 @@ export class NetPlay {
     this.lastSnapAt = 0;
     this.ball = null; // client: { s, at, applied }
     this.myTouchAt = -1e9;
+    this.tc = null; // client: our last ball touch { n, at, b } (the ball right after we hit it)
+    this.tcN = 0;
+    this.tcSeen = new Map(); // host: peer -> last touch number applied
+    this.tcStats = { applied: 0, refused: 0 };
     this.demos = 0; // times our car was demolished (shared so others can show it)
     this.demoBy = -1;
     this.dmSeen = new Map(); // peer -> demo count seen
@@ -109,6 +115,8 @@ export class NetPlay {
     if (this.qc) patch.qc = this.qc;
     if (this.client) {
       patch.dm = [this.demos, this.demoBy];
+      // Our own touch, repeated for 0.6 s in case an update is lost (the number tells them apart).
+      if (this.tc && Date.now() - this.tc.at < 600) patch.tc = [this.tc.n, this.tc.at, this.tc.b];
       return patch;
     }
     const bots = {};
@@ -146,6 +154,7 @@ export class NetPlay {
     p.netT = this.sentAt(peer, at, Number(pr.ts));
     p.netLead = Math.min(0.25, (Number(pr.rtt) || 120) / 2000);
     if (this.isHost && Number.isFinite(pr.ts)) this.ack[peer] = pr.ts;
+    if (this.isHost && Array.isArray(pr.tc)) this.touchClaim(peer, p, s, pr.tc);
     // Quick chat from this player.
     if (Array.isArray(pr.qc)) {
       const n = Number(pr.qc[0]) || 0;
@@ -285,6 +294,10 @@ export class NetPlay {
     const g = this.game;
     const now = performance.now();
     for (const p of g.players) {
+      if (p.car.noBallUntil && g.sim.tick > p.car.noBallUntil) {
+        p.car.noBallUntil = 0;
+        p.car.collider.setCollisionGroups(COLLIDER_GROUPS.car);
+      }
       if (!p.car.netDriven || !p.net) continue;
       this.drive(p, now);
     }
@@ -379,12 +392,14 @@ export class NetPlay {
     const mine = Date.now() - this.myTouchAt < (this.rtt * 1000 + 150);
     // Move the ball without touching its rotation (a reset rotation would make the skin jump).
     const set = (pos, vel) => {
+      this.corrMoved = (this.corrMoved || 0) + pos.distanceTo(ball.pos); // how far corrections moved our ball (diagnostics)
       ball.body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
       ball.body.setLinvel({ x: vel.x, y: vel.y, z: vel.z }, true);
       ball.body.setAngvel({ x: nb.s.w[0], y: nb.s.w[1], z: nb.s.w[2] }, true);
       ball.readState();
     };
     if (err > 4 || (!mine && err > 1.5)) {
+      this.ballSnaps = (this.ballSnaps || 0) + 1;
       set(tp, tv);
       g.prevBallPos.copy(ball.pos);
     } else if (!mine && err > 0.02) {
@@ -418,6 +433,57 @@ export class NetPlay {
 
   myTouch() {
     this.myTouchAt = Date.now();
+    if (this.client) this.tc = { n: (this.tcN += 1), at: this.myTouchAt, b: encodeBall(this.game.sim.ball) };
+  }
+
+  // Host: a player says "I hit the ball, and this is how it flew off". Their page saw the hit with
+  // their real car; ours only has a copy of that car that is a little behind, so our version of the
+  // same hit comes out different (or misses) and their ball used to snap to ours a moment later.
+  // Take their result instead, moved forward by its age. Limits, since any page can send anything:
+  // the ball they claim must be next to their own car and close to where our ball was at that time,
+  // and no faster than the ball can go.
+  touchClaim(peer, p, car, tc) {
+    const n = Number(tc[0]) || 0;
+    if (n <= (this.tcSeen.get(peer) || 0)) return;
+    this.tcSeen.set(peer, n);
+    const g = this.game;
+    const b = decodeBall(tc[2]);
+    const off = this.clockOff.get(peer);
+    if (g.state !== 'play' || g.ballHidden || !b || !b.on || off === undefined || p.car.isDemoed) return;
+    const age = Math.min(0.4, Math.max(0, (Date.now() - (Number(tc[1]) + off)) / 1000) + Math.min(0.25, (Number(p.netLead) || 0)));
+    const ball = g.sim.ball;
+    const R = ball.radius;
+    const cp = v0.fromArray(b.p);
+    const cv = v1.fromArray(b.v);
+    const maxV = CONFIG.physics.ballMaxSpeed * UU;
+    const nearCar = cp.distanceTo(v2.fromArray(car.p)) < R + 2.2;
+    // Where our ball was when they hit it (our ball may already have been hit by our copy of the car).
+    const was = v2.copy(ball.pos).addScaledVector(ball.vel, -age);
+    const nearBall = cp.distanceTo(was) < 2.5 + maxV * 0.5 * age;
+    if (!nearCar || !nearBall || !cp.toArray().concat(cv.toArray()).every(Number.isFinite)) {
+      this.tcStats.refused += 1;
+      return;
+    }
+    if (cv.length() > maxV) cv.setLength(maxV);
+    cp.addScaledVector(cv, age);
+    cp.y += 0.5 * G * age * age;
+    cv.y += G * age;
+    if (cp.y < R) {
+      cp.y = R;
+      cv.y = Math.abs(cv.y) * 0.6;
+    }
+    ball.body.setTranslation({ x: cp.x, y: cp.y, z: cp.z }, true);
+    ball.body.setLinvel({ x: cv.x, y: cv.y, z: cv.z }, true);
+    ball.body.setAngvel({ x: b.w[0], y: b.w[1], z: b.w[2] }, true);
+    ball.readState();
+    this.tcStats.applied += 1;
+    // For the next 0.25 s our copy of their car does not touch the ball: it would hit it a second
+    // time, a little differently. A new touch of theirs arrives as a new report.
+    p.car.noBallUntil = g.sim.tick + 30;
+    p.car.collider.setCollisionGroups(COLLIDER_GROUPS.carNoBall);
+    // Our copy of the car missed the ball: count the touch anyway (last touch decides who scored).
+    const last = g.touches[g.touches.length - 1];
+    if (!(last && last.id === p.car.id && g.simTime - last.t < 0.5)) g.onTouch(p, { type: 'ballHit', carId: p.car.id, strength: 0 });
   }
 
   myDemo(attackerIndex) {

@@ -26,6 +26,7 @@ export const COLLIDER_GROUPS = {
   arena: groups(GROUP.ARENA, GROUP.BALL | GROUP.CAR | GROUP.RAY),
   ball: groups(GROUP.BALL, GROUP.ARENA | GROUP.CAR | GROUP.RAY),
   car: groups(GROUP.CAR, GROUP.ARENA | GROUP.BALL),
+  carNoBall: groups(GROUP.CAR, GROUP.ARENA), // host's copy of a player's car right after that player reported a touch (netplay.js)
   carcar: groups(GROUP.CARCAR, GROUP.CARCAR | GROUP.RAY),
   wheelRay: groups(GROUP.RAY, GROUP.ARENA | GROUP.BALL | GROUP.CARCAR),
   arenaRay: groups(GROUP.RAY, GROUP.ARENA),
