@@ -498,6 +498,11 @@ export class Game {
       this.enterHome();
     });
     $('watchBtn').addEventListener('click', () => this.theater.open());
+    $('rematchBtn').addEventListener('click', () => {
+      this.audio.play('click');
+      this.online.rematch();
+      this.updateRematchUi();
+    });
     $('againBtn').addEventListener('click', () => {
       $('results').hidden = true;
       if (this.np) {
@@ -1399,6 +1404,19 @@ export class Game {
     this.startKickoffCountdown();
   }
 
+  // Results screen, online: Rematch with how many of the players are in.
+  updateRematchUi() {
+    const btn = document.getElementById('rematchBtn');
+    if (!btn) return;
+    const on = !!(this.np && this.online.match && this.state === 'ended');
+    btn.hidden = !on;
+    if (!on) return;
+    const [ready, total] = this.online.rematchCount();
+    const mine = this.online.rmMine === this.online.gameNo;
+    btn.textContent = total > 1 ? `${mine ? 'Waiting' : 'Rematch'} (${ready}/${total} ready)` : 'Rematch';
+    btn.disabled = mine;
+  }
+
   // Play page: game mode presets plus one dropdown per rule.
   bindRulesUi() {
     const box = document.getElementById('rulesPresets');
@@ -1996,6 +2014,7 @@ export class Game {
         break;
       }
       case 'ended':
+        if (this.np) this.updateRematchUi();
         break;
       default:
         break;
@@ -2044,6 +2063,7 @@ export class Game {
 
   showResults() {
     setTimeout(() => {
+      if (this.state !== 'ended') return; // a rematch already started
       const el = document.getElementById('results');
       document.getElementById('watchBtn').hidden = !this.theater.available();
       this.clips.refreshResultsButton();
