@@ -165,6 +165,9 @@ export class Simulation {
 
     for (const car of this.cars) {
       if (car.isDemoed && car.demoRespawnTimer <= 0 && !car.netDriven) this.respawnCar(car);
+      // Game mode boost rules (mutators.js): everyone full, or nobody has any.
+      if (this.boostRule === 'unlimited') car.boost = 100;
+      else if (this.boostRule === 'off') car.boost = 0;
     }
     if (this.needsSync) {
       this.pw.syncQueries();

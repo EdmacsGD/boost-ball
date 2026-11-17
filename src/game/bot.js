@@ -6,14 +6,13 @@
 // corner shots, speed flips and reading who reaches the ball first. Tuned with bot-vs-bot tests.
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
+import { LIVE } from '../physics/live.js';
 import { UU, clamp } from '../util/math.js';
 import { predictBall, goalBound } from './ballPredict.js';
 
-const BALL_R = CONFIG.physics.ballRadius * UU;
 const FIELD_Z = CONFIG.arena.extentY * UU;
 const FIELD_X = CONFIG.arena.extentX * UU;
 const GOAL_W = CONFIG.arena.goalHalfWidth * UU;
-const G = Math.abs(CONFIG.physics.gravityZ) * UU;
 const B_AIR = CONFIG.boost.accelAir * UU; // boost acceleration in the air (m/s^2)
 const JUMP_VZ = 7.5; // rough upward speed right after a quick double jump (m/s)
 
@@ -378,7 +377,7 @@ export class Bot {
       this.target.copy(p).addScaledVector(shot, -6).add(v3.set(side * 5, 0, 0));
     } else {
       const offset = Math.min(dist * 0.42, 6.5) * (0.35 + 0.65 * Math.max(0, 1 - align));
-      this.target.copy(p).addScaledVector(shot, -(BALL_R * 0.4 + offset));
+      this.target.copy(p).addScaledVector(shot, -(LIVE.ballR * 0.4 + offset));
     }
     this.clampTarget(1.5);
     const tLeft = Math.max(0.2, ip.t - (this.game.sim.tick / 120 - this.interceptStart));
@@ -544,7 +543,7 @@ export class Bot {
       const l2 = v1.set(ip.x, ip.y, ip.z).sub(car.pos).applyQuaternion(qInv);
       const ang = Math.atan2(l2.z, l2.x);
       if (T > 0.35 && T < 2.2 && Math.abs(ang) < 0.35) {
-        const need = v2.set(ip.x - car.pos.x - car.vel.x * T, ip.y - car.pos.y - JUMP_VZ * T + 0.5 * G * T * T, ip.z - car.pos.z - car.vel.z * T);
+        const need = v2.set(ip.x - car.pos.x - car.vel.x * T, ip.y - car.pos.y - JUMP_VZ * T + 0.5 * (-LIVE.g) * T * T, ip.z - car.pos.z - car.vel.z * T);
         const a = (2 * need.length()) / (T * T);
         const fuel = car.boost / (100 / 3); // seconds of boost left
         if (a < B_AIR * (this.d.aerTake ?? 0.8) && fuel > T * (a / B_AIR) * 0.9) {
@@ -745,9 +744,9 @@ export class Bot {
     const pp = this.path.find((p) => p.t >= tLeft) || null;
     const target = pp ? v1.set(pp.x, pp.y, pp.z) : v1.copy(ball.pos);
     // Aim slightly behind the ball so the hit goes toward the shot direction.
-    target.addScaledVector(this.shotDir, -BALL_R * 0.8);
+    target.addScaledVector(this.shotDir, -LIVE.ballR * 0.8);
     const delta = v2.subVectors(target, car.pos).addScaledVector(car.vel, -tLeft);
-    delta.y += 0.5 * G * tLeft * tLeft;
+    delta.y += 0.5 * (-LIVE.g) * tLeft * tLeft;
     const need = delta.length();
     const dir = delta.normalize().clone();
     const align = this.orient(dir, UP);
@@ -760,7 +759,7 @@ export class Bot {
       c.boost = align > 0.82 && need > 0.5 && car.boost > 0;
     }
     c.throttle = 1;
-    if (car.pos.distanceTo(ball.pos) < BALL_R + 1.3 && car.hasFlipOrJump() && this.d.dodges > 0.6) {
+    if (car.pos.distanceTo(ball.pos) < LIVE.ballR + 1.3 && car.hasFlipOrJump() && this.d.dodges > 0.6) {
       this.aerial = null;
       this.startDodge(1, 0);
       this.dodge.phase = 2;

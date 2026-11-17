@@ -24,6 +24,7 @@ export class BallModel {
     this.root.add(this.mesh);
     this.hitGlow = 0;
     this.skin = 'standard';
+    this.baseRadius = radius;
 
     // Ground marker: a dark disc directly under the ball, sharper and darker when the ball is low.
     const tex = makeGlowTexture(128, 0.0);
@@ -59,6 +60,14 @@ export class BallModel {
 
   hit(strength) {
     this.hitGlow = Math.min(1.5, this.hitGlow + strength);
+  }
+
+  // Game modes with a bigger ball: scale the mesh and halo, keep the skin.
+  setRadius(r) {
+    this.radius = r;
+    const k = r / this.baseRadius;
+    this.mesh.scale.setScalar(k);
+    if (this.halo) this.halo.scale.setScalar(r * 3.6);
   }
 
   update(dt, pos, quat, groundY = 0) {
