@@ -186,6 +186,11 @@ export class OnlinePage {
         const p = teams[team][i];
         const row = el('div', `lobby-slot${p ? '' : ' bot'}${p && p.me ? ' me' : ''}`);
         row.textContent = p ? `${p.name}${p.me ? ' (you)' : ''}` : 'Bot';
+        // Ping to the host (the host itself has none).
+        if (p && !p.host) {
+          const ms = p.ping;
+          row.appendChild(el('span', `lobby-ping ${ms == null ? '' : ms < 80 ? 'good' : ms < 150 ? 'ok' : 'bad'}`, ms == null ? '...' : `${ms} ms`));
+        } else if (p && p.host) row.appendChild(el('span', 'lobby-ping host', 'host'));
         col.appendChild(row);
       }
       if (!teams[team].some((p) => p.me) && teams[team].length < per) col.appendChild(this.btn(`Join ${label}`, 'small-btn', () => o.wantTeam(team)));

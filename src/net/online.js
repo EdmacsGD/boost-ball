@@ -367,7 +367,8 @@ export class Online {
   peerInfo(peer) {
     const p = this.matchPeers.find((x) => x.peer === peer);
     const pr = (p && p.presence) || {};
-    return { name: cleanText(pr.name) || 'PLAYER', look: pr.look && typeof pr.look === 'object' ? pr.look : {}, me: !!(p && p.sameTab), guest: !!(p && p.guest) };
+    const ping = p && p.sameTab ? this.lobbyPing : Number(pr.lp);
+    return { ping: Number.isFinite(ping) && ping > 0 ? Math.round(ping) : null, host: pr.role === 'host', name: cleanText(pr.name) || 'PLAYER', look: pr.look && typeof pr.look === 'object' ? pr.look : {}, me: !!(p && p.sameTab), guest: !!(p && p.guest) };
   }
 
   updateHostLobby() {
@@ -526,8 +527,43 @@ export class Online {
     }
   }
 
+  // In the lobby: measure each player's round trip to the host before the match starts.
+  // Clients send a time stamp every 2 s; the host sends the stamps back; clients share the result.
+  lobbyTick() {
+    const now = Date.now();
+    if (this.role === 'client') {
+      const host = this.matchPeers.find((p) => p.peer === this.hostPeer);
+      const pong = host && host.presence && host.presence.pong;
+      if (pong && this.pgSent && Number(pong[this.myMatchPeer]) === this.pgSent) {
+        const rtt = now - this.pgSent;
+        this.lobbyPing = this.lobbyPing ? this.lobbyPing * 0.6 + rtt * 0.4 : rtt;
+        this.pgSent = 0;
+        this.changed();
+      }
+      if (now - (this.pgAt || 0) > 2000) {
+        this.pgAt = now;
+        this.pgSent = now;
+        this.match.presence({ pg: now, lp: this.lobbyPing ? Math.round(this.lobbyPing) : null }).catch(() => {});
+      }
+    } else if (this.role === 'host' && now - (this.pongAt || 0) > 250) {
+      const pong = {};
+      let any = false;
+      for (const p of this.matchPeers) {
+        const pg = p.presence && Number(p.presence.pg);
+        if (!p.sameTab && pg) { pong[p.peer] = pg; any = true; }
+      }
+      const key = JSON.stringify(pong);
+      if (any && key !== this.lastPong) {
+        this.lastPong = key;
+        this.pongAt = now;
+        this.match.presence({ pong }).catch(() => {});
+      }
+    }
+  }
+
   // Every frame: send our part about 30 times a second.
   update(dt) {
+    if (this.match && !this.started) this.lobbyTick();
     if (this.role === 'host' && this.started && this.game.state === 'ended') this.checkRematch();
     if (!this.match || !this.started) return;
     // Read every player's car from their presence each frame (unchanged ones are skipped), so a new
