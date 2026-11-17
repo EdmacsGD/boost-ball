@@ -442,8 +442,10 @@ export class Online {
     }
     this.started = true;
     this.status = 'match';
+    this.gameNo = (this.gameNo || 0) + 1;
+    this.rmMine = 0;
     this.slotsWire = slots.map((s) => [s.team, s.peer || '', s.peer ? 0 : 1]);
-    this.match.presence({ m: { mode: this.mode, ph: 'game', arena: this.game.settings.arena, slots: this.slotsWire, seed: Math.floor(Math.random() * 1e9), practice: this.practice ? 1 : 0, rid: this.rid } }).catch(() => {});
+    this.match.presence({ m: { mode: this.mode, ph: 'game', arena: this.game.settings.arena, slots: this.slotsWire, g: this.gameNo, seed: Math.floor(Math.random() * 1e9), practice: this.practice ? 1 : 0, rid: this.rid } }).catch(() => {});
     this.updateHostLobby();
     this.game.startOnlineMatch(this.buildSlots(this.slotsWire), this.game.settings.arena, this.mode, true);
     this.changed();
@@ -459,7 +461,9 @@ export class Online {
     if (!m || typeof m !== 'object') return;
     if (MODES.includes(m.mode)) this.mode = m.mode;
     if (!this.started && m.ph === 'lobby') this.practice = !!m.practice;
-    if (m.ph === 'game' && !this.started && Array.isArray(m.slots)) {
+    const g = Number(m.g) || 0;
+    const rematch = this.started && g > (this.gameNo || 0) && this.game.state === 'ended';
+    if (m.ph === 'game' && (!this.started || rematch) && Array.isArray(m.slots)) {
       const me = this.myMatchPeer;
       const wire = m.slots.filter((s) => Array.isArray(s)).slice(0, 6);
       if (!wire.some((s) => s[1] === me)) {
@@ -469,6 +473,9 @@ export class Online {
       }
       this.started = true;
       this.status = 'match';
+      this.gameNo = g;
+      this.rmMine = 0;
+      this.slotsWire = wire;
       this.practice = !!m.practice;
       this.rid = typeof m.rid === 'string' && /^[0-9a-f-]{36}$/.test(m.rid) ? m.rid : null;
       clearTimeout(this.joinTimer);
@@ -477,8 +484,51 @@ export class Online {
     if (this.started && pr.s) this.game.onHostSnapshot(pr.s, at, pr.ts);
   }
 
+  // After a match: everyone who presses Rematch plays again with the same teams (bots fill the
+  // places of anyone who left). The host starts it once every player still here has said yes.
+  rematch() {
+    if (!this.match || !this.started) return;
+    this.rmMine = this.gameNo || 0;
+    if (this.role === 'client') this.match.presence({ rm: this.rmMine }).catch(() => {});
+    this.changed();
+  }
+
+  // [ready, total] players from the last match who are still in the room and pressed Rematch.
+  rematchCount() {
+    if (!this.match || !this.slotsWireLast()) return [0, 0];
+    const wanted = this.slotsWireLast().filter((s) => s[1] && !s[2]).map((s) => s[1]);
+    let ready = 0, total = 0;
+    for (const peer of wanted) {
+      const p = this.matchPeers.find((x) => x.peer === peer);
+      if (!p) continue; // left
+      total++;
+      const yes = p.sameTab ? this.rmMine === this.gameNo : p.presence && Number(p.presence.rm) === this.gameNo;
+      if (yes) ready++;
+    }
+    return [ready, total];
+  }
+
+  slotsWireLast() {
+    return this.slotsWire || this.lastWire || null;
+  }
+
+  checkRematch() {
+    if (this.role !== 'host' || !this.started || this.starting || this.game.state !== 'ended') return;
+    const [ready, total] = this.rematchCount();
+    if (total > 0 && ready === total) {
+      // Same teams as last time, in the same order.
+      const prev = this.slotsWire;
+      this.order = prev.filter((s) => s[1] && !s[2] && this.matchPeers.some((p) => p.peer === s[1])).map((s) => s[1]);
+      this.want.clear();
+      for (const s of prev) if (s[1] && !s[2]) this.want.set(s[1], s[0] ? 1 : 0);
+      this.started = false;
+      this.start();
+    }
+  }
+
   // Every frame: send our part about 30 times a second.
   update(dt) {
+    if (this.role === 'host' && this.started && this.game.state === 'ended') this.checkRematch();
     if (!this.match || !this.started) return;
     // Read every player's car from their presence each frame (unchanged ones are skipped), so a new
     // update is used as soon as it arrives instead of waiting for our next send.
