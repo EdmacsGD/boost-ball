@@ -15,6 +15,7 @@ import { BoostPadVisuals } from '../render/pads.js';
 import { Effects, Ribbon, createFlame } from '../render/effects.js';
 import { CameraRig, setFlatFloor } from '../render/cameraRig.js';
 import { SkyField, PATTERN_PERIOD } from '../render/skyField.js';
+import { applyMutators, resetMutators, cleanMutators, isStandard, describe as describeMutators, MUTATORS, PRESETS, DEFAULT_MUTATORS } from './mutators.js';
 import { Input } from '../input/input.js';
 import { AudioEngine } from '../audio/audio.js';
 import { HUD } from '../ui/hud.js';
@@ -62,10 +63,14 @@ const gv2 = new THREE.Vector3();
 const gv3 = new THREE.Vector3();
 
 function loadSettings() {
-  const defaults = { quality: 'auto', fov: 110, distance: 270, height: 100, angle: -3, stiffness: 0.45, transitionSpeed: 1.2, volume: 80, showFps: false, ballCam: true, mode: '1v1', difficulty: 'medium', car: 'strider', accent: 'white', arena: 'aurora', explosion: 'classic', rumble: true, anthemVolume: 80 };
+  const defaults = { quality: 'auto', fov: 110, distance: 270, height: 100, angle: -3, stiffness: 0.45, transitionSpeed: 1.2, volume: 80, showFps: false, ballCam: true, mode: '1v1', difficulty: 'medium', car: 'strider', accent: 'white', arena: 'aurora', explosion: 'classic', rumble: true, anthemVolume: 80, mutators: { ...DEFAULT_MUTATORS } };
   try {
     const raw = localStorage.getItem('boostball.settings');
-    if (raw) return { ...defaults, ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...defaults, ...JSON.parse(raw) };
+      s.mutators = cleanMutators(s.mutators);
+      return s;
+    }
   } catch (e) {
     // Storage can be blocked; defaults are fine.
   }
@@ -431,7 +436,13 @@ export class Game {
   startKickoffCountdown() {
     this.audio.init();
     // A new match against bots: the server notes when it started (results that come too soon are refused).
-    if (this.mode !== 'free' && !this.np) this.account.startMatch(this.mode, this.difficulty);
+    // Custom game mode rules: just for fun, the match is not saved to stats or ratings.
+    const custom = this.mutators && !isStandard(this.mutators);
+    if (this.mode !== 'free' && !this.np && !custom) this.account.startMatch(this.mode, this.difficulty);
+    else if (this.mode !== 'free' && !this.np && custom) {
+      this.account.ticket = null;
+      if (this.state !== 'countdown' && this.state !== 'play') this.toast(`${describeMutators(this.mutators)}: just for fun, this match does not count for stats`);
+    }
     this.kickoffSetup();
     this.enterState('countdown');
   }
@@ -461,6 +472,7 @@ export class Game {
       document.querySelectorAll('#diffGroup button').forEach((x) => x.classList.toggle('on', x === b));
     }));
     $('startBtn').addEventListener('click', () => this.startMatch());
+    this.bindRulesUi();
     $('resumeBtn').addEventListener('click', () => this.setPaused(false));
     $('fullBtn').addEventListener('click', () => this.toggleFullscreen());
     $('homeFullBtn').addEventListener('click', () => this.toggleFullscreen());
@@ -626,7 +638,8 @@ export class Game {
       else this.input.read(pc);
       // A single long hitch (tab switch, garbage collection) counts as at most 0.1 s, and leftover
       // time is dropped when the cap is hit, so a slow frame never snowballs into seconds of lag.
-      this.acc += Math.min(dt, MAX_TICKS_PER_FRAME * TICK);
+      // Game mode speed (slow-mo or fast); online matches always run at normal speed.
+      this.acc += Math.min(dt, MAX_TICKS_PER_FRAME * TICK) * (this.np ? 1 : this.timeScale || 1);
       let steps = 0;
       while (this.acc >= TICK && steps < MAX_TICKS_PER_FRAME) {
         this.tick();
@@ -1084,6 +1097,7 @@ export class Game {
   }
 
   startOnlineMatch(slots, arena, mode, isHost) {
+    resetMutators(this); // online always plays the normal rules
     this.audio.init();
     this.anthems.stop(0.3);
     this.anthems.buffer(this.account.loadout.anthem);
@@ -1378,8 +1392,48 @@ export class Game {
     this.renderer.setView(this.renderer.scene, this.renderer.camera);
     this.applyViewLook(false);
     this.setEndlessWorld(!!this.endless);
+    // Game mode rules for bot matches and training (the Sky Field and the tutorial use the normal ones).
+    applyMutators(this, this.endless || this.tutorial?.active ? DEFAULT_MUTATORS : this.settings.mutators);
     this.setupMatch(this.settings.mode, this.settings.difficulty);
+    this.clock = this.matchLength || CONFIG.game.matchSeconds;
     this.startKickoffCountdown();
+  }
+
+  // Play page: game mode presets plus one dropdown per rule.
+  bindRulesUi() {
+    const box = document.getElementById('rulesPresets');
+    const custom = document.getElementById('rulesCustom');
+    if (!box || !custom) return;
+    box.innerHTML = PRESETS.map((p) => `<button type="button" data-preset="${p.id}" title="${p.blurb}">${p.name}</button>`).join('');
+    custom.innerHTML = Object.entries(MUTATORS).map(([k, m]) => `<label class="rule"><span>${m.label}</span><select data-rule="${k}">${m.opts.map((o) => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select></label>`).join('');
+    const save = () => {
+      saveSettings(this.settings);
+      this.updateRulesUi();
+    };
+    box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      this.audio.init();
+      this.audio.play('click');
+      const p = PRESETS.find((x) => x.id === b.dataset.preset);
+      this.settings.mutators = cleanMutators({ ...DEFAULT_MUTATORS, ...p.set });
+      save();
+    }));
+    custom.querySelectorAll('select').forEach((sel) => sel.addEventListener('change', () => {
+      this.settings.mutators = cleanMutators({ ...this.settings.mutators, [sel.dataset.rule]: sel.value });
+      save();
+    }));
+    this.updateRulesUi();
+  }
+
+  updateRulesUi() {
+    const m = cleanMutators(this.settings.mutators);
+    const desc = describeMutators(m);
+    document.querySelectorAll('#rulesPresets button').forEach((b) => {
+      const p = PRESETS.find((x) => x.id === b.dataset.preset);
+      b.classList.toggle('on', Object.keys(MUTATORS).every((k) => (p.set[k] || 'normal') === m[k]));
+    });
+    document.querySelectorAll('#rulesCustom select').forEach((sel) => (sel.value = m[sel.dataset.rule]));
+    const note = document.getElementById('rulesNote');
+    if (note) note.textContent = desc ? `${desc}. Just for fun: these matches do not count for stats.` : 'Normal rules. Online matches always use these.';
   }
 
   autoStartQuality() {

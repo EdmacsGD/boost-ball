@@ -2,9 +2,8 @@
 // Gravity, drag and bounces off the floor, walls and ceiling as flat planes (good enough for decisions).
 import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
+import { LIVE } from '../physics/live.js';
 
-const R = CONFIG.physics.ballRadius * UU;
-const G = CONFIG.physics.gravityZ * UU;
 const X = CONFIG.arena.extentX * UU;
 const Z = CONFIG.arena.extentY * UU;
 const H = CONFIG.arena.height * UU;
@@ -14,6 +13,7 @@ const DRAG = 1 - CONFIG.physics.ballDrag;
 
 // Returns an array of {t, x, y, z, vx, vy, vz}. step in seconds.
 export function predictBall(pos, vel, seconds = 4, step = 1 / 30) {
+  const R = LIVE.ballR, G = LIVE.g;
   let x = pos.x, y = pos.y, z = pos.z;
   let vx = vel.x, vy = vel.y, vz = vel.z;
   const out = [];
@@ -49,6 +49,7 @@ export function predictBall(pos, vel, seconds = 4, step = 1 / 30) {
 
 // Which goal (0 = blue's goal at -z, 1 = orange's at +z) the ball enters within the horizon, or -1.
 export function goalBound(path) {
+  const R = LIVE.ballR;
   for (const p of path) {
     if (p.z > Z + R * 0.5 && Math.abs(p.x) < GW && p.y < GH) return 1;
     if (p.z < -Z - R * 0.5 && Math.abs(p.x) < GW && p.y < GH) return 0;

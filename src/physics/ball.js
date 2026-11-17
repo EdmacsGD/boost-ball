@@ -36,6 +36,24 @@ export class BallPhysics {
     this.velImpulseCache = new THREE.Vector3();
   }
 
+  // Game modes: a bigger or smaller ball, or a different bounce. Rebuilds the collider.
+  setShape(radius, restitution) {
+    if (Math.abs(radius - this.radius) < 1e-6 && this.collider.restitution() === restitution) return;
+    this.pw.world.removeCollider(this.collider, false);
+    this.radius = radius;
+    this.collider = this.pw.world.createCollider(
+      R.ColliderDesc.ball(radius)
+        .setMass(P.ballMass)
+        .setFriction(P.ballFriction)
+        .setFrictionCombineRule(R.CoefficientCombineRule.Max)
+        .setRestitution(restitution)
+        .setRestitutionCombineRule(R.CoefficientCombineRule.Min)
+        .setCollisionGroups(COLLIDER_GROUPS.ball)
+        .setSolverGroups(COLLIDER_GROUPS.ball),
+      this.body,
+    );
+  }
+
   place(pos, vel = { x: 0, y: 0, z: 0 }, angVel = { x: 0, y: 0, z: 0 }) {
     this.body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
     this.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);

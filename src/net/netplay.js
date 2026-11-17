@@ -8,13 +8,13 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
+import { LIVE } from '../physics/live.js';
 import { COLLIDER_GROUPS } from '../physics/world.js';
 import { encodeCar, decodeCar, encodeBall, decodeBall } from './codec.js';
 
 // Quick chat: number keys 1-6 in online matches. Only the index travels, so nobody can send text.
 export const QUICK_CHAT = ['Nice shot!', 'What a save!', 'Great pass!', 'Thanks!', 'Sorry!', 'gg'];
 
-const G = CONFIG.physics.gravityZ * UU; // m/s^2, negative
 
 // Every page runs its own car, so a changed page could send any state. Limits on what we accept:
 // speed and spin no higher than the physics allows, the car inside the arena (goals included),
@@ -336,9 +336,9 @@ export class NetPlay {
     }
     const air = !s.ground;
     const pos = v0.fromArray(s.p).addScaledVector(v1.fromArray(s.v), age);
-    if (air) pos.y += 0.5 * G * age * age;
+    if (air) pos.y += 0.5 * LIVE.g * age * age;
     pos.y = Math.max(pos.y, 0.05);
-    const vy = s.v[1] + (air ? G * age : 0);
+    const vy = s.v[1] + (air ? LIVE.g * age : 0);
     q0.fromArray(s.q);
     const w = v1.fromArray(s.w);
     const wl = w.length();
@@ -380,10 +380,10 @@ export class NetPlay {
     if (!nb.s.on || g.ballHidden) return;
     const age = Math.min(0.4, Math.max(0, (Date.now() - nb.at) / 1000) + this.oneWay());
     const tp = v0.fromArray(nb.s.p).addScaledVector(v1.fromArray(nb.s.v), age);
-    tp.y += 0.5 * G * age * age;
+    tp.y += 0.5 * LIVE.g * age * age;
     const R = ball.radius;
     const tv = v1.fromArray(nb.s.v);
-    tv.y += G * age;
+    tv.y += LIVE.g * age;
     if (tp.y < R) {
       tp.y = R;
       tv.y = Math.abs(tv.y) * 0.6;
@@ -466,8 +466,8 @@ export class NetPlay {
     }
     if (cv.length() > maxV) cv.setLength(maxV);
     cp.addScaledVector(cv, age);
-    cp.y += 0.5 * G * age * age;
-    cv.y += G * age;
+    cp.y += 0.5 * LIVE.g * age * age;
+    cv.y += LIVE.g * age;
     if (cp.y < R) {
       cp.y = R;
       cv.y = Math.abs(cv.y) * 0.6;
