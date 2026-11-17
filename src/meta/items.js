@@ -67,6 +67,7 @@ add('explosion', 'cometshower', 'Comet Shower', 'rare');
 add('explosion', 'heartbeat', 'Heartbeat', 'rare');
 add('explosion', 'phoenix', 'Phoenix', 'epic');
 add('explosion', 'galaxy', 'Galaxy', 'legendary');
+add('explosion', 'kraken', 'Kraken', 'legendary');
 add('explosion', 'aurora', 'Aurora', 'epic');
 add('explosion', 'eclipse', 'Eclipse', '', U('saves', 150, 'Make 150 saves in matches'));
 add('explosion', 'thunderdome', 'Thunderdome', '', U('demos', 100, 'Demolish 100 cars in matches'));
