@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boost Ball</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-  <script type="module" crossorigin src="./assets/index-Buch80DR.js"></script>
+  <script type="module" crossorigin src="./assets/index-CBpQQcil.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/three-Db_H_i0M.js">
   <link rel="modulepreload" crossorigin href="./assets/rapier-OnF19VgH.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-B5bBZUbe.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-CTkkQqsw.css">
 </head>
 <body>
 <div id="app">
@@ -144,6 +144,12 @@
           <button type="button" data-diff="hard">Hard</button>
           <button type="button" data-diff="ultra">Ultra</button>
         </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Rules</span>
+        <div class="seg small wrap" role="group" aria-label="Game mode" id="rulesPresets"></div>
+        <details class="rules-custom"><summary>Custom rules</summary><div id="rulesCustom" class="rules-grid"></div></details>
+        <span class="field-note" id="rulesNote"></span>
       </div>
       <div class="field">
         <span class="field-label">Arena</span>
@@ -406,6 +412,7 @@
       <p class="result-reward" id="resultReward"></p>
       <table class="stats" id="statsTable"></table>
       <div class="btns row">
+        <button type="button" id="rematchBtn" class="primary" hidden>Rematch</button>
         <button type="button" id="againBtn" class="primary"><span class="off-online">Play again</span><span class="on-online">Back to online</span></button>
         <button type="button" id="watchBtn">Watch replay</button>
         <button type="button" id="clipsBtn" hidden>Your clips</button>
