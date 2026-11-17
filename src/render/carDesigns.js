@@ -1684,6 +1684,255 @@ export const DESIGNS = {
       k.box([0.2, 0.04, 0.8], [-0.58, -0.05, 0], 'carbon', [0, 0, -0.2]);
     },
   },
+  // ------------------------------------------------------------------ concept A: Ranger (standard)
+  ranger: {
+    name: 'Ranger',
+    hitbox: 'standard',
+    blurb: 'Stubby rally hatch with a roof light bar and mud flaps.',
+    span: [-0.58, 0.8, 0.38],
+    livery: 'twin',
+    wheels: { front: { r: 0.15, w: 0.15, z: 0.37 }, back: { r: 0.17, w: 0.18, z: 0.38 }, rim: 'disc', rimMat: 'rimSilver', tire: 'offroad', sidewall: 0.4 },
+    build(k) {
+      k.shell([
+        { x: 0.8, w: 0.24, yb: -0.06, yt: 0.03, n: 5 },
+        { x: 0.74, w: 0.31, yb: -0.08, yt: 0.09, n: 6, tb: 0.1 },
+        { x: 0.5, w: 0.34, yb: -0.09, yt: 0.13, n: 7, tb: 0.12 },
+        { x: 0.3, w: 0.345, yb: -0.09, yt: 0.15, n: 7, tb: 0.12 },
+        { x: -0.3, w: 0.345, yb: -0.09, yt: 0.16, n: 7, tb: 0.12 },
+        { x: -0.53, w: 0.335, yb: -0.08, yt: 0.15, n: 6.5, tb: 0.1 },
+        { x: -0.575, w: 0.3, yb: -0.06, yt: 0.12, n: 5 },
+      ], { ring: 48, twoTone: { y: -0.02, dark: 0.12 } });
+      // Upright cabin: glass box with a painted roof.
+      k.shell([
+        { x: 0.26, w: 0.29, yb: 0.12, yt: 0.14, n: 6, tb: 0.2 },
+        { x: 0.12, w: 0.29, yb: 0.12, yt: 0.33, n: 6, tb: 0.22 },
+        { x: -0.4, w: 0.29, yb: 0.12, yt: 0.35, n: 6, tb: 0.22 },
+        { x: -0.5, w: 0.28, yb: 0.12, yt: 0.33, n: 6, tb: 0.2 },
+      ], { mat: 'glass', ring: 40 });
+      k.rbox([0.56, 0.03, 0.5], [-0.17, 0.355, 0], 'paintPlain', { r: 0.012 });
+      // Roof light bar and spoiler.
+      k.rbox([0.05, 0.05, 0.46], [0.08, 0.395, 0], 'black', { r: 0.01 });
+      for (let i = 0; i < 6; i++) k.rbox([0.008, 0.032, 0.06], [0.106, 0.395, -0.19 + i * 0.076], 'head', { r: 0.004 });
+      k.wing(0.12, 0.02, 0.56, [-0.5, 0.375, 0], 'accent', { rotZ: -0.15 });
+      // Bull bar, grille, skid plate.
+      k.rbox([0.02, 0.07, 0.4], [0.802, 0.0, 0], 'black', { r: 0.008 });
+      k.tube([[0.83, -0.06, -0.24], [0.86, 0.06, -0.2], [0.86, 0.06, 0.2], [0.83, -0.06, 0.24]], 0.014, 'darkMetal');
+      k.box([0.2, 0.02, 0.4], [0.72, -0.1, 0], 'darkMetal', [0, 0, 0.25]);
+      k.box([0.12, 0.03, 0.56], [-0.56, -0.085, 0], 'carbon', [0, 0, -0.25]);
+      k.sym((s) => {
+        k.sphere(0.035, [0.79, 0.06, s * 0.23], 'head', { scale: [0.4, 1, 1] });
+        k.rbox([0.012, 0.09, 0.05], [-0.578, 0.07, s * 0.27], 'tail', { r: 0.006 });
+        // Box flares over each wheel.
+        k.arch(0.5125, -0.06, s * 0.36, 0.19, 0.17, 'black', { thick: 0.025, from: 0.15, to: Math.PI - 0.15 });
+        k.arch(-0.3375, -0.06, s * 0.37, 0.21, 0.2, 'black', { thick: 0.025, from: 0.15, to: Math.PI - 0.15 });
+        // Mud flaps behind the rear wheels.
+        k.box([0.012, 0.12, 0.13], [-0.56, -0.11, s * 0.33], 'black');
+        k.box([0.5, 0.04, 0.006], [0.1, 0.04, s * 0.347], 'accent');
+        k.nozzle([-0.6, 0.0, s * 0.13], 0.05);
+      });
+    },
+  },
+
+  // ------------------------------------------------------------------ concept B: Pulse (standard)
+  pulse: {
+    name: 'Pulse',
+    hitbox: 'standard',
+    blurb: 'Rounded pod racer: bubble canopy, covered wheels, one tall fin.',
+    span: [-0.6, 0.8, 0.36],
+    livery: 'twin',
+    wheels: { front: { r: 0.14, w: 0.13, z: 0.37 }, back: { r: 0.165, w: 0.16, z: 0.38 }, rim: 'turbine', rimMat: 'rimSilver', sidewall: 0.3 },
+    build(k) {
+      k.shell([
+        { x: 0.8, w: 0.05, yb: -0.04, yt: 0.0, n: 2.2 },
+        { x: 0.68, w: 0.15, yb: -0.07, yt: 0.07, n: 2.4, tb: 0.2 },
+        { x: 0.45, w: 0.22, yb: -0.09, yt: 0.14, n: 2.6, tb: 0.3 },
+        { x: 0.1, w: 0.25, yb: -0.1, yt: 0.18, n: 2.8, tb: 0.35 },
+        { x: -0.25, w: 0.25, yb: -0.1, yt: 0.18, n: 2.8, tb: 0.35 },
+        { x: -0.5, w: 0.2, yb: -0.08, yt: 0.14, n: 2.6, tb: 0.3 },
+        { x: -0.6, w: 0.12, yb: -0.04, yt: 0.09, n: 2.3 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      k.sphere(0.2, [0.02, 0.19, 0], 'glass', { scale: [1.5, 0.75, 0.95] });
+      k.sym((s) => {
+        // Covered wheel pods joined to the body by a stub wing.
+        for (const [x, r] of [[0.5125, 0.15], [-0.3375, 0.175]]) {
+          k.shell(L([
+            { x: x + r + 0.04, w: 0.06, yb: -0.03, yt: 0.0, n: 3, zc: 0.37 },
+            { x: x + r * 0.7, w: 0.095, yb: -0.05, yt: r * 0.75, n: 3.2, zc: 0.375 },
+            { x, w: 0.1, yb: -0.03, yt: r + 0.02, n: 3.4, zc: 0.38 },
+            { x: x - r * 0.75, w: 0.095, yb: -0.05, yt: r * 0.7, n: 3.2, zc: 0.375 },
+            { x: x - r - 0.03, w: 0.06, yb: -0.03, yt: 0.0, n: 3, zc: 0.37 },
+          ], s), { ring: 32, steps: 5 });
+          k.box([r * 1.2, 0.025, 0.14], [x, 0.0, s * 0.28], 'paintPlain');
+        }
+        k.box([0.7, 0.01, 0.006], [0.05, 0.04, s * 0.252], 'glow');
+        k.sphere(0.03, [0.66, 0.05, s * 0.1], 'head', { scale: [0.6, 0.5, 1.6] });
+        k.rbox([0.012, 0.03, 0.08], [-0.598, 0.06, s * 0.06], 'tail', { r: 0.006 });
+        k.nozzle([-0.62, 0.0, s * 0.07], 0.045);
+      });
+      // Tall center fin with a glow edge.
+      k.plate([[0, 0], [0.2, 0], [0.1, 0.24], [-0.05, 0.26]], 0.02, [-0.5, 0.14, 0], 'accent', { bevel: 0.006 });
+      k.box([0.012, 0.012, 0.024], [-0.52, 0.4, 0], 'glow');
+    },
+  },
+
+  // ------------------------------------------------------------------ concept C: Brawler (standard)
+  brawler: {
+    name: 'Brawler',
+    hitbox: 'standard',
+    blurb: 'Short muscle pickup: flat hood, tiny cab, boosters in the bed.',
+    span: [-0.58, 0.82, 0.38],
+    livery: 'twin',
+    wheels: { front: { r: 0.15, w: 0.15, z: 0.37 }, back: { r: 0.175, w: 0.2, z: 0.39 }, rim: 'spokes', rimMat: 'rimSilver', sidewall: 0.38 },
+    build(k) {
+      k.shell([
+        { x: 0.81, w: 0.3, yb: -0.07, yt: 0.04, n: 8 },
+        { x: 0.75, w: 0.34, yb: -0.09, yt: 0.1, n: 9, tb: 0.05 },
+        { x: 0.2, w: 0.35, yb: -0.09, yt: 0.12, n: 9, tb: 0.05 },
+        { x: -0.55, w: 0.355, yb: -0.09, yt: 0.13, n: 9, tb: 0.05 },
+        { x: -0.58, w: 0.34, yb: -0.07, yt: 0.12, n: 8 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      // Short cab, chopped glass.
+      k.rbox([0.3, 0.17, 0.6], [0.0, 0.2, 0], 'paintPlain', { r: 0.03 });
+      k.rbox([0.012, 0.11, 0.54], [0.152, 0.22, 0], 'glass', { r: 0.006, rot: [0, 0, 0.5] });
+      k.sym((s) => k.rbox([0.2, 0.09, 0.008], [0.0, 0.22, s * 0.302], 'glass', { r: 0.008 }));
+      // Bed with two big boosters.
+      k.rbox([0.38, 0.03, 0.62], [-0.36, 0.13, 0], 'black', { r: 0.008 });
+      k.sym((s) => {
+        k.cyl(0.07, 0.07, 0.32, [-0.36, 0.21, s * 0.15], 'darkMetal', { axis: 'x' });
+        k.cyl(0.075, 0.075, 0.02, [-0.25, 0.21, s * 0.15], 'accent', { axis: 'x' });
+        k.nozzle([-0.56, 0.21, s * 0.15], 0.07, { len: 0.1 });
+      });
+      // Hood bulge stripe, chrome bumpers, lights.
+      k.rbox([0.5, 0.025, 0.12], [0.45, 0.13, 0], 'accent', { r: 0.01 });
+      k.rbox([0.04, 0.05, 0.74], [0.82, -0.05, 0], 'chrome', { r: 0.015 });
+      k.rbox([0.04, 0.05, 0.72], [-0.6, -0.05, 0], 'chrome', { r: 0.015 });
+      k.rbox([0.012, 0.06, 0.34], [0.812, 0.04, 0], 'black', { r: 0.008 });
+      k.sym((s) => {
+        k.cyl(0.035, 0.035, 0.012, [0.814, 0.04, s * 0.25], 'head', { axis: 'x' });
+        k.rbox([0.012, 0.05, 0.08], [-0.582, 0.05, s * 0.28], 'tail', { r: 0.006 });
+        k.cyl(0.018, 0.022, 0.4, [0.05, -0.08, s * 0.37], 'chrome', { axis: 'x' });
+      });
+    },
+  },
+
+  // ------------------------------------------------------------------ Skiff (flat)
+  skiff: {
+    name: 'Skiff',
+    hitbox: 'flat',
+    blurb: 'Twin-hull racer: two long pontoons, a cockpit slung between them.',
+    span: [-0.66, 0.82, 0.32],
+    livery: 'twin',
+    wheels: { front: { r: 0.13, w: 0.12, z: 0.36 }, back: { r: 0.15, w: 0.16, z: 0.37 }, rim: 'turbine', rimMat: 'rimSilver', sidewall: 0.28 },
+    build(k) {
+      // Two pontoons, low and long.
+      k.sym((s) => {
+        k.shell(L([
+          { x: 0.82, w: 0.03, yb: -0.06, yt: -0.02, n: 2.4, zc: 0.27 },
+          { x: 0.7, w: 0.085, yb: -0.08, yt: 0.04, n: 2.8, zc: 0.27 },
+          { x: 0.2, w: 0.1, yb: -0.09, yt: 0.07, n: 3, zc: 0.27 },
+          { x: -0.45, w: 0.1, yb: -0.09, yt: 0.07, n: 3, zc: 0.27 },
+          { x: -0.64, w: 0.07, yb: -0.07, yt: 0.05, n: 2.8, zc: 0.27 },
+          { x: -0.67, w: 0.03, yb: -0.05, yt: 0.02, n: 2.4, zc: 0.27 },
+        ], s), { ring: 32, twoTone: { y: -0.02, dark: 0.12 } });
+        k.box([0.9, 0.012, 0.012], [0.05, 0.065, s * 0.27], 'glow');
+        k.nozzle([-0.69, 0.0, s * 0.27], 0.045);
+        k.sphere(0.026, [0.8, 0.0, s * 0.27], 'head', { scale: [0.5, 0.6, 1] });
+        k.rbox([0.012, 0.03, 0.06], [-0.67, 0.03, s * 0.27], 'tail', { r: 0.005 });
+      });
+      // Bridge between the hulls, and the cockpit pod on it.
+      k.rbox([0.7, 0.04, 0.44], [-0.05, 0.0, 0], 'carbon', { r: 0.015 });
+      k.shell([
+        { x: 0.38, w: 0.03, yb: 0.0, yt: 0.03, n: 2.2 },
+        { x: 0.25, w: 0.1, yb: -0.01, yt: 0.12, n: 2.4, tb: 0.3 },
+        { x: -0.05, w: 0.12, yb: -0.01, yt: 0.18, n: 2.6, tb: 0.35 },
+        { x: -0.32, w: 0.1, yb: -0.01, yt: 0.14, n: 2.4, tb: 0.3 },
+        { x: -0.42, w: 0.04, yb: 0.0, yt: 0.06, n: 2.2 },
+      ], { ring: 40 });
+      k.sphere(0.11, [0.02, 0.17, 0], 'glass', { scale: [1.6, 0.6, 0.85] });
+      // Low wing joining the two tails.
+      k.wing(0.1, 0.016, 0.64, [-0.6, 0.13, 0], 'accent');
+      k.sym((s) => k.box([0.12, 0.08, 0.012], [-0.6, 0.09, s * 0.27], 'paintPlain'));
+    },
+  },
+
+  // ------------------------------------------------------------------ Quokka (tall)
+  quokka: {
+    name: 'Quokka',
+    hitbox: 'tall',
+    blurb: 'Round little buggy with a roll cage and big, soft tyres.',
+    span: [-0.56, 0.74, 0.4],
+    livery: 'single',
+    wheels: { front: { r: 0.165, w: 0.17, z: 0.37 }, back: { r: 0.18, w: 0.2, z: 0.38 }, rim: 'spokes', rimMat: 'rimWhite', tire: 'offroad', sidewall: 0.45 },
+    build(k) {
+      // A rounded tub: almost an egg.
+      k.shell([
+        { x: 0.73, w: 0.14, yb: -0.04, yt: 0.04, n: 2.4 },
+        { x: 0.62, w: 0.26, yb: -0.08, yt: 0.12, n: 2.6, tb: 0.2 },
+        { x: 0.3, w: 0.31, yb: -0.1, yt: 0.18, n: 2.8, tb: 0.25 },
+        { x: -0.2, w: 0.31, yb: -0.1, yt: 0.2, n: 2.8, tb: 0.25 },
+        { x: -0.48, w: 0.25, yb: -0.08, yt: 0.15, n: 2.6, tb: 0.2 },
+        { x: -0.56, w: 0.12, yb: -0.05, yt: 0.07, n: 2.4 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      // Roll cage: two hoops and a spine.
+      k.sym((s) => {
+        k.tube([[0.18, 0.17, s * 0.24], [0.1, 0.4, s * 0.2], [-0.28, 0.42, s * 0.2], [-0.4, 0.17, s * 0.23]], 0.016, 'darkMetal');
+      });
+      k.tube([[0.1, 0.4, -0.2], [0.1, 0.42, 0], [0.1, 0.4, 0.2]], 0.016, 'darkMetal');
+      k.tube([[-0.28, 0.42, -0.2], [-0.28, 0.44, 0], [-0.28, 0.42, 0.2]], 0.016, 'darkMetal');
+      // Seat and steering wheel inside the cage.
+      k.rbox([0.16, 0.14, 0.2], [-0.1, 0.25, 0], 'black', { r: 0.03 });
+      k.cyl(0.05, 0.05, 0.012, [0.1, 0.27, 0], 'black', { axis: 'x' });
+      // Big round headlights, a snorkel and a spare tyre on the back.
+      k.sym((s) => {
+        k.sphere(0.045, [0.66, 0.1, s * 0.14], 'head', { scale: [0.6, 1, 1] });
+        k.rbox([0.012, 0.05, 0.05], [-0.555, 0.08, s * 0.14], 'tail', { r: 0.006 });
+      });
+      k.cyl(0.11, 0.11, 0.07, [-0.6, 0.12, 0], 'black', { axis: 'x' });
+      k.cyl(0.05, 0.05, 0.075, [-0.6, 0.12, 0], 'rimWhite', { axis: 'x' });
+      k.tube([[0.45, 0.12, 0.27], [0.45, 0.35, 0.27], [0.4, 0.4, 0.27]], 0.018, 'black');
+      k.nozzle([-0.58, -0.03, 0.12], 0.04);
+      k.rbox([0.5, 0.03, 0.08], [0.25, 0.19, 0], 'accent', { r: 0.012 });
+    },
+  },
+
+  // ------------------------------------------------------------------ Halberd (long)
+  halberd: {
+    name: 'Halberd',
+    hitbox: 'long',
+    blurb: 'Arrowhead racer: a sharp nose, flat sides and a split tail.',
+    span: [-0.66, 0.84, 0.36],
+    livery: 'twin',
+    wheels: { front: { r: 0.135, w: 0.12, z: 0.335 }, back: { r: 0.16, w: 0.19, z: 0.35 }, rim: 'mesh', rimMat: 'rimBlack', sidewall: 0.3 },
+    build(k) {
+      // Arrowhead plan: narrow at the nose, widest at the back, flat sides.
+      k.shell([
+        { x: 0.84, w: 0.03, yb: -0.04, yt: -0.01, n: 6 },
+        { x: 0.6, w: 0.16, yb: -0.07, yt: 0.05, n: 7, tb: 0.15 },
+        { x: 0.2, w: 0.28, yb: -0.08, yt: 0.09, n: 8, tb: 0.2 },
+        { x: -0.3, w: 0.34, yb: -0.08, yt: 0.11, n: 8, tb: 0.2 },
+        { x: -0.6, w: 0.35, yb: -0.07, yt: 0.1, n: 7, tb: 0.15 },
+        { x: -0.66, w: 0.32, yb: -0.05, yt: 0.07, n: 6 },
+      ], { ring: 48, twoTone: { y: -0.03, dark: 0.12 } });
+      // Low canopy set far back.
+      k.shell([
+        { x: 0.05, w: 0.02, yb: 0.08, yt: 0.1, n: 2.4 },
+        { x: -0.08, w: 0.11, yb: 0.08, yt: 0.2, n: 2.6, tb: 0.4 },
+        { x: -0.3, w: 0.12, yb: 0.08, yt: 0.21, n: 2.6, tb: 0.4 },
+        { x: -0.44, w: 0.05, yb: 0.08, yt: 0.12, n: 2.4 },
+      ], { mat: 'glass', ring: 32 });
+      // Split tail: two tall fins, angled out.
+      k.sym((s) => {
+        k.plate([[0, 0], [0.22, 0], [0.08, 0.2], [-0.02, 0.22]], 0.016, [-0.62, 0.09, s * 0.2], 'accent', { bevel: 0.005, rot: [s * 0.25, 0, 0] });
+        k.box([0.5, 0.01, 0.01], [-0.15, 0.1, s * 0.3], 'glow');
+        k.rbox([0.06, 0.012, 0.012], [0.62, 0.02, s * 0.12], 'head', { r: 0.004 });
+        k.rbox([0.012, 0.03, 0.12], [-0.665, 0.03, s * 0.2], 'tail', { r: 0.005 });
+        k.nozzle([-0.69, 0.0, s * 0.09], 0.045);
+      });
+      // Nose stripe and front splitter.
+      k.box([0.6, 0.006, 0.05], [0.45, 0.06, 0], 'accent', [0, 0, -0.1]);
+      k.box([0.18, 0.012, 0.36], [0.72, -0.075, 0], 'carbon');
+    },
+  },
 };
 
 export const CAR_IDS = Object.keys(DESIGNS);
