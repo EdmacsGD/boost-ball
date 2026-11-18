@@ -253,7 +253,7 @@ export class HomeScreen {
     if (name === 'online') this.onlinePage.shown(true);
     if (name === 'players' && was !== 'players') this.playersPage.shown();
     if ((name === 'shop' || name === 'pass') && was !== name) this.shopPage.shown(name);
-    if (was !== name && (was === 'shop' || was === 'pass')) this.game.previewCar();
+    if (was !== name && (was === 'shop' || was === 'pass')) { if (!this.shopPage.unpeek()) this.game.previewCar(); }
     // Clips is its own full screen page over the home screen.
     $('clipsScreen').hidden = name !== 'clips';
     if (name === 'clips' && was !== 'clips') this.clipsPage.shown();

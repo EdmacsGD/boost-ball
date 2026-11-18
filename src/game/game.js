@@ -1526,6 +1526,7 @@ export class Game {
       return;
     }
     if (this.state === 'home' && !this.paused && inp.consume('Escape')) {
+      if (this.home.shopPage.unpeek()) return; // leave the shop's preview first
       if (this.home.page !== 'main') this.home.setPage('main');
       return;
     }

@@ -1,6 +1,7 @@
 // Orb Shop and Season Pass pages. The server decides everything (prices, orbs, what you own);
 // these pages show account.eco and call the account's buy and claim functions.
 import { item, RARITY } from '../meta/items.js';
+import { ItemThumbs, orbSvg } from '../render/itemThumbs.js';
 import { SHOP, PRICE, PREMIUM_PASS_PRICE, PASS_TIERS, PASS_XP_PER_TIER, ORB_RULES, passFor, seasonName, seasonEnd, seasonKey } from '../meta/economy.js';
 
 const $ = (id) => document.getElementById(id);
@@ -29,6 +30,31 @@ export class ShopPage {
 
   get acc() {
     return this.game.account;
+  }
+
+  thumb(k) {
+    if (!this.thumbs) this.thumbs = new ItemThumbs(this.game.renderer.renderer);
+    try {
+      return this.thumbs.url(k);
+    } catch {
+      return null;
+    }
+  }
+
+  pic(k, cls = 'item-pic') {
+    const u = this.thumb(k);
+    if (!u) return null;
+    const img = el('img', cls);
+    img.src = u;
+    img.alt = '';
+    img.draggable = false;
+    return img;
+  }
+
+  orbIcon(cls = 'orb-ico') {
+    const i = el('span', cls);
+    i.innerHTML = orbSvg();
+    return i;
   }
 
   // Orbs on the Shop menu button, a dot on Season Pass when a reward is waiting.
@@ -82,7 +108,10 @@ export class ShopPage {
     const bar = $('shopOrbBar');
     bar.replaceChildren();
     if (!e) return;
-    bar.appendChild(el('b', 'orb-big', orbs(e.orbs)));
+    const big = el('b', 'orb-big');
+    big.appendChild(this.orbIcon('orb-ico big'));
+    big.appendChild(document.createTextNode(Number(e.orbs).toLocaleString('en')));
+    bar.appendChild(big);
     const how = el('small', 'orb-how', `Earn orbs: ${ORB_RULES.per15Min} every 15 min of play (next in ${Math.ceil((e.next_play || 900) / 60)} min) · ${ORB_RULES.perGoal} per goal · ${ORB_RULES.perSave} per save · ${ORB_RULES.perClipView} per clip view and ${ORB_RULES.perClipLike} per like on your clips (up to ${ORB_RULES.clipDailyCap} a day, ${e.clip_today || 0} today)`);
     bar.appendChild(how);
   }
@@ -126,12 +155,14 @@ export class ShopPage {
         const price = PRICE[rarity];
         const card = el('div', `shop-card${owned ? ' owned' : ''}`);
         card.style.setProperty('--rar', RARITY[rarity].color);
+        const pic = this.pic(k, 'shop-pic');
+        if (pic) card.appendChild(pic);
         card.appendChild(el('small', 'shop-kind', `${catName[cat] || cat} · ${RARITY[rarity].name}`));
         card.appendChild(el('b', 'shop-name', it.name));
         const row = el('div', 'shop-row');
         const prev = el('button', 'small-btn', 'Preview');
         prev.type = 'button';
-        prev.addEventListener('click', () => this.preview(cat, id));
+        prev.addEventListener('click', () => this.peek(k, price));
         row.appendChild(prev);
         if (owned) {
           const eq = el('button', 'small-btn', this.acc.loadout[cat] === id ? 'Equipped' : 'Equip');
@@ -140,7 +171,9 @@ export class ShopPage {
           eq.addEventListener('click', () => { this.acc.equip(cat, id); this.game.previewCar(); this.renderShop(); });
           row.appendChild(eq);
         } else {
-          const buy = el('button', 'small-btn buy', orbs(price));
+          const buy = el('button', 'small-btn buy');
+          buy.appendChild(this.orbIcon());
+          buy.appendChild(document.createTextNode(price.toLocaleString('en')));
           buy.type = 'button';
           buy.disabled = !e || Number(e.orbs) < price;
           buy.addEventListener('click', () => this.act(() => this.acc.buyItem(k), `${it.name} is yours`));
@@ -158,6 +191,63 @@ export class ShopPage {
   preview(cat, id) {
     const lo = { ...this.acc.loadout, [cat]: id };
     this.game.previewCar(lo);
+  }
+
+  // Preview button: the menus slide away so you see the car, with a bar to buy or go back.
+  peek(k, price) {
+    const [cat, id] = splitKey(k);
+    const it = item(cat, id);
+    this.preview(cat, id);
+    const home = this.game.home.el;
+    home.classList.add('shop-peek');
+    let bar = $('shopPeek');
+    if (!bar) {
+      bar = el('div', 'shop-peek-bar');
+      bar.id = 'shopPeek';
+      home.appendChild(bar);
+    }
+    bar.replaceChildren();
+    const pic = this.pic(k, 'peek-pic');
+    if (pic) bar.appendChild(pic);
+    const info = el('div', 'peek-info');
+    info.appendChild(el('small', 'shop-kind', `${catName[cat] || cat} · ${RARITY[it.rarity].name}`));
+    info.appendChild(el('b', 'shop-name', it.name));
+    info.appendChild(el('small', 'peek-hint', 'Drag the car to spin it'));
+    bar.appendChild(info);
+    bar.style.setProperty('--rar', RARITY[it.rarity].color);
+    const owned = this.acc.data.owned.includes(k);
+    const e = this.acc.eco;
+    if (owned) {
+      const eq = el('button', 'kick', this.acc.loadout[cat] === id ? 'Equipped' : 'Equip');
+      eq.type = 'button';
+      eq.disabled = this.acc.loadout[cat] === id;
+      eq.addEventListener('click', () => { this.acc.equip(cat, id); this.unpeek(); });
+      bar.appendChild(eq);
+    } else if (price != null) {
+      const buy = el('button', 'kick buy');
+      buy.type = 'button';
+      buy.appendChild(this.orbIcon());
+      buy.appendChild(document.createTextNode(`Buy · ${price.toLocaleString('en')}`));
+      buy.disabled = !e || Number(e.orbs) < price;
+      buy.addEventListener('click', () => this.act(() => this.acc.buyItem(k), `${it.name} is yours`).then(() => this.peek(k, price)));
+      bar.appendChild(buy);
+    }
+    const back = el('button', 'back', 'Back');
+    back.type = 'button';
+    back.appendChild(el('kbd', null, 'Esc'));
+    back.addEventListener('click', () => this.unpeek());
+    bar.appendChild(back);
+    this.peeking = true;
+  }
+
+  unpeek() {
+    if (!this.peeking) return false;
+    this.peeking = false;
+    this.game.home.el.classList.remove('shop-peek');
+    $('shopPeek')?.remove();
+    this.game.previewCar();
+    this.render(this.game.home.page);
+    return true;
   }
 
   renderPass() {
@@ -189,33 +279,68 @@ export class ShopPage {
 
     const claimed = new Set(e?.claims || []);
     const rewards = passFor(key);
+    // Showcase: the biggest premium rewards, large.
+    const show = el('div', 'pass-show');
+    for (const r of rewards.filter((x) => x.track === 'premium' && x.item && (x.tier >= 20 || x.tier === 8 || x.tier === 15)).slice(-4)) {
+      const [cat, id] = splitKey(r.item);
+      const it = item(cat, id);
+      const c = el('div', 'pass-show-card');
+      c.style.setProperty('--rar', RARITY[it.rarity].color);
+      const pic = this.pic(r.item, 'pass-show-pic');
+      if (pic) c.appendChild(pic);
+      c.appendChild(el('b', null, it.name));
+      c.appendChild(el('small', null, `Tier ${r.tier} · Premium`));
+      c.addEventListener('click', () => this.peek(r.item, null));
+      show.appendChild(c);
+    }
+    body.appendChild(show);
+
     const strip = el('div', 'pass-strip');
+    const lanes = el('div', 'pass-lanes');
+    lanes.appendChild(el('span', 'lane premium', 'PREMIUM'));
+    lanes.appendChild(el('span', 'lane free', 'FREE'));
+    strip.appendChild(lanes);
     for (let t = 1; t <= PASS_TIERS; t++) {
-      const col = el('div', `pass-col${t <= tier ? ' reached' : ''}`);
+      const col = el('div', `pass-col${t <= tier ? ' reached' : ''}${t === tier + 1 ? ' next' : ''}`);
       col.appendChild(el('span', 'pass-num', String(t)));
       for (const track of ['premium', 'free']) {
         const r = rewards.find((x) => x.tier === t && x.track === track);
-        const cell = el('div', `pass-cell ${track}`);
+        const cell = el('div', `pass-cell ${track}${r ? '' : ' empty'}`);
         if (r) {
           const [cat, id] = r.item ? splitKey(r.item) : [null, null];
           const it = r.item ? item(cat, id) : null;
-          cell.appendChild(el('span', 'pass-reward', r.orbs ? `${r.orbs} orbs` : it ? it.name : r.item));
-          if (it) cell.style.setProperty('--rar', RARITY[it.rarity].color);
+          if (it) {
+            cell.style.setProperty('--rar', RARITY[it.rarity].color);
+            const pic = this.pic(r.item, 'pass-pic');
+            if (pic) cell.appendChild(pic);
+            cell.appendChild(el('span', 'pass-reward', it.name));
+            cell.addEventListener('click', (ev) => { if (ev.target.tagName !== 'BUTTON') this.peek(r.item, null); });
+            cell.classList.add('has-item');
+          } else {
+            cell.classList.add('orbs');
+            cell.appendChild(this.orbIcon('orb-ico pass'));
+            cell.appendChild(el('span', 'pass-reward', `${r.orbs}`));
+          }
           const k = `${track}:${t}`;
           if (claimed.has(k)) cell.classList.add('claimed');
           else if (t <= tier && (track === 'free' || e?.premium)) {
-            const b = el('button', 'small-btn', 'Claim');
+            cell.classList.add('ready');
+            const b = el('button', 'claim-btn', 'Claim');
             b.type = 'button';
             b.addEventListener('click', () => this.act(() => this.acc.claimPass(t, track), it ? `${it.name} unlocked` : `+${r.orbs} orbs`));
             cell.appendChild(b);
           } else if (track === 'premium' && !e?.premium) cell.classList.add('locked');
-          if (it) cell.addEventListener('mouseenter', () => this.preview(cat, id));
         }
         col.appendChild(cell);
       }
       strip.appendChild(col);
     }
     body.appendChild(strip);
-    body.appendChild(el('p', 'page-note', 'Top row: Premium. Bottom row: free for everyone. Scroll sideways for all 30 tiers. Hover a reward to see it on your car. A pass item you already bought gives its price back in orbs.'));
+    // Scroll the strip to the next tier you are working on.
+    requestAnimationFrame(() => {
+      const next = strip.querySelector('.pass-col.next') || strip.querySelector('.pass-col.reached:last-of-type');
+      if (next) strip.scrollLeft = Math.max(0, next.offsetLeft - strip.clientWidth / 2);
+    });
+    body.appendChild(el('p', 'page-note', 'Scroll sideways for all 30 tiers. Click an item to see it on your car. A pass item you already bought gives its price back in orbs.'));
   }
 }
