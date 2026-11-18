@@ -10,6 +10,12 @@
 <div id="app">
   <div id="view"></div>
 
+  <!-- Waiting for an online match in free play: search status and a cancel button -->
+  <div class="queue-banner" id="queueBanner" hidden>
+    <span class="qb-dot"></span>
+    <span class="qb-text" id="queueText">Searching</span>
+    <button type="button" class="qb-cancel" id="queueCancel">Cancel search</button>
+  </div>
   <div id="hud" class="hud">
     <!-- Scoreboard -->
     <div class="score" id="score">

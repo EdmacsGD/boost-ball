@@ -220,6 +220,15 @@ export class Game {
     this.login = new LoginScreen(this);
     this.tutorial = new Tutorial(this);
     this.online.init();
+    // Search banner in free play: follows the search and ticks the clock once a second.
+    this.online.onChange(() => this.updateQueueBanner());
+    setInterval(() => { if (this.queueWait || this.online.status === 'queue') this.updateQueueBanner(); }, 1000);
+    document.getElementById('queueCancel').addEventListener('click', () => {
+      this.audio.play('click');
+      this.online.cancelQueue();
+      this.toast('Search cancelled');
+      this.updateQueueBanner();
+    });
     this.progress(0.95, 'Kicking off');
     // Tests start as a guest; everyone else picks an account first.
     if (this.testMode) this.account.useGuest(this.legacyProfile());
@@ -687,6 +696,12 @@ export class Game {
     this.previewCar();
     this.onHomePage(this.home.page);
     if (this.audio.ready) this.audio.silenceEngines();
+    // Left free play while the search runs: the online page shows it (and can cancel it).
+    if (this.queueWait) {
+      this.endQueueWait();
+      if (this.online.status === 'queue' && this.home.page !== 'online') this.home.setPage('online');
+    }
+    this.updateQueueBanner();
   }
 
   // The showroom car for the home screen, in the chosen car, accent and preview team.
@@ -956,6 +971,48 @@ export class Game {
     this.startMatch();
   }
 
+  // Quick play search, waiting in free play. The search keeps running in the background (online.js);
+  // when a match is found, startOnlineMatch takes over from free play.
+  queueAndPlay(mode) {
+    this.online.startQueue(mode);
+    if (this.online.status !== 'queue') return;
+    const already = this.state !== 'home' && this.mode === 'free';
+    this.queueWait = { prevMode: this.queueWait?.prevMode || this.settings.mode };
+    if (!already) this.startFreePlay();
+    this.updateQueueBanner();
+  }
+
+  // Back to the mode chosen before the wait (free play only borrowed it).
+  endQueueWait() {
+    if (!this.queueWait) return;
+    if (this.settings.mode === 'free') this.settings.mode = this.queueWait.prevMode || '1v1';
+    this.queueWait = null;
+    this.updateQueueBanner();
+  }
+
+  updateQueueBanner() {
+    const el = document.getElementById('queueBanner');
+    if (!el) return;
+    const o = this.online;
+    const searching = o.status === 'queue';
+    const found = this.queueWait && (o.status === 'hosting' || o.status === 'joining');
+    const show = this.state !== 'home' && !this.np && (searching || found);
+    el.hidden = !show;
+    if (!show) {
+      // The search stopped without a match (cancelled, or the room failed): stop borrowing free play.
+      if (this.queueWait && !searching && !found && o.status !== 'match') this.endQueueWait();
+      return;
+    }
+    el.classList.toggle('found', !!found);
+    const t = document.getElementById('queueText');
+    if (found) t.textContent = 'Match found, starting...';
+    else {
+      const secs = Math.floor((Date.now() - o.queueSince) / 1000);
+      t.textContent = `Searching ${o.queueMode} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · ${o.queued(o.queueMode).length} waiting`;
+    }
+    document.getElementById('queueCancel').hidden = !!found;
+  }
+
   startFreePlay() {
     this.settings.mode = 'free';
     this.endless = false;
@@ -1116,6 +1173,10 @@ export class Game {
   }
 
   startOnlineMatch(slots, arena, mode, isHost) {
+    // Found while waiting in free play: leave it (unpaused) and go straight in.
+    if (this.queueWait) this.endQueueWait();
+    if (this.paused) this.setPaused(false);
+    document.getElementById('queueBanner').hidden = true;
     resetMutators(this); // online always plays the normal rules
     this.audio.init();
     this.anthems.stop(0.3);

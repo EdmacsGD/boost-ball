@@ -119,9 +119,10 @@ export class OnlinePage {
       fq.appendChild(el('p', 'queue-line', `Searching ${o.queueMode} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · ${waiting} waiting`));
       fq.appendChild(this.btn('Cancel', '', () => o.cancelQueue()));
     } else {
-      fq.appendChild(this.btn(`Find a ${this.mode} match`, 'kick', () => o.startQueue(this.mode)));
+      fq.appendChild(this.btn(`Find a ${this.mode} match`, 'kick', () => this.game.queueAndPlay(this.mode)));
+      fq.appendChild(this.btn('Wait here instead', 'small-btn', () => o.startQueue(this.mode)));
     }
-    fq.appendChild(el('span', 'field-note', ranked ? 'Quick play is ranked: winning raises your rating, losing or leaving early lowers it.' : 'Quick play counts for your stats.'));
+    fq.appendChild(el('span', 'field-note', ranked ? 'You wait in free play while it searches. Quick play is ranked: winning raises your rating, losing or leaving early lowers it.' : 'You wait in free play while it searches. Quick play counts for your stats.'));
     body.appendChild(fq);
 
     // Private match.

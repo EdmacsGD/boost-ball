@@ -1795,3 +1795,13 @@ body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: aut
   .bv-foot-row { grid-row: 4; }
 }
 @media (max-width: 900px) { .home.shop-peek:has(.bundle-view) .home-top { opacity: 0; visibility: hidden; } }
+
+/* Online search while you wait in free play */
+.queue-banner { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 84px); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px; background: rgba(6, 10, 20, 0.84); border: 1px solid rgba(120, 180, 255, 0.35); color: #e8f0ff; font: 600 13px/1 var(--display, sans-serif); letter-spacing: 0.04em; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); pointer-events: auto; max-width: calc(100% - 32px); }
+.queue-banner .qb-dot { width: 8px; height: 8px; border-radius: 50%; background: #4aa8ff; animation: qb-pulse 1.2s ease-in-out infinite; flex: none; }
+.queue-banner.found { border-color: rgba(120, 255, 160, 0.5); }
+.queue-banner.found .qb-dot { background: #5cff8a; }
+@keyframes qb-pulse { 50% { opacity: 0.3; transform: scale(0.7); } }
+.queue-banner .qb-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.queue-banner .qb-cancel { font: 700 11px/1 var(--display, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: #ffb3b3; background: rgba(255, 80, 80, 0.12); border: 1px solid rgba(255, 120, 120, 0.4); border-radius: 999px; padding: 6px 10px; cursor: pointer; flex: none; }
+.queue-banner .qb-cancel:hover { background: rgba(255, 80, 80, 0.25); }
