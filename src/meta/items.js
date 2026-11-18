@@ -58,6 +58,12 @@ add('car', 'enforcer', 'Enforcer', 'rare');
 add('car', 'stomper', 'Stomper', 'epic');
 add('car', 'afterglow', 'Afterglow', 'epic');
 add('car', 'nova', 'Nova', 'legendary');
+add('car', 'ranger', 'Ranger', 'common');
+add('car', 'quokka', 'Quokka', 'rare');
+add('car', 'brawler', 'Brawler', 'rare');
+add('car', 'skiff', 'Skiff', 'epic');
+add('car', 'halberd', 'Halberd', 'epic');
+add('car', 'pulse', 'Pulse', 'legendary');
 
 // Goal explosions: id matches goalExplosions.js.
 for (const id of STARTER_EXPLOSIONS) add('explosion', id, id, 'common', {}, true);
