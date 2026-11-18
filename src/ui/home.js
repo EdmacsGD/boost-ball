@@ -99,6 +99,14 @@ export function itemSwatch(it, team = 0) {
   return el;
 }
 
+// Where a locked item comes from (garage cards and the preview bar).
+function howToGet(it) {
+  if (it.pass) return 'Season Pass only';
+  if (it.shop && it.drop) return 'Sport Drops or the Orb Shop';
+  if (it.shop) return 'Orb Shop or Season Pass';
+  return 'from drops';
+}
+
 export class HomeScreen {
   constructor(game) {
     this.game = game;
@@ -285,7 +293,7 @@ export class HomeScreen {
       const v = Math.min(it.unlock.goal, acc.stat(it.unlock.stat));
       how.textContent = `${it.unlock.text}: ${v}/${it.unlock.goal}. Never in Sport Drops.`;
     } else {
-      how.textContent = 'Get it from Sport Drops.';
+      how.textContent = `Get it: ${howToGet(it)}.`;
     }
     t.append(top, n, how);
     const again = ['explosion', 'anthem'].includes(it.cat) ? document.createElement('button') : null;
@@ -325,7 +333,7 @@ export class HomeScreen {
       l.textContent = `${label} ${owned}/${items.length}`;
       f.appendChild(l);
       const grid = document.createElement('div');
-      grid.className = `item-grid${cat === 'car' || cat === 'explosion' || cat === 'anthem' ? ' wide-cards' : ''}`;
+      grid.className = `item-grid${cat === 'car' || cat === 'explosion' || cat === 'anthem' || cat === 'topper' ? ' wide-cards' : ''}`;
       const slot = CATEGORIES.find((c) => c.id === cat).slot;
       // Owned first, then locked by rarity.
       const order = Object.keys(RARITY);
@@ -342,6 +350,10 @@ export class HomeScreen {
         if (lo[slot] === it.id) b.classList.add('on');
         const sw = itemSwatch(it, this.game.previewTeam);
         if (sw) b.appendChild(sw);
+        else if (cat === 'topper' && it.id !== 'none') {
+          const pic = this.shopPage.pic(`topper:${it.id}`, 'item-pic');
+          if (pic) b.appendChild(pic);
+        }
         const t = document.createElement('span');
         t.className = 'item-text';
         const n = document.createElement('b');
@@ -349,7 +361,7 @@ export class HomeScreen {
         const sm = document.createElement('small');
         const un = it.unlock;
         const prog = un ? `${Math.min(un.goal, acc.stat(un.stat))}/${un.goal}` : '';
-        sm.textContent = own ? itemBlurb(it) || (it.starter ? 'Starter' : RARITY[it.rarity].name) : un ? `${un.text} · ${prog}` : `${RARITY[it.rarity].name} · from drops`;
+        sm.textContent = own ? itemBlurb(it) || (it.starter ? 'Starter' : RARITY[it.rarity].name) : un ? `${un.text} · ${prog}` : `${RARITY[it.rarity].name} · ${howToGet(it)}`;
         t.append(n, sm);
         if (un && !own) {
           const bar = document.createElement('i');
@@ -407,6 +419,9 @@ export class HomeScreen {
         section('Decal', 'decal');
         break;
       }
+      case 'topper':
+        section('Hats and toppers: they sit on your car roof', 'topper');
+        break;
       case 'boost':
         section('Boost', 'boost');
         break;

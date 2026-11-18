@@ -59,8 +59,10 @@ add('car', 'enforcer', 'Enforcer', 'rare');
 add('car', 'stomper', 'Stomper', 'epic');
 add('car', 'afterglow', 'Afterglow', 'epic');
 add('car', 'nova', 'Nova', 'legendary');
-// Orb shop and season pass items (economy.js): never in Sport Drops, the server hands them out.
+// Orb shop and season pass items (economy.js). Cars and pass-only toppers never drop (the server
+// hands them out); the other toppers are in the shop and in Sport Drops.
 const SHOPI = { shop: true };
+const DROPSHOP = { shop: true, drop: true }; // in the Orb Shop and in Sport Drops
 add('car', 'ranger', 'Ranger', 'common', SHOPI);
 add('car', 'quokka', 'Quokka', 'rare', SHOPI);
 add('car', 'brawler', 'Brawler', 'rare', SHOPI);
@@ -68,19 +70,19 @@ add('car', 'skiff', 'Skiff', 'epic', SHOPI);
 add('car', 'halberd', 'Halberd', 'epic', SHOPI);
 add('car', 'pulse', 'Pulse', 'legendary', SHOPI);
 add('topper', 'none', 'No topper', 'common', {}, true);
-add('topper', 'beanie', 'Knit Beanie', 'common', SHOPI);
-add('topper', 'holiday', 'Holiday Hat', 'rare', SHOPI);
-add('topper', 'antlers', 'Antlers', 'rare', SHOPI);
+add('topper', 'beanie', 'Knit Beanie', 'common', DROPSHOP);
+add('topper', 'holiday', 'Holiday Hat', 'rare', DROPSHOP);
+add('topper', 'antlers', 'Antlers', 'rare', DROPSHOP);
 add('topper', 'snowdrift', 'Snow Drift', 'epic', { shop: true, pass: true });
 add('topper', 'icecrown', 'Ice Crown', 'legendary', { shop: true, pass: true });
-add('topper', 'cap', 'Team Cap', 'common', SHOPI);
-add('topper', 'cone', 'Traffic Cone', 'common', SHOPI);
-add('topper', 'party', 'Party Hat', 'common', SHOPI);
-add('topper', 'propeller', 'Propeller Cap', 'rare', SHOPI);
-add('topper', 'tophat', 'Top Hat', 'rare', SHOPI);
-add('topper', 'viking', 'Horned Helm', 'epic', SHOPI);
-add('topper', 'wizard', 'Wizard Hat', 'epic', SHOPI);
-add('topper', 'crown', 'Gold Crown', 'legendary', SHOPI);
+add('topper', 'cap', 'Team Cap', 'common', DROPSHOP);
+add('topper', 'cone', 'Traffic Cone', 'common', DROPSHOP);
+add('topper', 'party', 'Party Hat', 'common', DROPSHOP);
+add('topper', 'propeller', 'Propeller Cap', 'rare', DROPSHOP);
+add('topper', 'tophat', 'Top Hat', 'rare', DROPSHOP);
+add('topper', 'viking', 'Horned Helm', 'epic', DROPSHOP);
+add('topper', 'wizard', 'Wizard Hat', 'epic', DROPSHOP);
+add('topper', 'crown', 'Gold Crown', 'legendary', DROPSHOP);
 add('topper', 'halo', 'Halo', 'epic', { shop: true, pass: true });
 add('topper', 'sunglasses', 'Shades', 'rare', { shop: true, pass: true });
 
@@ -308,7 +310,7 @@ const byKey = new Map(list.map((it) => [key(it.cat, it.id), it]));
 export const item = (cat, id) => byKey.get(key(cat, id)) || null;
 export const itemsIn = (cat) => list.filter((it) => it.cat === cat);
 export const isCustomAnthem = (id) => typeof id === 'string' && /^custom:[a-z0-9]{1,24}$/.test(id);
-export const DROP_ITEMS = list.filter((it) => !it.starter && !it.unlock && !it.shop);
+export const DROP_ITEMS = list.filter((it) => !it.starter && !it.unlock && (!it.shop || it.drop));
 export const UNLOCK_ITEMS = list.filter((it) => it.unlock);
 // Bots and random picks use only items anyone can get, so achievement items stay special.
 export const isExclusive = (cat, id) => !!(item(cat, id) || {}).unlock;

@@ -872,7 +872,7 @@ export class Game {
   // Equip an owned item (or an accent) and update what is on screen.
   equip(slot, id) {
     if (!this.account.equip(slot, id)) return;
-    if (['car', 'accent', 'paint', 'finish', 'decal', 'boost'].includes(slot)) {
+    if (['car', 'accent', 'paint', 'finish', 'decal', 'boost', 'topper'].includes(slot)) {
       this.previewCar();
       if (this.player && this.state === 'home') this.setupMatch(this.settings.mode, this.settings.difficulty);
     }
@@ -891,7 +891,7 @@ export class Game {
     const slot = CATEGORIES.find((c) => c.id === it.cat)?.slot;
     const lo = { ...this.account.loadout, [slot]: it.id };
     this.previewing = it;
-    if (['car', 'paint', 'finish', 'decal', 'boost'].includes(it.cat)) this.previewCar(lo);
+    if (['car', 'paint', 'finish', 'decal', 'boost', 'topper'].includes(it.cat)) this.previewCar(lo);
     if (it.cat === 'boost') this.showroom.setBoost(it);
     if (it.cat === 'ball') this.showroom.setBall(it.id);
     if (it.cat === 'explosion') this.previewExplosion(it.id);

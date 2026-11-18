@@ -1738,3 +1738,5 @@ body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: aut
 /* The pass strip scrolls inside the page; it must not make the page wider. */
 #passBody, #shopBody { min-width: 0; width: 100%; max-width: 100%; }
 .pass-strip { max-width: 100%; }
+
+.item-card .item-pic { width: 54px; height: 38px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5)); }
