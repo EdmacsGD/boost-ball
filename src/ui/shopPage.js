@@ -383,6 +383,7 @@ export class ShopPage {
   // Not for guests, not when nothing is left to buy, and not after "don't show again today".
   maybeOffer() {
     if (!this.acc.serverStats || !this.acc.eco || this.peeking) return false;
+    if (this.game.online.status !== 'idle' && this.game.online.status !== 'browsing') return false; // searching or in a match room
     try { if (localStorage.getItem('bb-offer-off') === todayKey()) return false; } catch { /* private window */ }
     const key = this.acc.eco.season || seasonKey();
     const open = BUNDLES.filter((b) => (!b.theme || seasonTheme(key) === b.theme) && bundlePrice(b, (k) => this.owns(k)).missing);
