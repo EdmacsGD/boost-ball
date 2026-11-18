@@ -16,6 +16,27 @@ const catName = { car: 'Car', topper: 'Topper', explosion: 'Goal explosion', boo
 const splitKey = (k) => { const i = k.indexOf(':'); return [k.slice(0, i), k.slice(i + 1)]; };
 const orbs = (n) => `${Number(n).toLocaleString('en')} orbs`;
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+// Picture for a goal explosion tile: a burst in the explosion's colors.
+const BURST = {
+  tsunami: ['#7fe3ff', '#1d6fd6'], portal: ['#c8f2ff', '#7a3cff'], kraken: ['#7dffd8', '#5a1d9e'], phoenix: ['#ffe27a', '#e8401c'],
+  aurora: ['#9dffb8', '#6a3cd6'], bigbang: ['#ffffff', '#2a1a7a'],
+};
+let burstN = 0;
+function burst(id) {
+  const [a, b] = BURST[id] || ['#ffffff', '#3a6cff'];
+  const g = `bvb${burstN++}`;
+  const rays = Array.from({ length: 12 }, (_, i) => {
+    const t = (i / 12) * Math.PI * 2, r = i % 2 ? 30 : 44;
+    return `${(50 + Math.cos(t) * r).toFixed(1)},${(50 + Math.sin(t) * r).toFixed(1)} ${(50 + Math.cos(t + 0.26) * 12).toFixed(1)},${(50 + Math.sin(t + 0.26) * 12).toFixed(1)}`;
+  }).join(' ');
+  const s = document.createElement('span');
+  s.className = 'bv-burst';
+  s.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="${g}"><stop offset="0" stop-color="${a}"/><stop offset="0.55" stop-color="${b}"/><stop offset="1" stop-color="${b}" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="48" fill="url(#${g})" opacity="0.55"/><polygon points="${rays}" fill="${a}" opacity="0.9"/><circle cx="50" cy="50" r="10" fill="#fff"/></svg>`;
+  return s;
+}
+
 function timeLeft() {
   const ms = seasonEnd() - Date.now();
   const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
@@ -264,8 +285,9 @@ export class ShopPage {
     return buy;
   }
 
-  // Bundle preview: your car with everything in the bundle on it, and a button for the explosion.
-  peekBundle(b) {
+  // Bundle view: the menus slide away, the bundle's name on the left, your car with everything on
+  // it in the middle and one tile per item on the right. `offer`: shown by itself after a match.
+  peekBundle(b, offer = false) {
     const lo = { ...this.acc.loadout };
     for (const [k] of b.items) {
       const [cat, id] = splitKey(k);
@@ -276,20 +298,99 @@ export class ShopPage {
     if (boost) { const bi = item('boost', splitKey(boost[0])[1]); if (bi) this.game.showroom.setBoost(bi); }
     const ball = b.items.find(([k]) => k.startsWith('ball:'));
     if (ball) this.game.showroom.setBall(splitKey(ball[0])[1]);
-    const buttons = [];
-    const ex = b.items.find(([k]) => k.startsWith('explosion:'));
-    if (ex) {
-      const show = el('button', 'small-btn', 'Show goal explosion');
-      show.type = 'button';
-      show.addEventListener('click', () => this.game.previewExplosion(splitKey(ex[0])[1]));
-      buttons.push(show);
+
+    const home = this.game.home.el;
+    home.classList.add('shop-peek');
+    $('shopPeek')?.remove();
+    let v = $('bundleView');
+    if (!v) {
+      v = el('div', 'bundle-view');
+      v.id = 'bundleView';
+      home.appendChild(v);
     }
+    v.replaceChildren();
+    v.classList.toggle('offer', offer);
     const e = this.acc.eco;
     const p = bundlePrice(b, (k) => this.owns(k));
-    buttons.push(this.bundleBuy(b, p, !b.theme || seasonTheme(e?.season || seasonKey()) === b.theme, e, 'kick buy'));
-    const names = b.items.map(([k]) => { const [c, i] = splitKey(k); const it = item(c, i); return it ? itemName(it) : k; }).join(' · ');
-    this.openPeek({ pic: this.pic(b.items[0][0], 'peek-pic'), kind: `Bundle · ${b.items.length} items`, name: b.name, hint: names, rar: RARITY.epic.color, buttons,
-      onBack: () => { this.game.endPreview(); this.game.previewCar(); this.game.showroom.setBall(null); this.game.showroom.setBoost(null); this.render(this.game.home.page); } });
+    const forSale = !b.theme || seasonTheme(e?.season || seasonKey()) === b.theme;
+
+    // Left: the name.
+    const head = el('div', 'bv-head');
+    if (offer) head.appendChild(el('span', 'bv-tag', 'In the Orb Shop now'));
+    head.appendChild(el('h2', 'bv-name', b.name));
+    head.appendChild(el('span', 'bv-sub', `Bundle · ${b.items.length} items${b.theme === 'winter' ? ' · Winter only' : ''}`));
+    head.appendChild(el('p', 'bv-blurb', b.blurb));
+    v.appendChild(head);
+
+    // Right: one tile per item.
+    const tiles = el('div', 'bv-tiles');
+    for (const [k, r] of b.items) {
+      const [cat, id] = splitKey(k);
+      const it = item(cat, id);
+      if (!it) continue;
+      const t = el('button', `bv-tile${this.owns(k) ? ' have' : ''}`);
+      t.type = 'button';
+      t.style.setProperty('--rar', RARITY[r].color);
+      t.appendChild(el('span', 'bv-cat', catName[cat] || cat));
+      t.appendChild(el('b', 'bv-item', itemName(it)));
+      const art = el('span', 'bv-art');
+      const pic = cat === 'car' || cat === 'topper' ? this.pic(k, 'bv-pic') : cat === 'explosion' ? burst(id) : itemSwatch(it, this.game.previewTeam);
+      if (pic) art.appendChild(pic);
+      t.appendChild(art);
+      t.appendChild(el('span', 'bv-foot', this.owns(k) ? 'Owned' : RARITY[r].name));
+      if (cat === 'explosion') {
+        t.title = 'Play this goal explosion';
+        t.appendChild(el('span', 'bv-play', 'Play'));
+        t.addEventListener('click', () => this.game.previewExplosion(id));
+      } else t.tabIndex = -1;
+      tiles.appendChild(t);
+    }
+    v.appendChild(tiles);
+
+    // Bottom: price and buttons.
+    const foot = el('div', 'bv-foot-row');
+    const price = el('div', 'bv-price');
+    if (p.missing && forSale) {
+      price.appendChild(el('s', null, p.full.toLocaleString('en')));
+      price.appendChild(el('small', null, p.missing < b.items.length ? `You have ${b.items.length - p.missing}, you pay for the rest` : `Save ${(p.full - p.price).toLocaleString('en')} orbs`));
+    }
+    foot.appendChild(price);
+    foot.appendChild(this.bundleBuy(b, p, forSale, e, 'kick buy'));
+    if (offer) {
+      const shop = el('button', 'small-btn', 'All bundles');
+      shop.type = 'button';
+      shop.addEventListener('click', () => { this.unpeek(); this.game.home.setPage('shop'); });
+      foot.appendChild(shop);
+      const mute = el('label', 'bv-mute');
+      const cb = el('input');
+      cb.type = 'checkbox';
+      cb.addEventListener('change', () => { try { localStorage.setItem('bb-offer-off', cb.checked ? todayKey() : ''); } catch { /* private window */ } });
+      mute.append(cb, document.createTextNode("Don't show again today"));
+      foot.appendChild(mute);
+    }
+    const back = el('button', 'back', offer ? 'Not now' : 'Back');
+    back.type = 'button';
+    back.appendChild(el('kbd', null, 'Esc'));
+    back.addEventListener('click', () => this.unpeek());
+    foot.appendChild(back);
+    v.appendChild(foot);
+
+    this.peekBack = () => { this.game.endPreview(); this.game.previewCar(); this.game.showroom.setBall(null); this.game.showroom.setBoost(null); this.render(this.game.home.page); };
+    this.peeking = true;
+  }
+
+  // After a match or free play: show one bundle you can still buy, a different one each time.
+  // Not for guests, not when nothing is left to buy, and not after "don't show again today".
+  maybeOffer() {
+    if (!this.acc.serverStats || !this.acc.eco || this.peeking) return false;
+    try { if (localStorage.getItem('bb-offer-off') === todayKey()) return false; } catch { /* private window */ }
+    const key = this.acc.eco.season || seasonKey();
+    const open = BUNDLES.filter((b) => (!b.theme || seasonTheme(key) === b.theme) && bundlePrice(b, (k) => this.owns(k)).missing);
+    if (!open.length) return false;
+    let n = 0;
+    try { n = Number(localStorage.getItem('bb-offer-n')) || 0; localStorage.setItem('bb-offer-n', String(n + 1)); } catch { n = Math.floor(Math.random() * 99); }
+    this.peekBundle(open[n % open.length], true);
+    return true;
   }
 
   // Show an item on your car in the showroom behind the page (without equipping it).
@@ -302,6 +403,7 @@ export class ShopPage {
   // Used by the shop, the pass and the garage. opts: { pic, kind, name, hint, rar, buttons, onBack }.
   openPeek(opts) {
     const home = this.game.home.el;
+    $('bundleView')?.remove();
     home.classList.add('shop-peek');
     let bar = $('shopPeek');
     if (!bar) {
@@ -358,6 +460,7 @@ export class ShopPage {
     this.peeking = false;
     this.game.home.el.classList.remove('shop-peek');
     $('shopPeek')?.remove();
+    $('bundleView')?.remove();
     const back = this.peekBack;
     this.peekBack = null;
     if (back) back();

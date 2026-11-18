@@ -1257,6 +1257,7 @@ export const DESIGNS = {
     hitbox: 'tall',
     blurb: 'Pickup truck with an open bed, a push bar and a roof light bar.',
     span: [-0.58, 0.82, 0.38],
+    topper: { x: -0.03, y: 0.475, s: 0.65 }, // behind the light bar
     livery: 'side',
     baseShade: 0.8,
     wheels: { front: { r: 0.19, w: 0.17, z: 0.39 }, back: { r: 0.19, w: 0.17, z: 0.39 }, rim: 'beadlock', rimMat: 'rimBlack', tire: 'offroad', sidewall: 0.42 },
@@ -1304,6 +1305,7 @@ export const DESIGNS = {
     hitbox: 'standard',
     blurb: 'Open-top roadster with round lamps, two roll hoops and a chrome grin.',
     span: [-0.6, 0.8, 0.37],
+    topper: { x: -0.12, s: 0.6 }, // open top: the hat rides on the seat
     livery: 'twin',
     wheels: { front: { r: 0.145, w: 0.13, z: 0.36 }, back: { r: 0.16, w: 0.15, z: 0.37 }, rim: 'mesh', rimMat: 'chrome', whitewall: true, sidewall: 0.36 },
     build(k) {

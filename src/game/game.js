@@ -670,8 +670,16 @@ export class Game {
   // ------------------------------------------------------------------ home screen
   enterHome() {
     document.getElementById('results').hidden = true;
+    // Back from a match or free play (not the first time the menu opens): show a bundle offer.
+    const fromPlay = this.homeSeen && this.state !== 'home';
+    this.homeSeen = true;
     // Orbs may have changed (a match, play time, likes on your clips).
-    this.account.loadEconomy();
+    const eco = this.account.loadEconomy();
+    if (fromPlay && (!this.testMode || window.__offerTest)) {
+      Promise.resolve(eco).catch(() => null).then(() => setTimeout(() => {
+        if (this.state === 'home' && !this.paused) this.home.shopPage.maybeOffer();
+      }, 600));
+    }
     this.endless = false;
     this.setEndlessWorld(false);
     this.setupMatch(this.settings.mode, this.settings.difficulty);

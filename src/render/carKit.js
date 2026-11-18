@@ -9,6 +9,9 @@ import { CONFIG } from '../config.js';
 import { UU } from '../util/math.js';
 import { makeLiveryTexture } from './textures.js';
 
+// Hat spots already worked out: "car name|hat" -> [x, y, z, scale].
+const TOPPER_SPOTS = new Map();
+
 const V = CONFIG.vehicle;
 
 // ------------------------------------------------------------------ geometry helpers
@@ -245,66 +248,96 @@ export class CarModel {
     });
   }
 
-  // Topper on the roof: at the highest point of the body, a little behind the middle of that area.
+  // Topper on the roof. Heights come from rays cast straight down onto the body (box parts have
+  // vertices only at their corners, so looking at vertices misses flat roofs).
   addTopper(id) {
     const t = buildTopper(id, this.teamColor);
     if (!t) return;
+    // The spot depends only on the car design and the hat, so it is worked out once (rays are slow).
+    const ck = `${this.design.name}|${id}`;
+    const hit = TOPPER_SPOTS.get(ck);
+    if (hit) {
+      t.scale.setScalar(hit[3]);
+      t.position.set(hit[0], hit[1], hit[2]);
+      this.topper = t;
+      this.body.add(t);
+      this.disposables.push({ dispose: () => disposeTopper(t) });
+      return;
+    }
     this.body.updateMatrixWorld(true);
     const [x0, x1] = this.design.span;
     const L = x1 - x0;
-    // Every point of the body (in the car's frame), without glow strips and the hat itself.
-    const pts = [];
-    const v = new THREE.Vector3();
-    this.body.traverse((o) => {
-      if (!o.isMesh || !o.geometry.attributes.position || o.material === this.mats.glow) return;
-      const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
-        if (Math.abs(v.z) < 0.3) pts.push(v.x, v.y, v.z);
-      }
-    });
-    if (!pts.length) return;
+    const meshes = [];
+    this.body.traverse((o) => { if (o.isMesh && o.material !== this.mats.glow && o.visible) meshes.push(o); });
+    if (!meshes.length) return;
+    const inv = new THREE.Matrix4().copy(this.body.matrixWorld).invert();
+    const rc = new THREE.Raycaster();
+    const o = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
+    const bodyQ = new THREE.Quaternion();
+    this.body.getWorldQuaternion(bodyQ);
+    const dirW = down.clone().applyQuaternion(bodyQ);
+    // Height of the body at (x, z) in the car's frame, -Infinity where there is nothing.
+    const h = (x, z) => {
+      o.set(x, 3, z).applyMatrix4(this.body.matrixWorld);
+      rc.set(o, dirW);
+      const hit = rc.intersectObjects(meshes, false)[0];
+      return hit ? hit.point.applyMatrix4(inv).y : -Infinity;
+    };
     const topIn = (cx, hx, hz) => {
       let top = -Infinity;
-      for (let i = 0; i < pts.length; i += 3) if (Math.abs(pts[i] - cx) <= hx && Math.abs(pts[i + 2]) <= hz && pts[i + 1] > top) top = pts[i + 1];
+      for (const fx of [-1, 0, 1]) for (const fz of [-1, 0, 1]) top = Math.max(top, h(cx + fx * hx, fz * hz));
       return top;
     };
-    // 1. The roof: the highest strip across the middle of the car (wings, fins and tails at the
-    //    back are often higher, so only the cabin area counts), nearest the middle on a tie.
+    // Roof height at x: the middle of five rays across the car, so a thin bar, antenna or light
+    // on top does not count as the roof.
+    const roofAt = (x) => [-0.12, -0.06, 0, 0.06, 0.12].map((z) => h(x, z)).sort((a, b) => a - b)[2];
     const fix = this.design.topper || {};
-    let cx = fix.x;
-    if (cx == null) {
-      let best = -Infinity;
-      const mid = x0 + L * 0.45;
-      for (let k = 0; k <= 16; k++) {
-        const x = x0 + L * (0.22 + 0.45 * (k / 16));
-        const h = topIn(x, 0.04, 0.05) - Math.abs(x - mid) * 0.02;
-        if (h > best) { best = h; cx = x; }
+    // 1. Roof spot (only the cabin area counts: wings, fins and tails at the back are often higher): highest along the middle, nearest the middle on a tie. If that top is tiny (a light
+    // bar or rack across the roof), look again below it for a real roof, up to three times.
+    const mid = x0 + L * 0.45;
+    const xs = [];
+    for (let k = 0; k <= 20; k++) { const x = x0 + L * (0.22 + 0.45 * (k / 20)); xs.push([x, roofAt(x)]); }
+    let cx, roof, zMax, xMin, xMax, ceil = Infinity, best = null;
+    for (let tries = 0; tries < 3; tries++) {
+      cx = fix.x;
+      if (cx == null) {
+        let top = -Infinity;
+        for (const [x, y] of xs) {
+          if (y >= ceil) continue;
+          const v = y - Math.abs(x - mid) * 0.02;
+          if (v > top) { top = v; cx = x; }
+        }
+        if (cx == null) break;
       }
+      roof = roofAt(cx);
+      // How big the roof is there: walk out while the top stays within 4 cm of the roof.
+      const flat = (x, z) => h(x, z) >= roof - 0.04;
+      const flatX = (x) => roofAt(x) >= roof - 0.04;
+      zMax = 0.03; xMin = cx; xMax = cx;
+      for (let z = 0.02; z < 0.5 && flat(cx, z) && flat(cx, -z); z += 0.02) zMax = z;
+      for (let x = cx + 0.02; x < x1 && flatX(x); x += 0.02) xMax = x;
+      for (let x = cx - 0.02; x > x0 && flatX(x); x -= 0.02) xMin = x;
+      if (!best || xMax - xMin > best[3] - best[2] + 0.02) best = [cx, roof, xMin, xMax, zMax];
+      if (fix.x != null || xMax - xMin >= 0.14) break;
+      ceil = roof - 0.02;
     }
-    const roof = topIn(cx, 0.04, 0.05);
-    // 2. How big the roof is there: the flat-ish top within 4 cm of its highest point.
-    let zMax = 0, xMin = cx, xMax = cx;
-    for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] < roof - 0.04) continue;
-      if (Math.abs(pts[i] - cx) < 0.06) zMax = Math.max(zMax, Math.abs(pts[i + 2]));
-      if (Math.abs(pts[i + 2]) < 0.05) { xMin = Math.min(xMin, pts[i]); xMax = Math.max(xMax, pts[i]); }
-    }
+    // None big enough: keep the try with the biggest roof.
+    [cx, roof, xMin, xMax, zMax] = best;
     cx = fix.x ?? (xMin + xMax) / 2;
     // 3. Scale the hat to fit that roof (never bigger than 0.8 of its own size), so it does not hang over.
     const hb = new THREE.Box3().setFromObject(t);
     const hw = Math.max(0.05, hb.max.z - hb.min.z), hl = Math.max(0.05, hb.max.x - hb.min.x);
-    const fit = Math.min((2 * zMax * 1.05) / hw, ((xMax - xMin) * 1.15) / hl);
+    const fit = Math.min((2 * zMax * 1.1) / hw, ((xMax - xMin) * 1.15) / hl);
     const sc = fix.s ?? THREE.MathUtils.clamp(fit, 0.42, 0.8);
     // 4. Sit it on the highest point under its footprint, sunk in a little.
-    const under = topIn(cx, (hl * sc) / 2 * 0.8, (hw * sc) / 2 * 0.8);
+    const under = topIn(cx, (hl * sc) / 2 * 0.7, (hw * sc) / 2 * 0.7);
     t.scale.setScalar(sc);
     t.position.set(cx, (fix.y ?? (Number.isFinite(under) ? under : roof)) - 0.006, 0);
+    TOPPER_SPOTS.set(ck, [t.position.x, t.position.y, t.position.z, sc]);
     this.topper = t;
     this.body.add(t);
     this.disposables.push({ dispose: () => disposeTopper(t) });
   }
-
 
   // ---------------------------------------------------------------- helpers used by designs
   mat(m) {
