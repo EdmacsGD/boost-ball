@@ -1742,3 +1742,16 @@ body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: aut
 .pass-strip { max-width: 100%; }
 
 .item-card .item-pic { width: 54px; height: 38px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5)); }
+
+/* Bundles in the Orb Shop */
+.bundle-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.bundle-card { background: linear-gradient(160deg, color-mix(in srgb, var(--rar) 18%, rgba(6, 10, 20, 0.8)), rgba(6, 10, 20, 0.8) 60%); }
+.bundle-blurb { font-size: 11px; color: #b7c6dc; }
+.bundle-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.bundle-list li { display: flex; align-items: baseline; gap: 6px; font-size: 12px; min-width: 0; }
+.bundle-list li b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bundle-list li.have { opacity: 0.55; }
+.bundle-list .rar-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rar); flex: none; transform: translateY(-1px); }
+.bundle-list .bl-cat { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8ea2bf; width: 104px; flex: none; white-space: nowrap; }
+.bundle-list .bl-have { font-size: 10px; color: #7fd18b; }
+.bundle-note { font-size: 10px; color: #9fb2cc; }

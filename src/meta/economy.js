@@ -26,6 +26,33 @@ export const SHOP = [
   ['topper:cap', 'common'], ['topper:cone', 'common'], ['topper:party', 'common'], ['topper:propeller', 'rare'],
   ['topper:tophat', 'rare'], ['topper:viking', 'epic'], ['topper:wizard', 'epic'], ['topper:crown', 'legendary'],
 ];
+// Bundles: a car and a goal explosion, the bigger ones with more. The price is the shop value of
+// the items you do not have yet, times `off`, rounded down to 50. Items you already own are free.
+// `theme: 'winter'` bundles are only for sale in December to February.
+export const BUNDLES = [
+  { id: 'street', name: 'Street Pack', blurb: 'A first car and a splash to go with it.', off: 0.8,
+    items: [['car:ranger', 'common'], ['explosion:tsunami', 'common']] },
+  { id: 'knight', name: 'Knight Pack', blurb: 'Armor, a royal trail and a goal that opens a portal.', off: 0.75,
+    items: [['car:halberd', 'epic'], ['explosion:portal', 'epic'], ['boost:royal', 'rare']] },
+  { id: 'reef', name: 'Deep Sea Pack', blurb: 'Sail in, then let the Kraken out.', off: 0.75,
+    items: [['car:skiff', 'epic'], ['explosion:kraken', 'legendary'], ['boost:ocean', 'common']] },
+  { id: 'blaze', name: 'Blaze Pack', blurb: 'Fire on the car, fire in the goal.', off: 0.7,
+    items: [['car:brawler', 'rare'], ['explosion:phoenix', 'epic'], ['boost:inferno', 'epic'], ['topper:viking', 'epic']] },
+  { id: 'frostbite', name: 'Frostbite Pack', blurb: 'Winter only. Lights in the sky and ice everywhere.', off: 0.7, theme: 'winter',
+    items: [['car:quokka', 'rare'], ['explosion:aurora', 'epic'], ['boost:arctic', 'rare'], ['ball:ice', 'rare'], ['topper:antlers', 'rare']] },
+  { id: 'cosmos', name: 'Cosmos Pack', blurb: 'The biggest pack: four legendary items and a planet ball.', off: 0.65,
+    items: [['car:pulse', 'legendary'], ['explosion:bigbang', 'legendary'], ['boost:hyperspace', 'legendary'], ['ball:planet', 'rare'], ['topper:crown', 'legendary']] },
+];
+
+// What a bundle costs you: `owns(k)` says if you already have item k.
+export function bundlePrice(b, owns = () => false) {
+  const full = b.items.reduce((n, [, r]) => n + PRICE[r], 0);
+  const missing = b.items.filter(([k]) => !owns(k));
+  const value = missing.reduce((n, [, r]) => n + PRICE[r], 0);
+  const round = (v) => Math.max(50, Math.floor((v * b.off) / 50) * 50);
+  return { full, price: missing.length ? round(value) : 0, worth: value, missing: missing.length, fullPrice: round(full) };
+}
+
 export const PASS_ONLY = ['topper:icecrown', 'topper:snowdrift', 'topper:halo', 'topper:sunglasses'];
 
 // Season = one calendar month (UTC). Winter themes in December to February.

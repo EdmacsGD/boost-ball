@@ -2,7 +2,8 @@
 // these pages show account.eco and call the account's buy and claim functions.
 import { item, RARITY } from '../meta/items.js';
 import { ItemThumbs, orbSvg } from '../render/itemThumbs.js';
-import { SHOP, PRICE, PREMIUM_PASS_PRICE, PASS_TIERS, PASS_XP_PER_TIER, ORB_RULES, passFor, seasonName, seasonEnd, seasonKey } from '../meta/economy.js';
+import { itemName, itemSwatch } from './home.js';
+import { BUNDLES, bundlePrice, seasonTheme, SHOP, PRICE, PREMIUM_PASS_PRICE, PASS_TIERS, PASS_XP_PER_TIER, ORB_RULES, passFor, seasonName, seasonEnd, seasonKey } from '../meta/economy.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -11,7 +12,7 @@ const el = (tag, cls, text) => {
   if (text != null) e.textContent = text;
   return e;
 };
-const catName = { car: 'Car', topper: 'Topper' };
+const catName = { car: 'Car', topper: 'Topper', explosion: 'Goal explosion', boost: 'Boost', ball: 'Ball' };
 const splitKey = (k) => { const i = k.indexOf(':'); return [k.slice(0, i), k.slice(i + 1)]; };
 const orbs = (n) => `${Number(n).toLocaleString('en')} orbs`;
 
@@ -144,6 +145,7 @@ export class ShopPage {
       ['Toppers', SHOP.filter(([k]) => k.startsWith('topper:') && !['topper:beanie', 'topper:holiday', 'topper:antlers'].includes(k))],
     ];
     if (!winter) groups.push(groups.shift());
+    this.renderBundles(body, e);
     for (const [title, rows] of groups) {
       body.appendChild(el('span', 'field-label shop-head', title));
       const grid = el('div', 'shop-grid');
@@ -184,7 +186,110 @@ export class ShopPage {
       }
       body.appendChild(grid);
     }
-    body.appendChild(el('p', 'page-note', 'Items from the shop and the Season Pass are never in Sport Drops. Ice Crown, Snow Drift, Halo and Shades are only in the pass.'));
+    body.appendChild(el('p', 'page-note', 'Shop cars are never in Sport Drops. Hats from the shop can also drop. Ice Crown, Snow Drift, Halo and Shades are only in the pass.'));
+  }
+
+  owns(k) {
+    const [cat, id] = splitKey(k);
+    return this.acc.owns(cat, id);
+  }
+
+  // Bundles: one card each with the car's picture and a list of what is inside.
+  renderBundles(body, e) {
+    const key = e?.season || seasonKey();
+    body.appendChild(el('span', 'field-label shop-head', 'Bundles'));
+    const grid = el('div', 'shop-grid bundle-grid');
+    for (const b of BUNDLES) {
+      const forSale = !b.theme || seasonTheme(key) === b.theme;
+      const p = bundlePrice(b, (k) => this.owns(k));
+      const top = b.items[0][1] === 'legendary' || b.items.some(([, r]) => r === 'legendary') ? 'legendary' : b.items.some(([, r]) => r === 'epic') ? 'epic' : 'rare';
+      const card = el('div', `shop-card bundle-card${p.missing ? '' : ' owned'}`);
+      card.style.setProperty('--rar', RARITY[top].color);
+      const pic = this.pic(b.items[0][0], 'shop-pic');
+      if (pic) card.appendChild(pic);
+      card.appendChild(el('small', 'shop-kind', `Bundle · ${b.items.length} items${b.theme === 'winter' ? ' · Winter' : ''}`));
+      card.appendChild(el('b', 'shop-name', b.name));
+      card.appendChild(el('small', 'bundle-blurb', b.blurb));
+      card.appendChild(this.bundleList(b));
+      const row = el('div', 'shop-row');
+      const prev = el('button', 'small-btn', 'Preview');
+      prev.type = 'button';
+      prev.addEventListener('click', () => this.peekBundle(b));
+      row.appendChild(prev);
+      row.appendChild(this.bundleBuy(b, p, forSale, e, 'small-btn buy'));
+      card.appendChild(row);
+      if (p.missing && p.missing < b.items.length) card.appendChild(el('small', 'bundle-note', `You have ${b.items.length - p.missing} of ${b.items.length}, so you only pay for the rest.`));
+      else if (p.missing) card.appendChild(el('small', 'bundle-note', `Worth ${p.full.toLocaleString('en')} on its own: save ${(p.full - p.price).toLocaleString('en')}.`));
+      grid.appendChild(card);
+    }
+    body.appendChild(grid);
+  }
+
+  bundleList(b) {
+    const ul = el('ul', 'bundle-list');
+    for (const [k, r] of b.items) {
+      const [cat, id] = splitKey(k);
+      const it = item(cat, id);
+      if (!it) continue;
+      const li = el('li', this.owns(k) ? 'have' : null);
+      li.style.setProperty('--rar', RARITY[r].color);
+      li.appendChild(el('i', 'rar-dot'));
+      li.appendChild(el('span', 'bl-cat', catName[cat] || cat));
+      li.appendChild(el('b', null, itemName(it)));
+      if (this.owns(k)) li.appendChild(el('small', 'bl-have', 'owned'));
+      ul.appendChild(li);
+    }
+    return ul;
+  }
+
+  bundleBuy(b, p, forSale, e, cls) {
+    if (!p.missing) {
+      const done = el('button', cls.replace(' buy', ''), 'Owned');
+      done.type = 'button';
+      done.disabled = true;
+      return done;
+    }
+    if (!forSale) {
+      const soon = el('button', cls.replace(' buy', ''), 'December to February');
+      soon.type = 'button';
+      soon.disabled = true;
+      return soon;
+    }
+    const buy = el('button', cls);
+    buy.type = 'button';
+    buy.appendChild(this.orbIcon());
+    buy.appendChild(document.createTextNode(p.price.toLocaleString('en')));
+    buy.disabled = !e || Number(e.orbs) < p.price;
+    buy.addEventListener('click', () => this.act(() => this.acc.buyBundle(b.id), `${b.name} is yours`).then(() => { if (this.peeking) this.peekBundle(b); }));
+    return buy;
+  }
+
+  // Bundle preview: your car with everything in the bundle on it, and a button for the explosion.
+  peekBundle(b) {
+    const lo = { ...this.acc.loadout };
+    for (const [k] of b.items) {
+      const [cat, id] = splitKey(k);
+      lo[cat] = id;
+    }
+    this.game.previewCar(lo);
+    const boost = b.items.find(([k]) => k.startsWith('boost:'));
+    if (boost) { const bi = item('boost', splitKey(boost[0])[1]); if (bi) this.game.showroom.setBoost(bi); }
+    const ball = b.items.find(([k]) => k.startsWith('ball:'));
+    if (ball) this.game.showroom.setBall(splitKey(ball[0])[1]);
+    const buttons = [];
+    const ex = b.items.find(([k]) => k.startsWith('explosion:'));
+    if (ex) {
+      const show = el('button', 'small-btn', 'Show goal explosion');
+      show.type = 'button';
+      show.addEventListener('click', () => this.game.previewExplosion(splitKey(ex[0])[1]));
+      buttons.push(show);
+    }
+    const e = this.acc.eco;
+    const p = bundlePrice(b, (k) => this.owns(k));
+    buttons.push(this.bundleBuy(b, p, !b.theme || seasonTheme(e?.season || seasonKey()) === b.theme, e, 'kick buy'));
+    const names = b.items.map(([k]) => { const [c, i] = splitKey(k); const it = item(c, i); return it ? itemName(it) : k; }).join(' · ');
+    this.openPeek({ pic: this.pic(b.items[0][0], 'peek-pic'), kind: `Bundle · ${b.items.length} items`, name: b.name, hint: names, rar: RARITY.epic.color, buttons,
+      onBack: () => { this.game.endPreview(); this.game.previewCar(); this.game.showroom.setBall(null); this.game.showroom.setBoost(null); this.render(this.game.home.page); } });
   }
 
   // Show an item on your car in the showroom behind the page (without equipping it).

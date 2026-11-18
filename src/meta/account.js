@@ -502,6 +502,10 @@ export class Account {
     return this.setEconomy(await this.online.rpc('bb_buy', { p_item: k }));
   }
 
+  async buyBundle(id) {
+    return this.setEconomy(await this.online.rpc('bb_buy_bundle', { p_bundle: id }));
+  }
+
   async buyPremiumPass() {
     return this.setEconomy(await this.online.rpc('bb_pass_buy', {}));
   }
