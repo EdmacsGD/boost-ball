@@ -8,8 +8,9 @@ const { ITEMS, DROP_ITEMS, UNLOCK_ITEMS, RARITY, CATEGORIES, rollDrop, key, item
 const results = [];
 const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail });
 
-// Catalog: 5-25 drop items in every category, unique keys.
+// Catalog: 5-25 drop items in every category (toppers are orb shop and pass only), unique keys.
 for (const c of CATEGORIES) {
+  if (c.id === 'topper') continue;
   const n = DROP_ITEMS.filter((it) => it.cat === c.id).length;
   check(`catalog: ${c.name} has 5-25 drop items`, n >= 5 && n <= 25, `${n}`);
 }

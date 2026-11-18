@@ -12,6 +12,7 @@ import { anthemSpec } from '../audio/anthems.js';
 import { eqSwatch } from './anthemEditor.js';
 import { OnlinePage } from './onlinePage.js';
 import { PlayersPage } from './playersPage.js';
+import { ShopPage } from './shopPage.js';
 import { ClipsPage } from './clipsPage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -106,6 +107,7 @@ export class HomeScreen {
     this.gtab = 'car';
     this.onlinePage = new OnlinePage(game);
     this.playersPage = new PlayersPage(game);
+    this.shopPage = new ShopPage(game);
     this.clipsPage = new ClipsPage(game);
     this.tipIndex = Math.floor(Math.random() * TIPS.length);
     const click = (fn) => () => {
@@ -250,6 +252,8 @@ export class HomeScreen {
     if (was === 'online' && name !== 'online') this.onlinePage.shown(false);
     if (name === 'online') this.onlinePage.shown(true);
     if (name === 'players' && was !== 'players') this.playersPage.shown();
+    if ((name === 'shop' || name === 'pass') && was !== name) this.shopPage.shown(name);
+    if (was !== name && (was === 'shop' || was === 'pass')) this.game.previewCar();
     // Clips is its own full screen page over the home screen.
     $('clipsScreen').hidden = name !== 'clips';
     if (name === 'clips' && was !== 'clips') this.clipsPage.shown();

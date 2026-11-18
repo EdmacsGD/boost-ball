@@ -25,6 +25,7 @@ export const CATEGORIES = [
   { id: 'banner', name: 'Banners', slot: 'banner' },
   { id: 'title', name: 'Titles', slot: 'title' },
   { id: 'anthem', name: 'Anthems', slot: 'anthem' },
+  { id: 'topper', name: 'Toppers', slot: 'topper' },
 ];
 
 const STARTER_CARS = ['strider', 'bulldog', 'viper', 'hornet', 'manta', 'comet', 'blitz', 'rhino', 'scorpion', 'bento'];
@@ -58,12 +59,31 @@ add('car', 'enforcer', 'Enforcer', 'rare');
 add('car', 'stomper', 'Stomper', 'epic');
 add('car', 'afterglow', 'Afterglow', 'epic');
 add('car', 'nova', 'Nova', 'legendary');
-add('car', 'ranger', 'Ranger', 'common');
-add('car', 'quokka', 'Quokka', 'rare');
-add('car', 'brawler', 'Brawler', 'rare');
-add('car', 'skiff', 'Skiff', 'epic');
-add('car', 'halberd', 'Halberd', 'epic');
-add('car', 'pulse', 'Pulse', 'legendary');
+// Orb shop and season pass items (economy.js): never in Sport Drops, the server hands them out.
+const SHOPI = { shop: true };
+add('car', 'ranger', 'Ranger', 'common', SHOPI);
+add('car', 'quokka', 'Quokka', 'rare', SHOPI);
+add('car', 'brawler', 'Brawler', 'rare', SHOPI);
+add('car', 'skiff', 'Skiff', 'epic', SHOPI);
+add('car', 'halberd', 'Halberd', 'epic', SHOPI);
+add('car', 'pulse', 'Pulse', 'legendary', SHOPI);
+add('topper', 'none', 'No topper', 'common', {}, true);
+add('topper', 'beanie', 'Knit Beanie', 'common', SHOPI);
+add('topper', 'holiday', 'Holiday Hat', 'rare', SHOPI);
+add('topper', 'antlers', 'Antlers', 'rare', SHOPI);
+add('topper', 'snowdrift', 'Snow Drift', 'epic', { shop: true, pass: true });
+add('topper', 'icecrown', 'Ice Crown', 'legendary', { shop: true, pass: true });
+add('topper', 'cap', 'Team Cap', 'common', SHOPI);
+add('topper', 'cone', 'Traffic Cone', 'common', SHOPI);
+add('topper', 'party', 'Party Hat', 'common', SHOPI);
+add('topper', 'propeller', 'Propeller Cap', 'rare', SHOPI);
+add('topper', 'tophat', 'Top Hat', 'rare', SHOPI);
+add('topper', 'viking', 'Horned Helm', 'epic', SHOPI);
+add('topper', 'wizard', 'Wizard Hat', 'epic', SHOPI);
+add('topper', 'crown', 'Gold Crown', 'legendary', SHOPI);
+add('topper', 'halo', 'Halo', 'epic', { shop: true, pass: true });
+add('topper', 'sunglasses', 'Shades', 'rare', { shop: true, pass: true });
+
 
 // Goal explosions: id matches goalExplosions.js.
 for (const id of STARTER_EXPLOSIONS) add('explosion', id, id, 'common', {}, true);
@@ -288,14 +308,14 @@ const byKey = new Map(list.map((it) => [key(it.cat, it.id), it]));
 export const item = (cat, id) => byKey.get(key(cat, id)) || null;
 export const itemsIn = (cat) => list.filter((it) => it.cat === cat);
 export const isCustomAnthem = (id) => typeof id === 'string' && /^custom:[a-z0-9]{1,24}$/.test(id);
-export const DROP_ITEMS = list.filter((it) => !it.starter && !it.unlock);
+export const DROP_ITEMS = list.filter((it) => !it.starter && !it.unlock && !it.shop);
 export const UNLOCK_ITEMS = list.filter((it) => it.unlock);
 // Bots and random picks use only items anyone can get, so achievement items stay special.
 export const isExclusive = (cat, id) => !!(item(cat, id) || {}).unlock;
 
 export const DEFAULT_LOADOUT = {
   car: 'strider', accent: 'white', paint: 'team', finish: 'gloss', decal: 'default',
-  boost: 'standard', ball: 'standard', explosion: 'classic', icon: 'ball', banner: 'default', title: 'rookie', anthem: 'kickoff',
+  boost: 'standard', ball: 'standard', explosion: 'classic', icon: 'ball', banner: 'default', title: 'rookie', anthem: 'kickoff', topper: 'none',
 };
 
 // Pick a drop item: rarity by weight, then a random item of that rarity you don't own yet.

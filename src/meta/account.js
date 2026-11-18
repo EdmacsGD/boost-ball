@@ -155,6 +155,7 @@ export class Account {
         return res.data;
       };
       this.online = { id: u.id, ref, rpc, server: true };
+      setTimeout(() => this.loadEconomy(), 800); // orbs and season pass, once signed in
       // Our own badge (owner, tester), if the admin gave us one.
       try {
         const { data: b } = await sb.from('badges').select('badge').eq('player_id', u.id).maybeSingle();
@@ -463,6 +464,50 @@ export class Account {
     this.save();
     this.changed();
     return gained;
+  }
+
+  // ------------------------------------------------------------------ orbs, shop, season pass
+  // All on the server (supabase/011_orbs_seasons.sql); this.eco is the last answer:
+  // { orbs, season, pass_xp, premium, claims: ['free:2', ...], owned: ['topper:cap', ...], last: [...] }.
+  async loadEconomy() {
+    if (!this.serverStats) return null;
+    try {
+      const e = await this.online.rpc('bb_economy', {});
+      return this.setEconomy(e);
+    } catch {
+      return null;
+    }
+  }
+
+  setEconomy(e) {
+    if (!e || typeof e !== 'object') return null;
+    const prev = this.eco;
+    this.eco = e;
+    // Items the server gave are owned here too (the server keeps them in the profile as well).
+    let added = false;
+    for (const k of Array.isArray(e.owned) ? e.owned : []) {
+      if (typeof k === 'string' && !this.data.owned.includes(k)) {
+        this.data.owned.push(k);
+        added = true;
+      }
+    }
+    if (added) this.save();
+    this.changed();
+    if (prev && Number(e.orbs) > Number(prev.orbs)) this.onOrbs?.(Number(e.orbs) - Number(prev.orbs), e);
+    return e;
+  }
+
+  // Each returns the new economy, or throws the server's reason ("not enough orbs", ...).
+  async buyItem(k) {
+    return this.setEconomy(await this.online.rpc('bb_buy', { p_item: k }));
+  }
+
+  async buyPremiumPass() {
+    return this.setEconomy(await this.online.rpc('bb_pass_buy', {}));
+  }
+
+  async claimPass(tier, track) {
+    return this.setEconomy(await this.online.rpc('bb_pass_claim', { p_tier: tier, p_track: track }));
   }
 
   // A match against bots starts: the server notes the time (a result sooner than a match lasts is refused).

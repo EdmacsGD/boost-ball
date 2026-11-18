@@ -2,6 +2,7 @@
 // build its body. Local frame matches the physics: +x forward, +y up, +z right, origin at the car's
 // center point (about 17 cm above the ground at rest). All sizes in meters.
 import * as THREE from 'three';
+import { buildTopper, disposeTopper } from './toppers.js';
 import { mergeChildren } from './mergeMeshes.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CONFIG } from '../config.js';
@@ -193,7 +194,7 @@ const tmpB = new THREE.Vector3();
 export class CarModel {
   // design: one entry of DESIGNS; opts: { team, number, accent (hex), hitbox (CONFIG.hitboxes entry) }
   // Cosmetics: paint (body color hex or null), finish (finish item), decal (decal id or 'default').
-  constructor(design, { team = 0, number = 1, accent = 0xffffff, hitbox = CONFIG.hitboxes.standard, paint = null, finish = null, decal = 'default' } = {}) {
+  constructor(design, { team = 0, number = 1, accent = 0xffffff, hitbox = CONFIG.hitboxes.standard, paint = null, finish = null, decal = 'default', topper = null } = {}) {
     const A = sharedCarAssets();
     this.A = A;
     this.design = design;
@@ -238,9 +239,42 @@ export class CarModel {
     // share a material become one mesh (body parts; each wheel's spinning parts).
     mergeChildren(this.body);
     for (const w of this.wheelVis) mergeChildren(w.spin);
+    if (topper && topper !== 'none') this.addTopper(topper); // after merging, so it keeps its moving parts
     this.body.traverse((o) => {
       if (o.isMesh && !o.material.isMeshBasicMaterial) o.castShadow = true;
     });
+  }
+
+  // Topper on the roof: at the highest point of the body, a little behind the middle of that area.
+  addTopper(id) {
+    const t = buildTopper(id, this.teamColor);
+    if (!t) return;
+    this.body.updateMatrixWorld(true);
+    let top = -Infinity;
+    const pts = [];
+    const [x0, x1] = this.design.span;
+    const mid = this.design.topperX ?? x0 + (x1 - x0) * 0.42;
+    const half = (x1 - x0) * 0.2;
+    const v = new THREE.Vector3();
+    this.body.traverse((o) => {
+      if (!o.isMesh || !o.geometry.attributes.position || o.material === this.mats.glow) return;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i += 3) {
+        v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+        // Middle of the car only: wings, fins and tails at the back are often the highest part.
+        if (Math.abs(v.z) > 0.12 || Math.abs(v.x - mid) > half) continue;
+        pts.push([v.x, v.y]);
+        if (v.y > top) top = v.y;
+      }
+    });
+    if (!pts.length) return;
+    const near = pts.filter((q) => q[1] > top - 0.03);
+    const x = near.reduce((a, q) => a + q[0], 0) / near.length;
+    t.position.set(x, top - 0.012, 0);
+    t.scale.setScalar(1.3);
+    this.topper = t;
+    this.body.add(t);
+    this.disposables.push({ dispose: () => disposeTopper(t) });
   }
 
   // ---------------------------------------------------------------- helpers used by designs

@@ -32,6 +32,7 @@ async function start(restored = {}) {
   try {
     const game = new Game(document.getElementById('view'), progress, restored);
     window.__game = game;
+    if (location.search.includes('test')) import('./meta/economy.js').then((m) => (window.__economy = m));
     await game.init();
     loading.classList.add('done');
     setTimeout(() => loading.remove(), 700);

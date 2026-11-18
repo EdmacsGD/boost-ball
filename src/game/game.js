@@ -210,6 +210,7 @@ export class Game {
     this.previewTeam = 0;
     this.testMode = new URLSearchParams(location.search).has('test');
     this.account = new Account();
+    this.account.onOrbs = (n) => this.toast(`+${n} orbs`);
     this.account.onChange(() => {
       if (this.player && this.account.mode) this.player.name = this.account.data.name;
     });
@@ -234,10 +235,10 @@ export class Game {
   }
 
   // Test hook: show one car alone in the showroom.
-  debugCar(id, { team = 0, spin = 0.6, accent = 0xffffff, cam = null, decal = 'default', finish = 'gloss', paint = 'team' } = {}) {
+  debugCar(id, { team = 0, spin = 0.6, accent = 0xffffff, cam = null, decal = 'default', finish = 'gloss', paint = 'team', topper = null } = {}) {
     const d = DESIGNS[id];
     const pt = item('paint', paint);
-    const model = new CarModel(d, { team, number: 7, accent, hitbox: CONFIG.hitboxes[d.hitbox], decal, finish: item('finish', finish), paint: pt?.colors ? pt.colors[team] : null });
+    const model = new CarModel(d, { team, number: 7, accent, hitbox: CONFIG.hitboxes[d.hitbox], decal, finish: item('finish', finish), paint: pt?.colors ? pt.colors[team] : null, topper });
     this.showroom.setStage('studio');
     this.showroom.setCar(model);
     this.showroom.spin = spin;
@@ -333,7 +334,7 @@ export class Game {
   addPlayer(team, name, isPlayer, number, carId = 'strider', accent = 0xffffff, look = {}) {
     const design = DESIGNS[carId] || DESIGNS.strider;
     const car = this.sim.addCar(team, design.hitbox);
-    const model = new CarModel(design, { team, number, accent, hitbox: car.hitbox, paint: look.paint ?? null, finish: look.finish || null, decal: look.decal || 'default' });
+    const model = new CarModel(design, { team, number, accent, hitbox: car.hitbox, paint: look.paint ?? null, finish: look.finish || null, decal: look.decal || 'default', topper: look.topper || null });
     this.renderer.scene.add(model.root);
     const tc = CONFIG.teams[team];
     const flames = model.nozzles.map((n) => {
@@ -669,6 +670,8 @@ export class Game {
   // ------------------------------------------------------------------ home screen
   enterHome() {
     document.getElementById('results').hidden = true;
+    // Orbs may have changed (a match, play time, likes on your clips).
+    this.account.loadEconomy();
     this.endless = false;
     this.setEndlessWorld(false);
     this.setupMatch(this.settings.mode, this.settings.difficulty);
@@ -683,7 +686,7 @@ export class Game {
   previewCar(lo = this.account.loadout) {
     const d = DESIGNS[lo.car] || DESIGNS.strider;
     const look = this.cosmetics(lo, this.previewTeam);
-    const model = new CarModel(d, { team: this.previewTeam, number: 7, accent: this.accentHex(), hitbox: CONFIG.hitboxes[d.hitbox], paint: look.paint, finish: look.finish, decal: look.decal });
+    const model = new CarModel(d, { team: this.previewTeam, number: 7, accent: this.accentHex(), hitbox: CONFIG.hitboxes[d.hitbox], paint: look.paint, finish: look.finish, decal: look.decal, topper: look.topper });
     this.showroom.setCar(model);
     this.showroom.setTeamColor(CONFIG.teams[this.previewTeam].light);
   }
@@ -914,6 +917,7 @@ export class Game {
       finish: item('finish', lo.finish),
       decal: lo.decal,
       boost: item('boost', lo.boost),
+      topper: lo.topper && lo.topper !== 'none' ? lo.topper : null,
     };
   }
 
@@ -1005,6 +1009,8 @@ export class Game {
 
   // Website: the server checks the result; show what it says under the score.
   showServerResult(rw, parts, server, mode, ranked) {
+    // Orbs from this match (goals, saves) and any play-time orbs.
+    this.account.loadEconomy();
     const line = (extra) => {
       rw.textContent = [...parts, ...extra].join('  ·  ');
     };

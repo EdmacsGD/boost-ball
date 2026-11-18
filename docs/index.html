@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boost Ball</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-  <script type="module" crossorigin src="./assets/index-CBpQQcil.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/three-Db_H_i0M.js">
+  <script type="module" crossorigin src="./assets/index-QyDhmOD_.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/three-D4qJSn4g.js">
   <link rel="modulepreload" crossorigin href="./assets/rapier-OnF19VgH.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-CTkkQqsw.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-C6R94pKi.css">
 </head>
 <body>
 <div id="app">
@@ -90,6 +90,8 @@
       <button type="button" data-page="garage"><span>Garage</span><small>Cars, paint, boost, ball</small></button>
       <button type="button" data-page="quests"><span>Quests <i class="badge" id="questBadge" hidden></i></span><small>Earn Sport Drops</small></button>
       <button type="button" data-page="drops"><span>Drops <i class="badge" id="dropBadge" hidden></i></span><small>Open your Sport Drops</small></button>
+      <button type="button" data-page="shop"><span>Shop <i class="orb-chip" id="orbChip" hidden></i></span><small>Spend your orbs</small></button>
+      <button type="button" data-page="pass"><span>Season Pass <i class="badge" id="passBadge" hidden></i></span><small id="passNavNote">Rewards for playing</small></button>
       <button type="button" data-page="arenas"><span>Arenas</span><small>Pick a map</small></button>
       <button type="button" data-page="settings"><span>Settings</span><small>Graphics, camera, sound</small></button>
       <button type="button" data-page="controls"><span>Controls</span><small>Change any key</small></button>
@@ -223,6 +225,17 @@
       <div class="collection" id="collection"></div>
       <span class="field-label ach-head">Achievement items (never in drops)</span>
       <div class="collection ach-list" id="achievements"></div>
+    </section>
+
+    <section class="home-page wide" data-page="shop" hidden>
+      <div class="page-head"><h2>Orb Shop</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div class="orb-bar" id="shopOrbBar"></div>
+      <div id="shopBody"></div>
+    </section>
+
+    <section class="home-page wide" data-page="pass" hidden>
+      <div class="page-head"><h2 id="passTitle">Season Pass</h2><button type="button" class="back" data-back>Back <kbd>Esc</kbd></button></div>
+      <div id="passBody"></div>
     </section>
 
     <section class="home-page" data-page="arenas" hidden>

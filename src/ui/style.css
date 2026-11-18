@@ -1660,3 +1660,35 @@ body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: aut
 .lobby-ping.ok { color: #ffd166; }
 .lobby-ping.bad { color: #ff7a6e; }
 .lobby-ping.host { color: #9fb2cc; text-transform: uppercase; font-size: 10px; }
+
+/* Orbs, shop and season pass */
+.orb-chip { font-style: normal; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-left: 6px; background: linear-gradient(135deg, #7af0ff, #6b6bff); color: #071022; font-weight: 800; letter-spacing: 0.02em; }
+.orb-bar { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.orb-big { font-size: 22px; color: #9fefff; letter-spacing: 0.02em; }
+.orb-how { color: #b9c6d8; font-size: 12px; line-height: 1.4; }
+.shop-head { display: block; margin: 12px 0 6px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.shop-card { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 10px 10px 10px 13px; border-radius: 8px; background: rgba(6, 10, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.12); overflow: hidden; }
+.shop-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rar); }
+.shop-card.owned { border-color: rgba(111, 227, 154, 0.45); }
+.shop-kind { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rar); }
+.shop-name { font-size: 15px; color: #eef3fb; }
+.shop-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.small-btn.buy { background: linear-gradient(135deg, #7af0ff, #6b6bff); color: #071022; font-weight: 800; border: 0; }
+.small-btn:disabled { opacity: 0.5; cursor: default; }
+.pass-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.pass-tier { font-size: 20px; color: #eef3fb; }
+.pass-xp { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.pass-xp i { display: block; height: 100%; background: linear-gradient(90deg, #7af0ff, #b46bff); }
+.pass-note { color: #b9c6d8; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+.pass-premium { align-self: flex-start; font-size: 11px; letter-spacing: 0.14em; padding: 2px 8px; border-radius: 4px; background: #ffb020; color: #1a1205; font-weight: 800; }
+.pass-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+.pass-col { flex: 0 0 104px; display: flex; flex-direction: column; gap: 4px; opacity: 0.75; }
+.pass-col.reached { opacity: 1; }
+.pass-num { text-align: center; font-size: 11px; color: #9fb2cc; font-variant-numeric: tabular-nums; }
+.pass-col.reached .pass-num { color: #7af0ff; }
+.pass-cell { min-height: 74px; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(6, 10, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.1); border-bottom: 2px solid var(--rar, rgba(255, 255, 255, 0.15)); font-size: 12px; color: #dfe8f5; }
+.pass-cell.premium { background: rgba(40, 24, 4, 0.7); }
+.pass-cell.claimed { opacity: 0.45; }
+.pass-cell.claimed::after { content: "Claimed"; font-size: 10px; color: #6fe39a; letter-spacing: 0.08em; text-transform: uppercase; }
+.pass-cell.locked::after { content: "Premium"; font-size: 10px; color: #ffb020; letter-spacing: 0.08em; text-transform: uppercase; }

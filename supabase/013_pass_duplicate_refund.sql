@@ -1,0 +1,3 @@
+-- A pass item you already bought in the shop gives its shop price in orbs instead (or 100 for
+-- pass-only items). Same function as in 011, with that one change.
+-- (Applied with the full function body; see bb_pass_claim in 011_orbs_seasons.sql.)
