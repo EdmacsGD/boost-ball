@@ -104,8 +104,11 @@ function howToGet(it) {
   if (it.pass) return 'Season Pass only';
   if (it.shop && it.drop) return 'Sport Drops or the Orb Shop';
   if (it.shop) return 'Orb Shop or Season Pass';
-  return 'from drops';
+  return 'Sport Drops';
 }
+
+// Garage tabs whose items show on the car, so they get the full view (menus hidden).
+const FULL_VIEW = ['car', 'paint', 'finish', 'decal', 'boost', 'topper', 'ball'];
 
 export class HomeScreen {
   constructor(game) {
@@ -316,6 +319,40 @@ export class HomeScreen {
     return bar;
   }
 
+  // Full view of a car part (locked or yours) or of your whole car, with the menus hidden.
+  fullView(it) {
+    const acc = this.game.account;
+    const sp = this.shopPage;
+    if (it) this.game.previewItem(it);
+    else this.game.previewCar();
+    const own = it ? acc.owns(it.cat, it.id) : true;
+    const pic = !it ? null : it.cat === 'car' || it.cat === 'topper' ? sp.pic(`${it.cat}:${it.id}`, 'peek-pic') : itemSwatch(it, this.game.previewTeam);
+    if (pic && it && it.cat !== 'car' && it.cat !== 'topper') pic.classList.add('peek-swatch');
+    const buttons = [];
+    if (it && own) {
+      const slot = CATEGORIES.find((c) => c.id === it.cat).slot;
+      const on = acc.loadout[slot] === it.id;
+      const eq = document.createElement('button');
+      eq.type = 'button';
+      eq.className = 'kick';
+      eq.textContent = on ? 'Equipped' : 'Equip';
+      eq.disabled = on;
+      eq.addEventListener('click', this.click(() => { this.game.equip(slot, it.id); sp.unpeek(); }));
+      buttons.push(eq);
+    }
+    let hint = 'Drag the car to spin it';
+    if (it && !own) hint = it.unlock ? `${it.unlock.text}: ${Math.min(it.unlock.goal, acc.stat(it.unlock.stat))}/${it.unlock.goal}` : `Get it: ${howToGet(it)}`;
+    sp.openPeek({
+      pic,
+      kind: it ? `${CATEGORIES.find((c) => c.id === it.cat).name} · ${RARITY[it.rarity].name}${own ? '' : ' · Locked'}` : 'Your car',
+      name: it ? itemName(it) : itemName(item('car', acc.loadout.car)),
+      hint,
+      rar: it ? RARITY[it.rarity].color : null,
+      buttons,
+      onBack: () => { this.game.endPreview(); this.game.previewCar(); this.renderGarage(); },
+    });
+  }
+
   renderGarage() {
     const acc = this.game.account;
     const lo = acc.loadout;
@@ -323,6 +360,15 @@ export class HomeScreen {
     const body = $('garageBody');
     body.textContent = '';
     if (this.peek) body.appendChild(this.peekBar(this.peek));
+    if (FULL_VIEW.includes(this.gtab)) {
+      const v = document.createElement('button');
+      v.type = 'button';
+      v.className = 'small-btn view-car';
+      v.textContent = 'View car';
+      v.title = 'Hide the menus and look at your car';
+      v.addEventListener('click', this.click(() => this.fullView(null)));
+      body.appendChild(v);
+    }
     const section = (label, cat) => {
       const f = document.createElement('div');
       f.className = 'field';
@@ -372,6 +418,11 @@ export class HomeScreen {
         b.appendChild(t);
         b.title = own ? itemName(it) : `Preview ${itemName(it)}`;
         b.addEventListener('click', this.click(() => {
+          if (!own && FULL_VIEW.includes(cat)) {
+            // Locked car part: the menus slide away so you see it on your car, like in the shop.
+            this.fullView(it);
+            return;
+          }
           if (!own) {
             // Locked: show it, but do not equip it.
             this.peek = it;

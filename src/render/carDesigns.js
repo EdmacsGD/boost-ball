@@ -529,6 +529,7 @@ export const DESIGNS = {
     hitbox: 'standard',
     blurb: 'Dune buggy with a roll cage, an open engine and a stinger tail.',
     span: [-0.55, 0.85, 0.25],
+    topper: { x: 0.03, y: 0.35, s: 0.5 }, // hat on the driver: the cage would hide a roof spot
     livery: 'twin',
     wheels: { front: { r: 0.145, w: 0.13, z: 0.4 }, back: { r: 0.19, w: 0.2, z: 0.41 }, rim: 'beadlock', rimMat: 'rimSilver', tire: 'offroad', sidewall: 0.45, arms: true, armFrom: { front: 0.15, back: 0.17 }, armMat: 'accent' },
     build(k) {
@@ -669,6 +670,7 @@ export const DESIGNS = {
     hitbox: 'hybrid',
     blurb: 'Dune buggy with a roll cage, an open seat and a big rear engine.',
     span: [-0.56, 0.8, 0.3],
+    topper: { x: 0.05, y: 0.415, s: 0.8 }, // hat rests on the two top cage tubes
     livery: 'single',
     wheels: { front: { r: 0.16, w: 0.15, z: 0.38 }, back: { r: 0.18, w: 0.2, z: 0.4 }, rim: 'beadlock', rimMat: 'rimGold', tire: 'offroad', sidewall: 0.45, arms: true, armFrom: { front: 0.12, back: 0.16 } },
     build(k) {
@@ -1563,6 +1565,7 @@ export const DESIGNS = {
     hitbox: 'tall',
     blurb: 'Monster truck on giant tires with a raised body and a roll cage.',
     span: [-0.58, 0.82, 0.32],
+    topper: { x: -0.02, y: 0.535 }, // hat spot set by hand: the cage would hide it
     livery: 'hazard',
     wheels: { front: { r: 0.23, w: 0.2, z: 0.42 }, back: { r: 0.23, w: 0.2, z: 0.42 }, rim: 'beadlock', rimMat: 'chrome', tire: 'offroad', sidewall: 0.5, arms: true, armFrom: { front: 0.14, back: 0.14 } },
     build(k) {

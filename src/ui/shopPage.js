@@ -193,11 +193,9 @@ export class ShopPage {
     this.game.previewCar(lo);
   }
 
-  // Preview button: the menus slide away so you see the car, with a bar to buy or go back.
-  peek(k, price) {
-    const [cat, id] = splitKey(k);
-    const it = item(cat, id);
-    this.preview(cat, id);
+  // Full view: the menus slide away so you see the car, with one bar at the bottom.
+  // Used by the shop, the pass and the garage. opts: { pic, kind, name, hint, rar, buttons, onBack }.
+  openPeek(opts) {
     const home = this.game.home.el;
     home.classList.add('shop-peek');
     let bar = $('shopPeek');
@@ -207,14 +205,29 @@ export class ShopPage {
       home.appendChild(bar);
     }
     bar.replaceChildren();
-    const pic = this.pic(k, 'peek-pic');
-    if (pic) bar.appendChild(pic);
+    if (opts.pic) bar.appendChild(opts.pic);
     const info = el('div', 'peek-info');
-    info.appendChild(el('small', 'shop-kind', `${catName[cat] || cat} · ${RARITY[it.rarity].name}`));
-    info.appendChild(el('b', 'shop-name', it.name));
-    info.appendChild(el('small', 'peek-hint', 'Drag the car to spin it'));
+    info.appendChild(el('small', 'shop-kind', opts.kind));
+    info.appendChild(el('b', 'shop-name', opts.name));
+    info.appendChild(el('small', 'peek-hint', opts.hint || 'Drag the car to spin it'));
     bar.appendChild(info);
-    bar.style.setProperty('--rar', RARITY[it.rarity].color);
+    bar.style.setProperty('--rar', opts.rar || 'var(--line)');
+    for (const btn of opts.buttons || []) bar.appendChild(btn);
+    const back = el('button', 'back', 'Back');
+    back.type = 'button';
+    back.appendChild(el('kbd', null, 'Esc'));
+    back.addEventListener('click', () => this.unpeek());
+    bar.appendChild(back);
+    this.peekBack = opts.onBack || null;
+    this.peeking = true;
+  }
+
+  // Preview button in the shop and pass.
+  peek(k, price) {
+    const [cat, id] = splitKey(k);
+    const it = item(cat, id);
+    this.preview(cat, id);
+    const buttons = [];
     const owned = this.acc.data.owned.includes(k);
     const e = this.acc.eco;
     if (owned) {
@@ -222,7 +235,7 @@ export class ShopPage {
       eq.type = 'button';
       eq.disabled = this.acc.loadout[cat] === id;
       eq.addEventListener('click', () => { this.acc.equip(cat, id); this.unpeek(); });
-      bar.appendChild(eq);
+      buttons.push(eq);
     } else if (price != null) {
       const buy = el('button', 'kick buy');
       buy.type = 'button';
@@ -230,14 +243,9 @@ export class ShopPage {
       buy.appendChild(document.createTextNode(`Buy · ${price.toLocaleString('en')}`));
       buy.disabled = !e || Number(e.orbs) < price;
       buy.addEventListener('click', () => this.act(() => this.acc.buyItem(k), `${it.name} is yours`).then(() => this.peek(k, price)));
-      bar.appendChild(buy);
+      buttons.push(buy);
     }
-    const back = el('button', 'back', 'Back');
-    back.type = 'button';
-    back.appendChild(el('kbd', null, 'Esc'));
-    back.addEventListener('click', () => this.unpeek());
-    bar.appendChild(back);
-    this.peeking = true;
+    this.openPeek({ pic: this.pic(k, 'peek-pic'), kind: `${catName[cat] || cat} · ${RARITY[it.rarity].name}`, name: it.name, rar: RARITY[it.rarity].color, buttons });
   }
 
   unpeek() {
@@ -245,8 +253,13 @@ export class ShopPage {
     this.peeking = false;
     this.game.home.el.classList.remove('shop-peek');
     $('shopPeek')?.remove();
-    this.game.previewCar();
-    this.render(this.game.home.page);
+    const back = this.peekBack;
+    this.peekBack = null;
+    if (back) back();
+    else {
+      this.game.previewCar();
+      this.render(this.game.home.page);
+    }
     return true;
   }
 

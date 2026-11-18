@@ -33,26 +33,30 @@ const BUILD = {
     g.add(mesh(new THREE.TorusGeometry(0.12, 0.035, 10, 24), white, [0, 0.035, 0], [Math.PI / 2, 0, 0]));
     g.add(mesh(new THREE.IcosahedronGeometry(0.045, 1), white, [-0.18, 0.24, 0]));
   },
-  // Reindeer antlers: two branched horns.
+  // Reindeer antlers on a headband, splayed out to the sides, with a little bell.
   antlers(g) {
     const bone = std(0x8a5a32, { roughness: 0.8 });
+    const band = std(0x3a2a1e, { roughness: 0.7 });
+    g.add(mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 20, Math.PI), band, [0, 0, 0], [0, Math.PI / 2, 0]));
     for (const s of [1, -1]) {
       const a = new THREE.Group();
-      a.position.set(0, 0, s * 0.08);
-      a.rotation.x = s * -0.35;
-      a.add(mesh(new THREE.CylinderGeometry(0.014, 0.02, 0.22, 8), bone, [0, 0.11, 0]));
-      a.add(mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.1, 8), bone, [0.04, 0.17, 0], [0, 0, -0.8]));
-      a.add(mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.09, 8), bone, [-0.035, 0.2, 0], [0, 0, 0.8]));
-      a.add(mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.07, 8), bone, [0.03, 0.24, 0], [0, 0, -0.5]));
+      a.position.set(0, 0.07, s * 0.07);
+      a.rotation.x = s * 0.55;
+      a.add(mesh(new THREE.CylinderGeometry(0.011, 0.016, 0.16, 8), bone, [0, 0.08, 0]));
+      a.add(mesh(new THREE.CylinderGeometry(0.008, 0.011, 0.08, 8), bone, [0.03, 0.12, 0], [0, 0, -0.9]));
+      a.add(mesh(new THREE.CylinderGeometry(0.008, 0.011, 0.07, 8), bone, [-0.025, 0.15, 0], [0, 0, 0.8]));
       g.add(a);
     }
+    g.add(mesh(new THREE.SphereGeometry(0.022, 10, 8), std(0xffc63a, { metalness: 0.8, roughness: 0.3 }), [0.02, 0.1, 0]));
   },
-  // A drift of snow with a few icicles: winter pass.
+  // A layer of snow on the roof with icicles on the edges and a snowball: winter pass.
   snowdrift(g) {
-    const snow = std(0xf4f8ff, { roughness: 1 });
+    const snow = std(0xb9c6d6, { roughness: 1 });
     const ice = new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.05, transmission: 0.5, transparent: true, opacity: 0.85 });
-    [[0, 0.04, 0, 0.16], [0.1, 0.03, 0.07, 0.1], [-0.11, 0.03, -0.05, 0.11], [0.03, 0.08, -0.04, 0.09]].forEach(([x, y, z, r]) => g.add(mesh(new THREE.SphereGeometry(r, 14, 10), snow, [x, y, z], null, [1.3, 0.45, 1])));
-    for (let i = 0; i < 5; i++) g.add(mesh(new THREE.ConeGeometry(0.012, 0.07, 6), ice, [-0.18 + i * 0.09, -0.01, 0.16], [Math.PI, 0, 0]));
+    g.add(mesh(new THREE.BoxGeometry(0.26, 0.03, 0.22), snow, [0, 0.015, 0]));
+    [[0.07, 0.03, 0.05, 0.06], [-0.08, 0.03, -0.04, 0.07], [0.0, 0.03, -0.07, 0.05]].forEach(([x, y, z, r]) => g.add(mesh(new THREE.SphereGeometry(r, 12, 8), snow, [x, y, z], null, [1.4, 0.4, 1])));
+    g.add(mesh(new THREE.IcosahedronGeometry(0.035, 1), snow, [-0.02, 0.06, 0.03]));
+    for (const x of [0.13, -0.13]) for (let i = 0; i < 4; i++) g.add(mesh(new THREE.ConeGeometry(0.01, 0.05 + (i % 2) * 0.02, 6), ice, [x, -0.01, -0.08 + i * 0.055], [Math.PI, 0, 0]));
   },
   // A crown of ice crystals that glows a little: winter pass, tier 30.
   icecrown(g) {
@@ -64,20 +68,21 @@ const BUILD = {
     }
     g.add(mesh(new THREE.OctahedronGeometry(0.035), glow(0xdff6ff), [0, 0.08, 0]));
   },
-  // Baseball cap, team colored, brim forward.
+  // Baseball cap, team colored, brim forward and tipped down a little.
   cap(g, team) {
     const c = std(team, { roughness: 0.8 });
-    g.add(mesh(new THREE.SphereGeometry(0.12, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), c, [0, 0.01, 0], null, [1, 0.8, 1]));
-    g.add(mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.01, 20, 1, false, -Math.PI / 2, Math.PI), c, [0.1, 0.012, 0], null, [1.2, 1, 1]));
-    g.add(mesh(new THREE.SphereGeometry(0.015, 8, 6), std(0xffffff), [0, 0.105, 0]));
+    const dark = std(team.clone().multiplyScalar(0.5), { roughness: 0.8 });
+    g.add(mesh(new THREE.SphereGeometry(0.11, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), c, [0, 0.01, 0], null, [1, 0.95, 1]));
+    g.add(mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.014, 20, 1, false, -Math.PI / 2, Math.PI), dark, [0.06, 0.02, 0], [0, 0, -0.18], [1.5, 1, 0.95]));
+    g.add(mesh(new THREE.SphereGeometry(0.016, 8, 6), dark, [0, 0.115, 0]));
   },
   // Traffic cone.
   cone(g) {
     const o = std(0xff6a00, { roughness: 0.6 });
     const w = std(0xffffff, { roughness: 0.5 });
     g.add(mesh(new THREE.BoxGeometry(0.22, 0.02, 0.22), o, [0, 0.01, 0]));
-    g.add(mesh(new THREE.ConeGeometry(0.09, 0.3, 20), o, [0, 0.17, 0]));
-    g.add(mesh(new THREE.CylinderGeometry(0.052, 0.068, 0.05, 20), w, [0, 0.15, 0]));
+    g.add(mesh(new THREE.ConeGeometry(0.085, 0.24, 20), o, [0, 0.14, 0]));
+    g.add(mesh(new THREE.CylinderGeometry(0.044, 0.06, 0.045, 20), w, [0, 0.13, 0]));
   },
   // Party hat with dots and a tassel.
   party(g, team) {
@@ -119,7 +124,7 @@ const BUILD = {
   wizard(g) {
     const blue = std(0x2c2f8f, { roughness: 0.8 });
     g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.012, 24), blue, [0, 0.006, 0]));
-    g.add(mesh(new THREE.ConeGeometry(0.1, 0.32, 20), blue, [-0.02, 0.17, 0], [0, 0, 0.18]));
+    g.add(mesh(new THREE.ConeGeometry(0.1, 0.26, 20), blue, [-0.02, 0.14, 0], [0, 0, 0.18]));
     for (let i = 0; i < 4; i++) g.add(mesh(new THREE.OctahedronGeometry(0.018), glow(0xffe680), [Math.cos(i * 1.6) * 0.07, 0.06 + i * 0.05, Math.sin(i * 1.6) * 0.07]));
   },
   // Gold crown with jewels.
@@ -138,13 +143,16 @@ const BUILD = {
     r.userData.bob = 0.015;
     g.add(r);
   },
-  // Big sunglasses on the front of the roof.
+  // Round sunglasses standing on the front of the roof, arms lying back along it.
   sunglasses(g) {
     const frame = std(0x111111, { roughness: 0.3 });
-    const lens = new THREE.MeshPhysicalMaterial({ color: 0x1a1a2e, roughness: 0.05, metalness: 0.6, clearcoat: 1 });
-    for (const s of [1, -1]) g.add(mesh(new THREE.BoxGeometry(0.02, 0.07, 0.11), lens, [0.08, 0.05, s * 0.07], [0, 0, -0.35]));
-    g.add(mesh(new THREE.BoxGeometry(0.02, 0.012, 0.29), frame, [0.085, 0.085, 0], [0, 0, -0.35]));
-    for (const s of [1, -1]) g.add(mesh(new THREE.BoxGeometry(0.16, 0.012, 0.012), frame, [0.0, 0.085, s * 0.14]));
+    const lens = new THREE.MeshPhysicalMaterial({ color: 0x24243a, roughness: 0.05, metalness: 0.6, clearcoat: 1 });
+    for (const s of [1, -1]) {
+      g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.012, 20), lens, [0.07, 0.06, s * 0.065], [0, 0, Math.PI / 2 - 0.35]));
+      g.add(mesh(new THREE.TorusGeometry(0.056, 0.007, 6, 20), frame, [0.07, 0.06, s * 0.065], [0, Math.PI / 2, 0.35]));
+      g.add(mesh(new THREE.BoxGeometry(0.17, 0.01, 0.01), frame, [-0.02, 0.012, s * 0.12], [0, 0, -0.25]));
+    }
+    g.add(mesh(new THREE.BoxGeometry(0.01, 0.01, 0.03), frame, [0.075, 0.075, 0]));
   },
 };
 

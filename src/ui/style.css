@@ -1697,6 +1697,8 @@ body.touch .chips { top: calc(52px + env(safe-area-inset-top, 0px)); bottom: aut
 .peek-pic { width: 96px; height: 60px; object-fit: contain; }
 .peek-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .peek-hint { font-size: 11px; color: #9fb2cc; }
+.shop-peek-bar .peek-swatch { width: 48px; height: 48px; flex: none; border-radius: 8px; }
+.view-car { align-self: flex-start; margin-bottom: 10px; }
 
 /* Season pass */
 .pass-show { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 0 12px; }
